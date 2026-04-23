@@ -1,0 +1,12 @@
+version: "3"
+
+tasks:
+  up:
+    desc: Start PostgreSQL via Docker Compose
+    cmds:
+      - docker compose up -d db
+
+  api:lint:
+    desc: Lint openapi.yaml with Redocly
+    cmds:
+      - npx @redocly/cli lint --config .redocly.yaml openapi.yaml
