@@ -59,6 +59,22 @@ Tracked as GitHub Issues on `simpleappslabs/simpletickr`.
 Use `gh issue list` to see the current backlog.
 Labels used: `feature`, `bug`, `chore`, `infra`, `frontend`, `backend`, `api`
 
+GitHub Project board: https://github.com/orgs/simpleappslabs/projects/2 (project #2, owner `simpleappslabs`)
+- Project ID: `PVT_kwDOCTgvzs4BVhCw`
+- Status field ID: `PVTSSF_lADOCTgvzs4BVhCwzhQ8U5U`
+- Status option IDs: Backlog `57f4641b` · Todo `1b978f2c` · In Progress `3a2722f3` · Done `acffd51b`
+
+To move an issue on the board, add it first then edit its status:
+```bash
+gh project item-add 2 --owner simpleappslabs --url <issue-url>
+gh project item-edit --project-id PVT_kwDOCTgvzs4BVhCw --id <item-id> \
+  --field-id PVTSSF_lADOCTgvzs4BVhCwzhQ8U5U --single-select-option-id <option-id>
+```
+
+## Git
+
+- Do **not** append `Co-Authored-By: Claude` trailers to commit messages
+
 ## Code style
 
 - Kotlin: idiomatic, no nullable abuse, prefer data classes and sealed classes
