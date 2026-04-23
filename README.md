@@ -39,14 +39,25 @@ simpletickr/
 
 ## Getting Started
 
-> Prerequisites: JDK 21+, Node.js 20+, PostgreSQL, Docker (optional)
+> Prerequisites: JDK 21+, Node.js 20+, Docker
+
+### 1. Start the database
 
 ```bash
-# Backend
+cp .env.example .env
+docker compose up -d
+```
+
+### 2. Run the backend
+
+```bash
 cd backend
 ./gradlew bootRun
+```
 
-# Frontend
+### 3. Run the frontend
+
+```bash
 cd frontend
 npm install
 npm run dev
