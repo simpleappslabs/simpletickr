@@ -2,10 +2,16 @@
 
 ## Prerequisites
 
-- JDK 21+
+- [sdkman](https://sdkman.io) — manages the Java version (see `.sdkmanrc`)
 - Docker (for the local database and tests)
 - Node.js 20+
 - [Task](https://taskfile.dev) (`brew install go-task` or equivalent)
+
+The project ships a `.sdkmanrc` file that pins the Java version. With `sdkman_auto_env=true` in `~/.sdkman/etc/config`, the correct JDK is selected automatically when you `cd` into the repo. To enable it once:
+
+```bash
+sdk env install   # download the pinned JDK if not already present
+```
 
 ## Local setup
 
