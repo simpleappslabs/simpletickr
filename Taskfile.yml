@@ -10,3 +10,27 @@ tasks:
     desc: Lint openapi.yaml with Redocly
     cmds:
       - npx @redocly/cli lint --config .redocly.yaml openapi.yaml
+
+  backend:build:
+    desc: Compile and assemble the backend JAR
+    dir: backend
+    cmds:
+      - ./gradlew build
+
+  backend:test:
+    desc: Run backend tests
+    dir: backend
+    cmds:
+      - ./gradlew test
+
+  backend:run:
+    desc: Start the backend (requires DB_NAME, DB_USER, DB_PASSWORD in env)
+    dir: backend
+    cmds:
+      - ./gradlew bootRun
+
+  backend:clean:
+    desc: Clean backend build outputs
+    dir: backend
+    cmds:
+      - ./gradlew clean
