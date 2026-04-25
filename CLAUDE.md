@@ -37,13 +37,47 @@ simpletickr/
 - Backend: generates Spring controller interfaces via OpenAPI Generator
 - Frontend: generates typed client via Hey API
 
-## Architecture principles
+## Architecture
 
-- **Domain-first structure** — code is organized by domain, not by layer
-- **Light DDD** — use entities, value objects, and aggregates where it adds clarity
-- **Hexagonal instincts** — domain logic must not depend on Spring, JDBC, or any framework
-- **No ORM** — use Spring JDBC with raw SQL; keep queries explicit and readable
-- **Schema-first API** — never drift from `openapi.yaml`; update the contract first, then implement
+### Style: domain-centric layered, not hexagonal
+
+Code is grouped by domain (e.g. `portfolio`, `ticker`, `position`), not by technical role (e.g. `controllers/`, `repositories/`). Within each domain there are layers, but they stay thin and explicit — no ports/adapters machinery.
+
+Key constraints that shape every decision:
+- **No ORM** — repositories are plain functions over `JdbcTemplate`, not abstracted behind interfaces
+- **Schema-first API** — controllers implement generated interfaces; they are nearly mechanical
+- **Framework-free domain logic** — entities and value objects are pure Kotlin; no Spring annotations, no JDBC inside them
+
+### Backend package structure
+
+```
+backend/src/main/kotlin/com/simpletickr/
+├── portfolio/
+│   ├── Portfolio.kt           # aggregate root, value objects
+│   ├── PortfolioController.kt # implements generated OpenAPI interface
+│   ├── PortfolioRepository.kt # raw SQL via JdbcTemplate
+│   └── PortfolioService.kt    # orchestration only — no business rules here
+├── position/
+│   ├── Position.kt
+│   ├── PositionController.kt
+│   └── PositionRepository.kt
+├── ticker/
+│   ├── Ticker.kt
+│   ├── TickerController.kt
+│   ├── TickerRepository.kt
+│   └── PriceProvider.kt       # interface only if a test stub is actually needed
+└── shared/
+    └── Money.kt               # value objects shared across domains
+```
+
+### Where business logic lives
+
+- **Domain class** (`Portfolio.kt`, `Position.kt`, …) — all business rules; unit-testable with no Spring context
+- **Service** — orchestration only: fetch → apply domain logic → persist → return; no conditionals that encode business meaning
+- **Repository** — SQL and row-mapping only; returns domain objects, not raw maps or DTOs
+- **Controller** — HTTP translation only: deserialize input, call service, serialize output
+
+If a method can't be unit-tested without Spring, it's in the wrong place.
 
 ## Workflow
 
