@@ -1,0 +1,5 @@
+ALTER TABLE portfolios
+    ADD COLUMN user_id BIGINT NOT NULL DEFAULT 1 REFERENCES users(id);
+
+ALTER TABLE portfolios
+    ALTER COLUMN user_id DROP DEFAULT;
