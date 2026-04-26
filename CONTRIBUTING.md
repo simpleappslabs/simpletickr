@@ -56,10 +56,28 @@ Backend tests use [Testcontainers](https://testcontainers.com) to spin up a real
 
 > **Note — Docker API version**: docker-java (used by Testcontainers) defaults to Docker API version 1.32, which Docker Engine 29+ no longer supports (minimum is 1.40). The `api.version=1.44` system property is set in `build.gradle.kts` to work around this. No manual setup is needed; it is already wired into the Gradle test task.
 
+## Code generation
+
+Spring controller interfaces are generated from `openapi.yaml` via the OpenAPI Generator Gradle plugin. Generated sources land in `build/generated` and are not committed.
+
+After cloning, run a build once so the generated sources exist and the IDE can resolve imports:
+
+```bash
+cd backend && ./gradlew build
+```
+
+After that, re-run this whenever `openapi.yaml` changes:
+
+```bash
+cd backend && ./gradlew openApiGenerate
+```
+
+IntelliJ will pick up the generated source root automatically after a Gradle sync.
+
 ## Workflow
 
 1. Define or update `openapi.yaml` — this is the API contract and source of truth
-2. Regenerate backend interfaces and frontend client
+2. Regenerate backend interfaces and frontend client: `./gradlew openApiGenerate`
 3. Implement: domain logic → controller → repository
 4. Add Flyway migrations for any schema changes under `backend/src/main/resources/db/migration/`
 5. Write tests
