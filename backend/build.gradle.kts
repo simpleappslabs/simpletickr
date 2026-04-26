@@ -3,6 +3,7 @@ plugins {
 	kotlin("plugin.spring") version "1.9.25"
 	id("org.springframework.boot") version "3.5.0"
 	id("io.spring.dependency-management") version "1.1.7"
+	id("org.openapi.generator") version "7.12.0"
 }
 
 group = "com.simpletickr"
@@ -35,12 +36,39 @@ dependencies {
 	testImplementation("org.testcontainers:postgresql")
 	testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+	implementation("org.springframework.boot:spring-boot-starter-validation")
+}
+
+openApiGenerate {
+	generatorName.set("kotlin-spring")
+	inputSpec.set("$rootDir/../openapi.yaml")
+	outputDir.set(layout.buildDirectory.dir("generated/openapi").get().asFile.path)
+	apiPackage.set("com.simpletickr.generated.api")
+	modelPackage.set("com.simpletickr.generated.model")
+	configOptions.set(mapOf(
+		"interfaceOnly" to "true",
+		"useSpringBoot3" to "true",
+		"useTags" to "true",
+		"documentationProvider" to "none",
+	))
 }
 
 kotlin {
 	compilerOptions {
 		freeCompilerArgs.addAll("-Xjsr305=strict")
 	}
+}
+
+sourceSets {
+	main {
+		kotlin {
+			srcDir(layout.buildDirectory.dir("generated/openapi/src/main/kotlin"))
+		}
+	}
+}
+
+tasks.compileKotlin {
+	dependsOn(tasks.openApiGenerate)
 }
 
 tasks.withType<Test> {
