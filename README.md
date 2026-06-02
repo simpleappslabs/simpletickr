@@ -33,9 +33,10 @@ simpletickr/
 
 ## Architecture
 
-- **Domain-first** monorepo structure
-- **Light DDD** — entities, value objects, aggregates
-- **Hexagonal instincts** — domain logic stays clean and framework-agnostic
+- **Domain-centric** structure — code grouped by business domain, not technical role; aggregates, entities, and value objects are pure Kotlin
+- **Use-case pattern** — one class per write operation; controllers translate HTTP to commands, use cases do the work
+- **Selective domain events** — Spring `ApplicationEventPublisher` for side effects that don't affect the immediate response; direct calls everywhere else
+- **Framework-free domain logic** — entities and value objects are pure Kotlin, no Spring annotations
 
 ## Getting Started
 

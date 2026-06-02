@@ -53,10 +53,12 @@ Key constraints that shape every decision:
 ```
 backend/src/main/kotlin/com/simpletickr/
 ├── portfolio/
-│   ├── Portfolio.kt           # aggregate root, value objects
-│   ├── PortfolioController.kt # implements generated OpenAPI interface
-│   ├── PortfolioRepository.kt # raw SQL via JdbcTemplate
-│   └── PortfolioService.kt    # orchestration only — no business rules here
+│   ├── Portfolio.kt                      # aggregate root, value objects
+│   ├── PortfolioController.kt            # implements generated OpenAPI interface
+│   ├── PortfolioRepository.kt            # raw SQL via JdbcTemplate
+│   ├── CreatePortfolioUseCase.kt         # one class per write operation
+│   ├── RecordTransactionUseCase.kt
+│   └── TransactionRecorded.kt            # domain event (only where side effects exist)
 ├── position/
 │   ├── Position.kt
 │   ├── PositionController.kt
@@ -65,19 +67,30 @@ backend/src/main/kotlin/com/simpletickr/
 │   ├── Ticker.kt
 │   ├── TickerController.kt
 │   ├── TickerRepository.kt
-│   └── PriceProvider.kt       # interface only if a test stub is actually needed
+│   ├── UpdatePriceUseCase.kt
+│   ├── PriceUpdated.kt                   # domain event
+│   └── PriceProvider.kt                 # interface only if a test stub is actually needed
 └── shared/
-    └── Money.kt               # value objects shared across domains
+    └── Money.kt                          # value objects shared across domains
 ```
 
 ### Where business logic lives
 
 - **Domain class** (`Portfolio.kt`, `Position.kt`, …) — all business rules; unit-testable with no Spring context
-- **Service** — orchestration only: fetch → apply domain logic → persist → return; no conditionals that encode business meaning
+- **Use case** — one class per operation; takes a command (plain data class), fetches → applies domain logic → persists → returns; no business rules here
 - **Repository** — SQL and row-mapping only; returns domain objects, not raw maps or DTOs
-- **Controller** — HTTP translation only: deserialize input, call service, serialize output
+- **Controller** — HTTP translation only: deserialize input → build command → call use case → serialize output
 
 If a method can't be unit-tested without Spring, it's in the wrong place.
+
+### Domain events
+
+Events are used selectively — only when a use case produces a side effect that is independent of the response. Use cases publish via Spring's `ApplicationEventPublisher`; handlers are separate `@EventListener` classes.
+
+- **Use an event** when the side effect doesn't affect what the caller gets back (e.g. recalculating holdings after a transaction, updating portfolio value after a price change)
+- **Use a direct call** when the caller needs the result immediately (e.g. creating a portfolio and returning it in the 201 response)
+
+Everything does not go through the bus — only flows with real decoupling value.
 
 ## Workflow
 
