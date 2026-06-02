@@ -2,26 +2,23 @@ package com.simpletickr.portfolio
 
 import org.springframework.dao.EmptyResultDataAccessException
 import org.springframework.jdbc.core.JdbcTemplate
+import org.springframework.jdbc.core.RowMapper
 import org.springframework.jdbc.support.GeneratedKeyHolder
 import org.springframework.stereotype.Repository
 
 @Repository
 class PortfolioRepository(private val jdbcTemplate: JdbcTemplate) {
 
-    fun findAll(): List<Portfolio> =
-        jdbcTemplate.query("SELECT id, name FROM portfolios") { rs, _ ->
-            Portfolio(rs.getLong("id"), rs.getString("name"))
-        }
-
-    fun findById(id: Long): Portfolio? {
-        return try {
-            jdbcTemplate.queryForObject("SELECT id, name FROM portfolios WHERE id = ?", { rs, _ ->
-                Portfolio(rs.getLong("id"), rs.getString("name"))
-            }, id)
-        } catch (e: EmptyResultDataAccessException) {
-            null
-        }
+    private val rowMapper = RowMapper<Portfolio> { rs, _ ->
+        Portfolio(rs.getLong("id"), rs.getString("name"))
     }
+
+    fun findAll(): List<Portfolio> =
+        jdbcTemplate.query("SELECT id, name FROM portfolios", rowMapper)
+
+    fun findById(id: Long): Portfolio? = try {
+        jdbcTemplate.queryForObject("SELECT id, name FROM portfolios WHERE id = ?", rowMapper, id)
+    } catch (_: EmptyResultDataAccessException) { null }
 
     fun save(name: String): Portfolio {
         val keyHolder = GeneratedKeyHolder()
