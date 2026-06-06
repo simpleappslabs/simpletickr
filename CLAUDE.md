@@ -13,14 +13,13 @@ GitHub: https://github.com/simpleappslabs/simpletickr
 simpletickr/
 ├── backend/          # Kotlin / Spring Boot
 ├── frontend/         # SvelteKit
-├── openapi.yaml      # API contract — source of truth
-└── .tasks/           # Task files / backlog
+└── openapi.yaml      # API contract — source of truth
 ```
 
 ## Tech stack
 
 ### Backend (`backend/`)
-- Kotlin, Spring Boot
+- Kotlin, Spring Boot 3.5
 - Spring Web (REST controllers)
 - Spring JDBC (raw SQL — no ORM, no JPA)
 - Flyway (migrations in `backend/src/main/resources/db/migration/`)
@@ -28,20 +27,23 @@ simpletickr/
 - PostgreSQL
 
 ### Frontend (`frontend/`)
-- SvelteKit
-- Hey API (typed client generated from `openapi.yaml`)
+- SvelteKit + Svelte 5 (runes: `$state`, `$derived`, `$props`)
+- TypeScript
+- Tailwind CSS v4 + DaisyUI v5 (custom theme in `src/app.css`)
+- Hey API (typed client generated from `openapi.yaml`, output to `src/lib/api/` — gitignored)
 - Chart.js
+- Playwright (E2E tests in `tests/*.e2e.ts`)
 
 ### API Contract
 - `openapi.yaml` is schema-first and the single source of truth
 - Backend: generates Spring controller interfaces via OpenAPI Generator
-- Frontend: generates typed client via Hey API
+- Frontend: generates typed client via Hey API (`npm run codegen`)
 
 ## Architecture
 
 ### Style: domain-centric layered, not hexagonal
 
-Code is grouped by domain (e.g. `portfolio`, `ticker`, `position`), not by technical role (e.g. `controllers/`, `repositories/`). Within each domain there are layers, but they stay thin and explicit — no ports/adapters machinery.
+Code is grouped by domain (e.g. `portfolio`, `asset`, `transaction`), not by technical role. Within each domain there are layers, but they stay thin and explicit — no ports/adapters machinery.
 
 Key constraints that shape every decision:
 - **No ORM** — repositories are plain functions over `JdbcTemplate`, not abstracted behind interfaces
@@ -53,52 +55,72 @@ Key constraints that shape every decision:
 ```
 backend/src/main/kotlin/com/simpletickr/
 ├── portfolio/
-│   ├── Portfolio.kt                      # aggregate root, value objects
-│   ├── PortfolioController.kt            # implements generated OpenAPI interface
-│   ├── PortfolioRepository.kt            # raw SQL via JdbcTemplate
-│   ├── CreatePortfolioUseCase.kt         # one class per write operation
-│   ├── RecordTransactionUseCase.kt
-│   └── TransactionRecorded.kt            # domain event (only where side effects exist)
-├── position/
-│   ├── Position.kt
-│   ├── PositionController.kt
-│   └── PositionRepository.kt
-├── ticker/
-│   ├── Ticker.kt
-│   ├── TickerController.kt
-│   ├── TickerRepository.kt
-│   ├── UpdatePriceUseCase.kt
-│   ├── PriceUpdated.kt                   # domain event
-│   └── PriceProvider.kt                 # interface only if a test stub is actually needed
+│   ├── Portfolio.kt               # domain model
+│   ├── Holding.kt                 # computed read-model (no DB table)
+│   ├── PortfolioController.kt     # implements generated OpenAPI interface
+│   ├── PortfolioRepository.kt     # raw SQL via JdbcTemplate
+│   └── HoldingRepository.kt      # SQL aggregation for holdings
+├── asset/
+│   ├── Asset.kt
+│   ├── AssetController.kt
+│   └── AssetRepository.kt
+├── transaction/
+│   ├── Transaction.kt
+│   ├── TransactionController.kt
+│   └── TransactionRepository.kt
+├── health/
+│   └── HealthController.kt
 └── shared/
-    └── Money.kt                          # value objects shared across domains
+    └── WebConfig.kt               # CORS — allows localhost:5173 and localhost:4173
 ```
 
 ### Where business logic lives
 
-- **Domain class** (`Portfolio.kt`, `Position.kt`, …) — all business rules; unit-testable with no Spring context
-- **Use case** — one class per operation; takes a command (plain data class), fetches → applies domain logic → persists → returns; no business rules here
+- **Domain class** — all business rules; unit-testable with no Spring context
 - **Repository** — SQL and row-mapping only; returns domain objects, not raw maps or DTOs
-- **Controller** — HTTP translation only: deserialize input → build command → call use case → serialize output
+- **Controller** — HTTP translation only: deserialize input → call repository → serialize output
 
 If a method can't be unit-tested without Spring, it's in the wrong place.
 
-### Domain events
+### Frontend route structure
 
-Events are used selectively — only when a use case produces a side effect that is independent of the response. Use cases publish via Spring's `ApplicationEventPublisher`; handlers are separate `@EventListener` classes.
+```
+frontend/src/routes/
+├── +layout.svelte        # navbar, global CSS import
+├── +page.svelte          # / — portfolio list + create form
+└── assets/
+    └── +page.svelte      # /assets — asset browser + add form
+```
 
-- **Use an event** when the side effect doesn't affect what the caller gets back (e.g. recalculating holdings after a transaction, updating portfolio value after a price change)
-- **Use a direct call** when the caller needs the result immediately (e.g. creating a portfolio and returning it in the 201 response)
+API client is initialized in `src/lib/client.ts` (reads `PUBLIC_API_BASE_URL` from env).
+Generated SDK is imported from `$lib/api/sdk.gen`.
 
-Everything does not go through the bus — only flows with real decoupling value.
+## Testing
+
+### Backend
+- **Repository tests** — `@JdbcTest` + Testcontainers (`@ServiceConnection`) — one per repository
+- **Controller tests** — `@WebMvcTest` + `@MockitoBean` — no DB, tests HTTP layer only
+
+### Frontend
+- **E2E tests** — Playwright, `tests/*.e2e.ts`, run against preview server + real backend
+- Run locally: `task frontend:test:e2e` (requires backend on `localhost:8080`)
+- Run in CI: `e2e` job (after `backend` and `frontend` jobs pass)
+
+## CI
+
+Three jobs in `.github/workflows/ci.yml`:
+- `backend` — `./gradlew build` (compile + all tests)
+- `frontend` — `npm run codegen && npm run build`
+- `e2e` — needs both above; spins up PostgreSQL, boots backend, runs Playwright
 
 ## Workflow
 
 1. Define or update the API contract in `openapi.yaml`
-2. Regenerate backend interfaces and frontend client
-3. Implement backend: domain logic first, then controller, then repository
+2. Regenerate backend interfaces (`./gradlew build`) and frontend client (`npm run codegen`)
+3. Implement backend: domain model → repository → controller
 4. Write Flyway migrations for any schema changes
 5. Implement frontend against the generated typed client
+6. Add/update E2E tests for new flows
 
 ## Backlog
 
@@ -121,10 +143,11 @@ gh project item-edit --project-id PVT_kwDOCTgvzs4BVhCw --id <item-id> \
 ## Git
 
 - Do **not** append `Co-Authored-By: Claude` trailers to commit messages
+- Do **not** commit automatically — always ask before committing
 
 ## Code style
 
 - Kotlin: idiomatic, no nullable abuse, prefer data classes and sealed classes
 - SQL: explicit column names, no `SELECT *`
-- Svelte: component-per-feature, typed stores
+- Svelte: Svelte 5 runes (`$state`, `$derived`), component-per-feature, no inline `<style>` blocks — use Tailwind/DaisyUI classes
 - No comments that restate what the code does — only explain non-obvious intent
