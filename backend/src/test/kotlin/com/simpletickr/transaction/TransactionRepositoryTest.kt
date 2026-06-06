@@ -47,7 +47,7 @@ class TransactionRepositoryTest {
     @BeforeEach
     fun setup() {
         portfolioId = portfolioRepository.save("Test Portfolio").id
-        assetId = assetRepository.save("AAPL", "Apple Inc.", AssetType.STOCK, "USD", null).id
+        assetId = assetRepository.save("TST_TXN", "Test Asset", AssetType.STOCK, "USD", null).id
     }
 
     private fun saveTransaction(
@@ -83,7 +83,7 @@ class TransactionRepositoryTest {
     @Test
     fun `findAll with portfolioId filters by portfolio`() {
         val otherPortfolioId = portfolioRepository.save("Other Portfolio").id
-        val otherAssetId = assetRepository.save("MSFT", "Microsoft", AssetType.STOCK, "USD", null).id
+        val otherAssetId = assetRepository.save("TST_TXN2", "Test Asset 2", AssetType.STOCK, "USD", null).id
 
         saveTransaction()
         repository.save(otherPortfolioId, otherAssetId, TransactionType.BUY, BigDecimal("1"), BigDecimal("300"), LocalDate.now(), null)

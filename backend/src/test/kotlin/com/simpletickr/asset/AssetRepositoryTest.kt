@@ -31,16 +31,16 @@ class AssetRepositoryTest {
     private lateinit var repository: AssetRepository
 
     @Test
-    fun `findAll returns empty list when no assets exist`() {
-        assertTrue(repository.findAll().isEmpty())
+    fun `findAll returns seeded assets`() {
+        assertTrue(repository.findAll().isNotEmpty())
     }
 
     @Test
     fun `save creates an asset and returns it with a generated id`() {
-        val asset = repository.save("AAPL", "Apple Inc.", AssetType.STOCK, "USD", null)
+        val asset = repository.save("TST_STOCK", "Test Stock", AssetType.STOCK, "USD", null)
         assertTrue(asset.id > 0)
-        assertEquals("AAPL", asset.ticker)
-        assertEquals("Apple Inc.", asset.name)
+        assertEquals("TST_STOCK", asset.ticker)
+        assertEquals("Test Stock", asset.name)
         assertEquals(AssetType.STOCK, asset.type)
         assertEquals("USD", asset.currency)
         assertNull(asset.currentPrice)
@@ -49,17 +49,17 @@ class AssetRepositoryTest {
     @Test
     fun `save stores current price when provided`() {
         val price = BigDecimal("182.50")
-        val asset = repository.save("MSFT", "Microsoft", AssetType.STOCK, "USD", price)
+        val asset = repository.save("TST_PRICE", "Test Price", AssetType.STOCK, "USD", price)
         assertEquals(0, price.compareTo(asset.currentPrice))
     }
 
     @Test
     fun `findById returns the asset when it exists`() {
-        val saved = repository.save("ETH", "Ethereum", AssetType.CRYPTO, "USD", null)
+        val saved = repository.save("TST_FIND", "Test Find", AssetType.CRYPTO, "USD", null)
         val found = repository.findById(saved.id)
         assertNotNull(found)
         assertEquals(saved.id, found.id)
-        assertEquals("ETH", found.ticker)
+        assertEquals("TST_FIND", found.ticker)
     }
 
     @Test
@@ -69,8 +69,8 @@ class AssetRepositoryTest {
 
     @Test
     fun `update changes asset fields and returns updated asset`() {
-        val saved = repository.save("BTC", "Bitcoin", AssetType.CRYPTO, "USD", null)
-        val updated = repository.update(saved.id, "BTC", "Bitcoin", AssetType.CRYPTO, "USD", BigDecimal("50000"))
+        val saved = repository.save("TST_UPD", "Test Update", AssetType.CRYPTO, "USD", null)
+        val updated = repository.update(saved.id, "TST_UPD", "Test Update", AssetType.CRYPTO, "USD", BigDecimal("50000"))
         assertNotNull(updated)
         assertEquals(0, BigDecimal("50000").compareTo(updated.currentPrice))
     }
@@ -82,7 +82,7 @@ class AssetRepositoryTest {
 
     @Test
     fun `delete removes the asset`() {
-        val saved = repository.save("VTI", "Vanguard Total Market ETF", AssetType.ETF, "USD", null)
+        val saved = repository.save("TST_DEL", "Test Delete", AssetType.ETF, "USD", null)
         repository.delete(saved.id)
         assertNull(repository.findById(saved.id))
     }
