@@ -61,6 +61,12 @@ tasks:
     cmds:
       - npm run test:e2e
 
+  frontend:test:e2e:ui:
+    desc: Run frontend E2E tests in Playwright UI mode (visual debugger with time-travel)
+    dir: frontend
+    cmds:
+      - npx playwright test --ui
+
   frontend:lint:
     desc: Lint the frontend
     dir: frontend

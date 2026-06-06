@@ -1,0 +1,121 @@
+<script lang="ts">
+    import { createTransaction } from '$lib/api/sdk.gen';
+    import type { Asset, TransactionType } from '$lib/api/types.gen';
+
+    interface Props {
+        assets: Asset[];
+        portfolioId: number;
+        onSuccess: () => void;
+        onCancel: () => void;
+    }
+
+    const { assets, portfolioId, onSuccess, onCancel }: Props = $props();
+
+    let formAssetId = $state(0);
+    let formType = $state<TransactionType>('BUY');
+    let formQuantity = $state('');
+    let formPrice = $state('');
+    let formDate = $state('');
+    let formFees = $state('');
+    let formSubmitting = $state(false);
+    let formError = $state<string | null>(null);
+
+    const canSubmit = $derived(
+        formAssetId > 0 && formQuantity !== '' && formPrice !== '' && formDate !== '' && !formSubmitting
+    );
+
+    async function submit(e: SubmitEvent) {
+        e.preventDefault();
+        formSubmitting = true;
+        formError = null;
+
+        const res = await createTransaction({
+            body: {
+                portfolioId,
+                assetId: formAssetId,
+                type: formType,
+                quantity: Number(formQuantity),
+                price: Number(formPrice),
+                date: formDate,
+                fees: formFees ? Number(formFees) : undefined,
+            },
+        });
+
+        if (res.error) {
+            formError = 'Failed to record transaction.';
+            formSubmitting = false;
+            return;
+        }
+
+        formAssetId = 0;
+        formType = 'BUY';
+        formQuantity = '';
+        formPrice = '';
+        formDate = '';
+        formFees = '';
+        formSubmitting = false;
+        onSuccess();
+    }
+</script>
+
+<form class="space-y-4" onsubmit={submit}>
+    <fieldset class="fieldset">
+        <legend class="fieldset-legend">Asset</legend>
+        <select class="select w-full" bind:value={formAssetId} required>
+            <option value={0} disabled>Select an asset</option>
+            {#each assets as a}
+                <option value={a.id}>{a.ticker} — {a.name}</option>
+            {/each}
+        </select>
+    </fieldset>
+
+    <fieldset class="fieldset">
+        <legend class="fieldset-legend">Type</legend>
+        <select class="select w-full" bind:value={formType}>
+            <option value="BUY">Buy</option>
+            <option value="SELL">Sell</option>
+        </select>
+    </fieldset>
+
+    <div class="grid grid-cols-2 gap-4">
+        <fieldset class="fieldset">
+            <legend class="fieldset-legend">Quantity</legend>
+            <input class="input w-full" type="number" min="0" step="any"
+                   placeholder="0.00" bind:value={formQuantity} required />
+        </fieldset>
+
+        <fieldset class="fieldset">
+            <legend class="fieldset-legend">Price per unit</legend>
+            <input class="input w-full" type="number" min="0" step="any"
+                   placeholder="0.00" bind:value={formPrice} required />
+        </fieldset>
+    </div>
+
+    <div class="grid grid-cols-2 gap-4">
+        <fieldset class="fieldset">
+            <legend class="fieldset-legend">Date</legend>
+            <input class="input w-full" type="date" bind:value={formDate} required />
+        </fieldset>
+
+        <fieldset class="fieldset">
+            <legend class="fieldset-legend">Fees <span class="text-base-content/40 font-normal">(optional)</span></legend>
+            <input class="input w-full" type="number" min="0" step="any"
+                   placeholder="0.00" bind:value={formFees} />
+        </fieldset>
+    </div>
+
+    {#if formError}
+        <div class="alert alert-error text-sm"><span>{formError}</span></div>
+    {/if}
+
+    <div class="modal-action mt-6">
+        <button type="button" class="btn btn-ghost" onclick={onCancel}>Cancel</button>
+        <button type="submit" class="btn btn-primary" disabled={!canSubmit}>
+            {#if formSubmitting}
+                <span class="loading loading-spinner loading-sm"></span>
+            {:else}
+                Record
+            {/if}
+        </button>
+    </div>
+</form>
