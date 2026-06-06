@@ -1,5 +1,8 @@
 node_modules
 
+# Generated API client
+src/lib/api
+
 # Output
 .output
 .vercel
