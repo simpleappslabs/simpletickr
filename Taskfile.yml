@@ -36,3 +36,33 @@ tasks:
     dir: backend
     cmds:
       - ./gradlew clean
+
+  frontend:dev:
+    desc: Start the frontend dev server
+    dir: frontend
+    cmds:
+      - npm run dev
+
+  frontend:build:
+    desc: Build the frontend for production
+    dir: frontend
+    cmds:
+      - npm run build
+
+  frontend:test:
+    desc: Run frontend tests
+    dir: frontend
+    cmds:
+      - npm run test
+
+  frontend:lint:
+    desc: Lint the frontend
+    dir: frontend
+    cmds:
+      - npm run lint
+
+  frontend:codegen:
+    desc: Generate typed API client from openapi.yaml
+    dir: frontend
+    cmds:
+      - npm run codegen
