@@ -41,20 +41,22 @@
   onMount(load);
 </script>
 
-<main>
-  <h1>simpletickr</h1>
+<div class="max-w-2xl mx-auto p-6 space-y-8">
+  <h1 class="text-2xl font-bold">simpletickr</h1>
 
-  <section>
-    <h2>Portfolios</h2>
+  <section class="space-y-3">
+    <h2 class="text-xs font-semibold uppercase tracking-widest text-base-content/50">Portfolios</h2>
 
     {#if loading}
-      <p>Loading…</p>
+      <span class="loading loading-spinner loading-sm"></span>
     {:else if error}
-      <p class="error">{error}</p>
+      <div class="alert alert-error">
+        <span>{error}</span>
+      </div>
     {:else if portfolios.length === 0}
-      <p class="empty">No portfolios yet. Create one below.</p>
+      <p class="text-base-content/40 italic text-sm">No portfolios yet. Create one below.</p>
     {:else}
-      <ul>
+      <ul class="menu bg-base-200 rounded-box w-full">
         {#each portfolios as portfolio}
           <li>
             <a href="/portfolios/{portfolio.id}">{portfolio.name}</a>
@@ -64,108 +66,25 @@
     {/if}
   </section>
 
-  <section>
-    <h2>New portfolio</h2>
-    <form onsubmit={handleCreate}>
+  <section class="space-y-3">
+    <h2 class="text-xs font-semibold uppercase tracking-widest text-base-content/50">New portfolio</h2>
+    <form onsubmit={handleCreate} class="flex gap-2">
       <input
         type="text"
         placeholder="Portfolio name"
         bind:value={newName}
         disabled={creating}
         required
+        class="input input-bordered flex-1"
       />
-      <button type="submit" disabled={creating || !newName.trim()}>
+      <button type="submit" disabled={creating || !newName.trim()} class="btn btn-primary">
         {creating ? 'Creating…' : 'Create'}
       </button>
     </form>
     {#if createError}
-      <p class="error">{createError}</p>
+      <div class="alert alert-error">
+        <span>{createError}</span>
+      </div>
     {/if}
   </section>
-</main>
-
-<style>
-  main {
-    max-width: 640px;
-    margin: 2rem auto;
-    padding: 0 1rem;
-    font-family: sans-serif;
-  }
-
-  h1 {
-    font-size: 1.5rem;
-    margin-bottom: 2rem;
-  }
-
-  h2 {
-    font-size: 1rem;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: #666;
-    margin-bottom: 0.75rem;
-  }
-
-  section {
-    margin-bottom: 2rem;
-  }
-
-  ul {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-  }
-
-  li {
-    border-bottom: 1px solid #eee;
-  }
-
-  li a {
-    display: block;
-    padding: 0.75rem 0;
-    color: inherit;
-    text-decoration: none;
-  }
-
-  li a:hover {
-    color: #0066cc;
-  }
-
-  form {
-    display: flex;
-    gap: 0.5rem;
-  }
-
-  input[type='text'] {
-    flex: 1;
-    padding: 0.5rem 0.75rem;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    font-size: 0.9rem;
-  }
-
-  button {
-    padding: 0.5rem 1rem;
-    background: #0066cc;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    font-size: 0.9rem;
-    cursor: pointer;
-  }
-
-  button:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-
-  .error {
-    color: #c00;
-    font-size: 0.9rem;
-    margin-top: 0.5rem;
-  }
-
-  .empty {
-    color: #999;
-    font-style: italic;
-  }
-</style>
+</div>
