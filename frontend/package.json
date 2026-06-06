@@ -10,10 +10,13 @@
 		"prepare": "svelte-kit sync || echo ''",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
-		"codegen": "openapi-ts"
+		"codegen": "openapi-ts",
+		"test:e2e": "playwright install && playwright test",
+		"test": "npm run test:e2e"
 	},
 	"devDependencies": {
 		"@hey-api/openapi-ts": "^0.95.0",
+		"@playwright/test": "^1.60.0",
 		"@sveltejs/adapter-auto": "^7.0.1",
 		"@sveltejs/kit": "^2.57.0",
 		"@sveltejs/vite-plugin-svelte": "^7.0.0",

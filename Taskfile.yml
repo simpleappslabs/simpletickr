@@ -50,10 +50,16 @@ tasks:
       - npm run build
 
   frontend:test:
-    desc: Run frontend tests
+    desc: Run frontend unit tests
     dir: frontend
     cmds:
       - npm run test
+
+  frontend:test:e2e:
+    desc: Run frontend E2E tests (requires backend on localhost:8080)
+    dir: frontend
+    cmds:
+      - npm run test:e2e
 
   frontend:lint:
     desc: Lint the frontend
