@@ -1,2 +1,55 @@
 @import "tailwindcss";
 @plugin "daisyui";
+
+@plugin "daisyui/theme" {
+  name: "simpletickr";
+  default: true;
+  color-scheme: dark;
+
+  /* Base — charcoal grey, near-neutral */
+  --color-base-100: oklch(20% 0.004 260);
+  --color-base-200: oklch(25% 0.004 260);
+  --color-base-300: oklch(30% 0.004 260);
+  --color-base-content: oklch(91% 0.005 260);
+
+  /* Primary — violet-indigo */
+  --color-primary: oklch(63% 0.22 280);
+  --color-primary-content: oklch(96% 0.015 280);
+
+  /* Secondary — muted indigo */
+  --color-secondary: oklch(55% 0.15 250);
+  --color-secondary-content: oklch(96% 0.015 250);
+
+  /* Accent — cyan, for charts and highlights */
+  --color-accent: oklch(79% 0.13 200);
+  --color-accent-content: oklch(20% 0.05 200);
+
+  /* Neutral — slightly elevated surface */
+  --color-neutral: oklch(27% 0.004 260);
+  --color-neutral-content: oklch(85% 0.005 260);
+
+  /* Financial green — gains */
+  --color-success: oklch(74% 0.19 152);
+  --color-success-content: oklch(20% 0.05 152);
+
+  /* Financial red — losses */
+  --color-error: oklch(68% 0.19 25);
+  --color-error-content: oklch(20% 0.05 25);
+
+  /* Warning — amber */
+  --color-warning: oklch(82% 0.18 85);
+  --color-warning-content: oklch(20% 0.05 85);
+
+  /* Info — sky blue */
+  --color-info: oklch(74% 0.14 232);
+  --color-info-content: oklch(20% 0.05 232);
+
+  /* Shape — slightly rounded, purposeful */
+  --radius-selector: 0.5rem;
+  --radius-field: 0.375rem;
+  --radius-box: 0.5rem;
+
+  --border: 1px;
+  --depth: 1;
+  --noise: 0;
+}
