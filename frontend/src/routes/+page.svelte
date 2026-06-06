@@ -42,8 +42,6 @@
 </script>
 
 <div class="max-w-2xl mx-auto p-6 space-y-8">
-  <h1 class="text-2xl font-bold">simpletickr</h1>
-
   <section class="space-y-3">
     <h2 class="text-xs font-semibold uppercase tracking-widest text-base-content/50">Portfolios</h2>
 
