@@ -67,14 +67,29 @@ tasks:
     cmds:
       - npx playwright test --ui
 
-  frontend:lint:
-    desc: Lint the frontend
+  frontend:check:
+    desc: Type-check the frontend with svelte-check
     dir: frontend
     cmds:
-      - npm run lint
+      - npm run check
 
   frontend:codegen:
     desc: Generate typed API client from openapi.yaml
     dir: frontend
     cmds:
       - npm run codegen
+
+  frontend:ci:
+    desc: Codegen, type-check, and build the frontend
+    dir: frontend
+    cmds:
+      - npm run codegen
+      - npm run check
+      - npm run build
+
+  ci:
+    desc: Run all tests and linting locally (excludes E2E)
+    deps:
+      - api:lint
+      - backend:build
+      - frontend:ci
