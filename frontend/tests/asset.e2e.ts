@@ -13,19 +13,32 @@ test.describe('Asset browser', () => {
 		const ticker = `T${Date.now().toString().slice(-8)}`;
 
 		await page.goto('/assets');
+		await page.getByRole('button', { name: '+ Add asset' }).click();
+		await expect(page.locator('dialog.modal-open .modal-box')).toBeVisible();
 
-		await page.fill('input[placeholder*="Ticker"]', ticker);
-		await page.fill('input[placeholder*="Currency"]', 'USD');
-		await page.fill('input[placeholder*="Name"]', `Test Asset ${ticker}`);
-		await page.selectOption('select', 'STOCK');
-		await page.click('button[type="submit"]');
+		await page.getByRole('group', { name: 'Ticker' }).getByRole('textbox').fill(ticker);
+		await page.getByRole('group', { name: 'Currency' }).getByRole('textbox').fill('USD');
+		await page.getByRole('group', { name: 'Name' }).getByRole('textbox').fill(`Test Asset ${ticker}`);
+		await page.getByRole('group', { name: 'Type' }).getByRole('combobox').selectOption('STOCK');
+		await page.getByRole('button', { name: 'Add asset', exact: true }).click();
 
+		await expect(page.locator('dialog.modal-open .modal-box')).not.toBeVisible();
 		await expect(page.getByRole('cell', { name: ticker, exact: true })).toBeVisible();
 	});
 
-	test('submit is disabled with empty ticker', async ({ page }) => {
+	test('submit is disabled with empty fields', async ({ page }) => {
 		await page.goto('/assets');
-		await expect(page.locator('button[type="submit"]')).toBeDisabled();
+		await page.getByRole('button', { name: '+ Add asset' }).click();
+		await expect(page.locator('dialog.modal-open .modal-box')).toBeVisible();
+		await expect(page.getByRole('button', { name: 'Add asset', exact: true })).toBeDisabled();
+	});
+
+	test('modal closes when cancel is clicked', async ({ page }) => {
+		await page.goto('/assets');
+		await page.getByRole('button', { name: '+ Add asset' }).click();
+		await expect(page.locator('dialog.modal-open .modal-box')).toBeVisible();
+		await page.getByRole('button', { name: 'Cancel' }).click();
+		await expect(page.locator('dialog.modal-open .modal-box')).not.toBeVisible();
 	});
 
 	test('navbar links are present', async ({ page }) => {

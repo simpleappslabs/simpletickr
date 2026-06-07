@@ -10,10 +10,10 @@ test.describe('Transaction recording', () => {
 	async function createPortfolioAndNavigate(page: Page) {
 		const name = `Txn Test ${Date.now()}`;
 		await page.goto('/');
-		await page.fill('input[placeholder="Portfolio name"]', name);
-		await page.click('button[type="submit"]');
-		await expect(page.locator(`text=${name}`)).toBeVisible();
-		await page.click(`text=${name}`);
+		await page.getByRole('button', { name: '+ New portfolio' }).click();
+		await page.locator('dialog.modal-open .modal-box input[type="text"]').fill(name);
+		await page.getByRole('button', { name: 'Create', exact: true }).click();
+		await page.getByRole('link', { name, exact: true }).click();
 		await expect(page).toHaveURL(/\/portfolios\/\d+/);
 		return name;
 	}
@@ -22,7 +22,7 @@ test.describe('Transaction recording', () => {
 		await createPortfolioAndNavigate(page);
 
 		await page.getByRole('button', { name: /Record transaction/ }).click();
-		await expect(page.locator('.modal-box')).toBeVisible();
+		await expect(page.locator('dialog.modal-open .modal-box')).toBeVisible();
 
 		await selectAssetByTicker(page, 'AAPL');
 		await page.getByRole('group', { name: 'Type' }).getByRole('combobox').selectOption('BUY');
@@ -32,15 +32,15 @@ test.describe('Transaction recording', () => {
 
 		await page.getByRole('button', { name: 'Record', exact: true }).click();
 
-		await expect(page.locator('.modal-box')).not.toBeVisible();
-		await expect(page.getByRole('cell', { name: 'AAPL', exact: true })).toBeVisible();
+		await expect(page.locator('dialog.modal-open .modal-box')).not.toBeVisible();
+		await expect(page.getByRole('cell', { name: 'AAPL', exact: true }).first()).toBeVisible();
 	});
 
 	test('submit is disabled until required fields are filled', async ({ page }) => {
 		await createPortfolioAndNavigate(page);
 
 		await page.getByRole('button', { name: /Record transaction/ }).click();
-		await expect(page.locator('.modal-box')).toBeVisible();
+		await expect(page.locator('dialog.modal-open .modal-box')).toBeVisible();
 
 		await expect(page.getByRole('button', { name: 'Record', exact: true })).toBeDisabled();
 
@@ -58,9 +58,9 @@ test.describe('Transaction recording', () => {
 		await createPortfolioAndNavigate(page);
 
 		await page.getByRole('button', { name: /Record transaction/ }).click();
-		await expect(page.locator('.modal-box')).toBeVisible();
+		await expect(page.locator('dialog.modal-open .modal-box')).toBeVisible();
 
 		await page.getByRole('button', { name: 'Cancel' }).click();
-		await expect(page.locator('.modal-box')).not.toBeVisible();
+		await expect(page.locator('dialog.modal-open .modal-box')).not.toBeVisible();
 	});
 });
