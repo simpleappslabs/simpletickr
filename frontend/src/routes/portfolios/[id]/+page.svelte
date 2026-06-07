@@ -1,7 +1,8 @@
 <script lang="ts">
     import {onMount} from 'svelte';
     import {page} from '$app/state';
-    import {getPortfolio, getHoldings, listAssets} from '$lib/api/sdk.gen';
+    import {goto} from '$app/navigation';
+    import {getPortfolio, getHoldings, listAssets, updatePortfolio, deletePortfolio} from '$lib/api/sdk.gen';
     import type {Asset, Holding, Portfolio} from '$lib/api/types.gen';
     import TransactionForm from './TransactionForm.svelte';
     import {Chart, ArcElement, Tooltip, Legend, DoughnutController} from 'chart.js';
@@ -26,12 +27,58 @@
 
     let modalOpen = $state(false);
 
+    let renameOpen = $state(false);
+    let renameName = $state('');
+    let renameSubmitting = $state(false);
+    let renameError = $state<string | null>(null);
+
+    let deleteOpen = $state(false);
+    let deleteSubmitting = $state(false);
+    let deleteError = $state<string | null>(null);
+
     const totalCost = $derived(holdings.reduce((sum, h) => sum + h.totalCost, 0));
     const totalGain = $derived(
         holdings.length > 0 && holdings.every((h) => h.unrealizedGain != null)
             ? holdings.reduce((sum, h) => sum + (h.unrealizedGain ?? 0), 0)
             : null
     );
+
+    function openRename() {
+        renameName = portfolio?.name ?? '';
+        renameError = null;
+        renameOpen = true;
+    }
+
+    async function handleRename(e: Event) {
+        e.preventDefault();
+        if (!portfolio || !renameName.trim()) return;
+        renameSubmitting = true;
+        renameError = null;
+        const { data, error: err } = await updatePortfolio({
+            path: { id: portfolio.id },
+            body: { name: renameName.trim() },
+        });
+        if (err || !data) {
+            renameError = 'Failed to rename portfolio.';
+        } else {
+            portfolio = data;
+            renameOpen = false;
+        }
+        renameSubmitting = false;
+    }
+
+    async function handleDelete() {
+        if (!portfolio) return;
+        deleteSubmitting = true;
+        deleteError = null;
+        const { error: err } = await deletePortfolio({ path: { id: portfolio.id } });
+        if (err) {
+            deleteError = 'Failed to delete portfolio.';
+            deleteSubmitting = false;
+        } else {
+            goto('/');
+        }
+    }
 
     async function onTransactionSuccess() {
         if (!portfolio) return;
@@ -110,6 +157,20 @@
         <a href="/" class="btn btn-ghost btn-sm">← Portfolios</a>
         {#if portfolio}
             <h1 class="text-2xl font-bold flex-1">{portfolio.name}</h1>
+            <button class="btn btn-ghost btn-sm" title="Rename" onclick={openRename}>
+                <svg xmlns="http://www.w3.org/2000/svg" class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                </svg>
+            </button>
+            <button class="btn btn-ghost btn-sm text-error" title="Delete" onclick={() => { deleteError = null; deleteOpen = true; }}>
+                <svg xmlns="http://www.w3.org/2000/svg" class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="3 6 5 6 21 6"/>
+                    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                    <path d="M10 11v6M14 11v6"/>
+                    <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+                </svg>
+            </button>
             <button class="btn btn-primary btn-sm" onclick={() => modalOpen = true}>+ Record transaction</button>
         {/if}
     </div>
@@ -202,5 +263,60 @@
     </div>
     <form method="dialog" class="modal-backdrop">
         <button onclick={() => modalOpen = false}>close</button>
+    </form>
+</dialog>
+
+<!-- Rename modal -->
+<dialog class="modal modal-bottom sm:modal-middle" class:modal-open={renameOpen}>
+    <div class="modal-box">
+        <h3 class="text-lg font-bold mb-6">Rename portfolio</h3>
+        <form onsubmit={handleRename} class="space-y-4">
+            <input
+                type="text"
+                bind:value={renameName}
+                disabled={renameSubmitting}
+                required
+                class="input input-bordered w-full"
+            />
+            {#if renameError}
+                <div class="alert alert-error"><span>{renameError}</span></div>
+            {/if}
+            <div class="modal-action">
+                <button type="button" class="btn btn-ghost" disabled={renameSubmitting} onclick={() => renameOpen = false}>
+                    Cancel
+                </button>
+                <button type="submit" class="btn btn-primary" disabled={renameSubmitting || !renameName.trim()}>
+                    {renameSubmitting ? 'Saving…' : 'Save'}
+                </button>
+            </div>
+        </form>
+    </div>
+    <form method="dialog" class="modal-backdrop">
+        <button onclick={() => renameOpen = false}>close</button>
+    </form>
+</dialog>
+
+<!-- Delete confirmation modal -->
+<dialog class="modal modal-bottom sm:modal-middle" class:modal-open={deleteOpen}>
+    <div class="modal-box">
+        <h3 class="text-lg font-bold mb-2">Delete portfolio</h3>
+        <p class="text-base-content/70 mb-6">
+            Are you sure you want to delete <strong>{portfolio?.name}</strong>?
+            All transactions will be permanently removed.
+        </p>
+        {#if deleteError}
+            <div class="alert alert-error mb-4"><span>{deleteError}</span></div>
+        {/if}
+        <div class="modal-action">
+            <button class="btn btn-ghost" disabled={deleteSubmitting} onclick={() => deleteOpen = false}>
+                Cancel
+            </button>
+            <button class="btn btn-error" disabled={deleteSubmitting} onclick={handleDelete}>
+                {deleteSubmitting ? 'Deleting…' : 'Delete'}
+            </button>
+        </div>
+    </div>
+    <form method="dialog" class="modal-backdrop">
+        <button onclick={() => deleteOpen = false}>close</button>
     </form>
 </dialog>

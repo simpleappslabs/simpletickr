@@ -10,6 +10,7 @@ import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 
@@ -79,6 +80,32 @@ class PortfolioControllerTest {
             .andExpect(status().isCreated)
             .andExpect(jsonPath("$.id").value(3))
             .andExpect(jsonPath("$.name").value("New Portfolio"))
+    }
+
+    @Test
+    fun `PUT portfolio returns 200 with updated portfolio`() {
+        whenever(portfolioRepository.update(1L, "Renamed")).thenReturn(Portfolio(1L, "Renamed"))
+
+        mockMvc.perform(
+            put("/portfolios/1")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"name":"Renamed"}""")
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.id").value(1))
+            .andExpect(jsonPath("$.name").value("Renamed"))
+    }
+
+    @Test
+    fun `PUT portfolio returns 404 when not found`() {
+        whenever(portfolioRepository.update(99L, "Renamed")).thenReturn(null)
+
+        mockMvc.perform(
+            put("/portfolios/99")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"name":"Renamed"}""")
+        )
+            .andExpect(status().isNotFound)
     }
 
     @Test
