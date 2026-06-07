@@ -203,6 +203,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Asset"
+        "409":
+          description: Asset conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
 
   /assets/{id}:
     parameters:

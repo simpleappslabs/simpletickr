@@ -1,9 +1,12 @@
 package com.simpletickr.asset
 
 import org.junit.jupiter.api.Test
+import org.mockito.kotlin.any
+import org.mockito.kotlin.anyOrNull
 import org.mockito.kotlin.whenever
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest
+import org.springframework.dao.DuplicateKeyException
 import org.springframework.http.MediaType
 import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.web.servlet.MockMvc
@@ -71,5 +74,19 @@ class AssetControllerTest {
             .andExpect(status().isCreated)
             .andExpect(jsonPath("$.id").value(5))
             .andExpect(jsonPath("$.ticker").value("NVDA"))
+    }
+
+    @Test
+    fun `POST asset returns 409 when ticker already exists`() {
+        whenever(assetRepository.save(any(), any(), any(), any(), anyOrNull()))
+            .thenThrow(DuplicateKeyException("duplicate key"))
+
+        mockMvc.perform(
+            post("/assets")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"ticker":"AAPL","name":"Apple Inc.","type":"STOCK","currency":"USD"}""")
+        )
+            .andExpect(status().isConflict)
+            .andExpect(jsonPath("$.message").isNotEmpty)
     }
 }
