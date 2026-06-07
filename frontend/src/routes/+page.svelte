@@ -1,7 +1,8 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { listPortfolios, createPortfolio, updatePortfolio, deletePortfolio } from '$lib/api/sdk.gen';
+  import { listPortfolios, createPortfolio, deletePortfolio } from '$lib/api/sdk.gen';
   import type { Portfolio } from '$lib/api/types.gen';
+  import RenamePortfolioModal from '$lib/RenamePortfolioModal.svelte';
   import '$lib/client';
 
   let portfolios = $state<Portfolio[]>([]);
@@ -12,9 +13,6 @@
   let createError = $state<string | null>(null);
 
   let editingPortfolio = $state<Portfolio | null>(null);
-  let editName = $state('');
-  let editSubmitting = $state(false);
-  let editError = $state<string | null>(null);
 
   let deletingPortfolio = $state<Portfolio | null>(null);
   let deleteSubmitting = $state(false);
@@ -45,30 +43,6 @@
       await load();
     }
     creating = false;
-  }
-
-  function openEdit(portfolio: Portfolio) {
-    editingPortfolio = portfolio;
-    editName = portfolio.name;
-    editError = null;
-  }
-
-  async function handleRename(e: Event) {
-    e.preventDefault();
-    if (!editingPortfolio || !editName.trim()) return;
-    editSubmitting = true;
-    editError = null;
-    const { data, error: err } = await updatePortfolio({
-      path: { id: editingPortfolio.id },
-      body: { name: editName.trim() },
-    });
-    if (err || !data) {
-      editError = 'Failed to rename portfolio.';
-    } else {
-      portfolios = portfolios.map((p) => (p.id === data.id ? data : p));
-      editingPortfolio = null;
-    }
-    editSubmitting = false;
   }
 
   function openDelete(portfolio: Portfolio) {
@@ -163,35 +137,14 @@
   </section>
 </div>
 
-<!-- Rename modal -->
-<dialog class="modal modal-bottom sm:modal-middle" class:modal-open={editingPortfolio !== null}>
-  <div class="modal-box">
-    <h3 class="text-lg font-bold mb-6">Rename portfolio</h3>
-    <form onsubmit={handleRename} class="space-y-4">
-      <input
-        type="text"
-        bind:value={editName}
-        disabled={editSubmitting}
-        required
-        class="input input-bordered w-full"
-      />
-      {#if editError}
-        <div class="alert alert-error"><span>{editError}</span></div>
-      {/if}
-      <div class="modal-action">
-        <button type="button" class="btn btn-ghost" disabled={editSubmitting} onclick={() => editingPortfolio = null}>
-          Cancel
-        </button>
-        <button type="submit" class="btn btn-primary" disabled={editSubmitting || !editName.trim()}>
-          {editSubmitting ? 'Saving…' : 'Save'}
-        </button>
-      </div>
-    </form>
-  </div>
-  <form method="dialog" class="modal-backdrop">
-    <button onclick={() => editingPortfolio = null}>close</button>
-  </form>
-</dialog>
+<RenamePortfolioModal
+  portfolio={editingPortfolio}
+  onSuccess={(updated) => {
+    portfolios = portfolios.map((p) => (p.id === updated.id ? updated : p));
+    editingPortfolio = null;
+  }}
+  onCancel={() => editingPortfolio = null}
+/>
 
 <!-- Delete confirmation modal -->
 <dialog class="modal modal-bottom sm:modal-middle" class:modal-open={deletingPortfolio !== null}>

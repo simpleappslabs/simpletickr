@@ -2,9 +2,10 @@
     import {onMount} from 'svelte';
     import {page} from '$app/state';
     import {goto} from '$app/navigation';
-    import {getPortfolio, getHoldings, listAssets, updatePortfolio, deletePortfolio} from '$lib/api/sdk.gen';
+    import {getPortfolio, getHoldings, listAssets, deletePortfolio} from '$lib/api/sdk.gen';
     import type {Asset, Holding, Portfolio} from '$lib/api/types.gen';
     import TransactionForm from './TransactionForm.svelte';
+    import RenamePortfolioModal from '$lib/RenamePortfolioModal.svelte';
     import {Chart, ArcElement, Tooltip, Legend, DoughnutController} from 'chart.js';
     import '$lib/client';
 
@@ -27,10 +28,7 @@
 
     let modalOpen = $state(false);
 
-    let renameOpen = $state(false);
-    let renameName = $state('');
-    let renameSubmitting = $state(false);
-    let renameError = $state<string | null>(null);
+    let renamePortfolio = $state<Portfolio | null>(null);
 
     let deleteOpen = $state(false);
     let deleteSubmitting = $state(false);
@@ -42,30 +40,6 @@
             ? holdings.reduce((sum, h) => sum + (h.unrealizedGain ?? 0), 0)
             : null
     );
-
-    function openRename() {
-        renameName = portfolio?.name ?? '';
-        renameError = null;
-        renameOpen = true;
-    }
-
-    async function handleRename(e: Event) {
-        e.preventDefault();
-        if (!portfolio || !renameName.trim()) return;
-        renameSubmitting = true;
-        renameError = null;
-        const { data, error: err } = await updatePortfolio({
-            path: { id: portfolio.id },
-            body: { name: renameName.trim() },
-        });
-        if (err || !data) {
-            renameError = 'Failed to rename portfolio.';
-        } else {
-            portfolio = data;
-            renameOpen = false;
-        }
-        renameSubmitting = false;
-    }
 
     async function handleDelete() {
         if (!portfolio) return;
@@ -157,7 +131,7 @@
         <a href="/" class="btn btn-ghost btn-sm">← Portfolios</a>
         {#if portfolio}
             <h1 class="text-2xl font-bold flex-1">{portfolio.name}</h1>
-            <button class="btn btn-ghost btn-sm" title="Rename" onclick={openRename}>
+            <button class="btn btn-ghost btn-sm" title="Rename" onclick={() => renamePortfolio = portfolio}>
                 <svg xmlns="http://www.w3.org/2000/svg" class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
                     <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
@@ -266,35 +240,11 @@
     </form>
 </dialog>
 
-<!-- Rename modal -->
-<dialog class="modal modal-bottom sm:modal-middle" class:modal-open={renameOpen}>
-    <div class="modal-box">
-        <h3 class="text-lg font-bold mb-6">Rename portfolio</h3>
-        <form onsubmit={handleRename} class="space-y-4">
-            <input
-                type="text"
-                bind:value={renameName}
-                disabled={renameSubmitting}
-                required
-                class="input input-bordered w-full"
-            />
-            {#if renameError}
-                <div class="alert alert-error"><span>{renameError}</span></div>
-            {/if}
-            <div class="modal-action">
-                <button type="button" class="btn btn-ghost" disabled={renameSubmitting} onclick={() => renameOpen = false}>
-                    Cancel
-                </button>
-                <button type="submit" class="btn btn-primary" disabled={renameSubmitting || !renameName.trim()}>
-                    {renameSubmitting ? 'Saving…' : 'Save'}
-                </button>
-            </div>
-        </form>
-    </div>
-    <form method="dialog" class="modal-backdrop">
-        <button onclick={() => renameOpen = false}>close</button>
-    </form>
-</dialog>
+<RenamePortfolioModal
+    portfolio={renamePortfolio}
+    onSuccess={(updated) => { portfolio = updated; renamePortfolio = null; }}
+    onCancel={() => renamePortfolio = null}
+/>
 
 <!-- Delete confirmation modal -->
 <dialog class="modal modal-bottom sm:modal-middle" class:modal-open={deleteOpen}>
