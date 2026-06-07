@@ -87,6 +87,26 @@ tasks:
       - npm run check
       - npm run build
 
+  docker:build:backend:
+    desc: Build the backend Docker image
+    cmds:
+      - docker build -f backend/Dockerfile -t simpletickr-backend:{{.IMAGE_TAG | default "local"}} .
+    vars:
+      IMAGE_TAG: '{{.IMAGE_TAG}}'
+
+  docker:build:frontend:
+    desc: Build the frontend Docker image
+    cmds:
+      - docker build -f frontend/Dockerfile -t simpletickr-frontend:{{.IMAGE_TAG | default "local"}} .
+    vars:
+      IMAGE_TAG: '{{.IMAGE_TAG}}'
+
+  docker:build:
+    desc: Build all Docker images
+    deps:
+      - docker:build:backend
+      - docker:build:frontend
+
   ci:
     desc: Run all tests and linting locally (excludes E2E)
     deps:

@@ -1,0 +1,11 @@
+.git
+
+# Excluded so COPY frontend/ doesn't stomp the node_modules installed by npm ci
+frontend/node_modules
+frontend/.svelte-kit
+frontend/build
+
+backend/build
+backend/.gradle
+
+**/*.md

@@ -1,6 +1,6 @@
 import { client } from '$lib/api/client.gen';
-import { PUBLIC_API_BASE_URL } from '$env/static/public';
+import { env } from '$env/dynamic/public';
 
-client.setConfig({ baseUrl: PUBLIC_API_BASE_URL });
+client.setConfig({ baseUrl: env.PUBLIC_API_BASE_URL });
 
 export { client };
