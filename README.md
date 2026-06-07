@@ -64,6 +64,10 @@ npm install
 npm run dev
 ```
 
+## Development Process
+
+This project is built with AI pair programming — see [AI.md](AI.md) for details.
+
 ## Development Workflow
 
 1. Update `openapi.yaml` first (API contract drives everything)
