@@ -1,5 +1,67 @@
 # Contributing
 
+## Table of Contents
+
+<!-- TOC -->
+* [Contributing](#contributing)
+  * [Table of Contents](#table-of-contents)
+  * [Repository layout](#repository-layout)
+  * [Tech stack](#tech-stack)
+    * [Backend](#backend)
+    * [Frontend](#frontend)
+    * [API contract](#api-contract)
+  * [Architecture](#architecture)
+  * [Prerequisites](#prerequisites)
+  * [Local setup](#local-setup)
+    * [1. Environment variables](#1-environment-variables)
+    * [2. Start the database](#2-start-the-database)
+    * [3. Run the backend](#3-run-the-backend)
+    * [4. Run the frontend](#4-run-the-frontend)
+  * [Running tests](#running-tests)
+    * [Backend](#backend-1)
+    * [E2E (Playwright)](#e2e-playwright)
+    * [All tests + checks](#all-tests--checks)
+  * [Code generation](#code-generation)
+  * [Workflow](#workflow)
+  * [Available tasks](#available-tasks)
+<!-- TOC -->
+
+## Repository layout
+
+```
+simpletickr/
+├── backend/          # Spring Boot application
+├── frontend/         # SvelteKit application
+└── openapi.yaml      # API contract (source of truth)
+```
+
+## Tech stack
+
+### Backend
+- **Kotlin / Spring Boot 3.5** — REST API
+- **Spring JDBC** — raw SQL, no ORM
+- **Flyway** — schema migrations
+- **SpringDoc OpenAPI** — serves Swagger UI at `/swagger-ui.html`
+- **PostgreSQL**
+
+### Frontend
+- **SvelteKit + Svelte 5** — runes (`$state`, `$derived`, `$props`)
+- **Tailwind CSS v4 + DaisyUI v5**
+- **Hey API** — typed client generated from `openapi.yaml`
+- **Chart.js**
+- **Playwright** — E2E tests
+
+### API contract
+`openapi.yaml` is schema-first and the single source of truth. The backend generates Spring controller interfaces from it; the frontend generates a typed API client.
+
+## Architecture
+
+Code is grouped by domain (`portfolio`, `asset`, `transaction`), not by technical role. Within each domain there are three thin layers:
+
+- **Domain class** — pure Kotlin, no Spring annotations; all business rules live here
+- **Repository** — raw SQL via `JdbcTemplate`; returns domain objects
+- **Controller** — HTTP translation only; implements the generated OpenAPI interface
+
 ## Prerequisites
 
 - [sdkman](https://sdkman.io) — manages the Java version (see `.sdkmanrc`)
@@ -16,8 +78,6 @@ sdk env install   # download the pinned JDK if not already present
 ## Local setup
 
 ### 1. Environment variables
-
-Copy the example env file and fill in the values:
 
 ```bash
 cp .env.example .env
@@ -46,7 +106,11 @@ Swagger UI: `http://localhost:8080/swagger-ui.html`
 cd frontend && npm install && npm run dev
 ```
 
+The app is available at `http://localhost:5173`.
+
 ## Running tests
+
+### Backend
 
 ```bash
 task backend:test
@@ -54,7 +118,23 @@ task backend:test
 
 Backend tests use [Testcontainers](https://testcontainers.com) to spin up a real PostgreSQL instance — no env vars or running database required. Docker must be available.
 
-> **Note — Docker API version**: docker-java (used by Testcontainers) defaults to Docker API version 1.32, which Docker Engine 29+ no longer supports (minimum is 1.40). The `api.version=1.44` system property is set in `build.gradle.kts` to work around this. No manual setup is needed; it is already wired into the Gradle test task.
+> **Note — Docker API version**: docker-java (used by Testcontainers) defaults to Docker API version 1.32, which Docker Engine 29+ no longer supports (minimum is 1.40). The `api.version=1.44` system property is set in `build.gradle.kts` to work around this. No manual setup is needed.
+
+### E2E (Playwright)
+
+```bash
+task frontend:test:e2e
+```
+
+Requires the backend to be running on `localhost:8080` (steps 2–3 above).
+
+### All tests + checks
+
+```bash
+task ci
+```
+
+Runs `api:lint`, `backend:build` (compile + tests), and the frontend pipeline (codegen → type-check → build) in parallel. Does not run E2E tests.
 
 ## Code generation
 
@@ -63,25 +143,32 @@ Spring controller interfaces are generated from `openapi.yaml` via the OpenAPI G
 After cloning, run a build once so the generated sources exist and the IDE can resolve imports:
 
 ```bash
-cd backend && ./gradlew build
+task backend:build
 ```
 
-After that, re-run this whenever `openapi.yaml` changes:
+Re-run this whenever `openapi.yaml` changes:
 
 ```bash
 cd backend && ./gradlew openApiGenerate
+```
+
+The frontend client is generated with:
+
+```bash
+task frontend:codegen
 ```
 
 IntelliJ will pick up the generated source root automatically after a Gradle sync.
 
 ## Workflow
 
-1. Define or update `openapi.yaml` — this is the API contract and source of truth
-2. Regenerate backend interfaces and frontend client: `./gradlew openApiGenerate`
-3. Implement: domain logic → controller → repository
-4. Add Flyway migrations for any schema changes under `backend/src/main/resources/db/migration/`
+1. Define or update `openapi.yaml` — the API contract drives everything
+2. Regenerate: `task backend:build` and `task frontend:codegen`
+3. Implement: domain class → repository → controller
+4. Add Flyway migrations for schema changes (`backend/src/main/resources/db/migration/`)
 5. Write tests
 
 ## Available tasks
 
 Run `task --list` to see all available tasks.
+)

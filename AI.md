@@ -1,18 +1,20 @@
 # AI Pair Programming
 
-This project is built collaboratively with [Claude Code](https://claude.ai/code) (Anthropic). Some features are implemented by the human — the project is also used as a learning opportunity, so the split varies intentionally.
+I built this project with the help of [Claude Code](https://claude.ai/code) (Anthropic).  
+It is done in a kind of "AI pair-programming".
 
-## How it works
+I defined the project goals, structure, languages and initial architecture.  
+AI helped but I already knew where I wanted to go.
 
-The human acts as tech lead: defining requirements, opening issues, reviewing output, and making judgment calls. Claude handles implementation: exploring the codebase, planning, writing code, and running tests.
+For each feature, I usually define the requirements and refine them with AI.  
+The process is mostly :
 
-Each feature follows this rhythm:
-
-1. **Plan** — Claude explores the codebase and proposes an approach; the human approves or redirects before any code is written.
-2. **Implement** — Claude writes the code following the project's conventions and architecture.
-3. **Review** — the human reviews the diff, flags issues, and requests refinements.
-4. **Commit** — changes are committed once the human is satisfied.
+1. **Plan** — With the help of Claude, we explore the codebase and chose the best approach;
+2. **Implement** — Usually Claude writes the code following the project's conventions and architecture, but sometimes I do it;
+3. **Review** — If Claude writes the code, I review it and we iterate until I'm satisfied;
+4. **Commit** — Changes are committed;
 
 ## Why be transparent about this
 
-AI-assisted development is becoming common but not always disclosed. We think it's worth being upfront: the architecture decisions, code style, and product direction are human-driven; the implementation is largely AI-generated and human-reviewed.
+AI-assisted development is becoming common but not always disclosed.  
+I think it's worth being upfront: the architecture decisions, code style, and product direction are human-driven; while the implementation can be largely AI-generated and human-reviewed.

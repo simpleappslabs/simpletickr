@@ -1,43 +1,11 @@
 # CLAUDE.md — simpletickr
 
-Project context for Claude Code sessions.
+Project context for Claude Code sessions. For tech stack, local setup, and workflow see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## What this project is
 
 **simpletickr** is a simple portfolio tracker (ETFs, crypto, stocks, etc.).
 GitHub: https://github.com/simpleappslabs/simpletickr
-
-## Monorepo structure
-
-```
-simpletickr/
-├── backend/          # Kotlin / Spring Boot
-├── frontend/         # SvelteKit
-└── openapi.yaml      # API contract — source of truth
-```
-
-## Tech stack
-
-### Backend (`backend/`)
-- Kotlin, Spring Boot 3.5
-- Spring Web (REST controllers)
-- Spring JDBC (raw SQL — no ORM, no JPA)
-- Flyway (migrations in `backend/src/main/resources/db/migration/`)
-- SpringDoc OpenAPI
-- PostgreSQL
-
-### Frontend (`frontend/`)
-- SvelteKit + Svelte 5 (runes: `$state`, `$derived`, `$props`)
-- TypeScript
-- Tailwind CSS v4 + DaisyUI v5 (custom theme in `src/app.css`)
-- Hey API (typed client generated from `openapi.yaml`, output to `src/lib/api/` — gitignored)
-- Chart.js
-- Playwright (E2E tests in `tests/*.e2e.ts`)
-
-### API Contract
-- `openapi.yaml` is schema-first and the single source of truth
-- Backend: generates Spring controller interfaces via OpenAPI Generator
-- Frontend: generates typed client via Hey API (`npm run codegen`)
 
 ## Architecture
 
@@ -86,12 +54,17 @@ If a method can't be unit-tested without Spring, it's in the wrong place.
 
 ```
 frontend/src/routes/
-├── +layout.svelte        # navbar, global CSS import
-├── +page.svelte          # / — portfolio list + create form
-└── assets/
-    └── +page.svelte      # /assets — asset browser + add form
+├── +layout.svelte              # navbar, global CSS import
+├── +page.svelte                # / — portfolio list
+├── assets/
+│   └── +page.svelte            # /assets — asset browser
+└── portfolios/
+    └── [id]/
+        ├── +page.svelte        # portfolio detail — holdings, transactions, charts
+        └── TransactionForm.svelte
 ```
 
+Shared modal components live in `frontend/src/lib/`.
 API client is initialized in `src/lib/client.ts` (reads `PUBLIC_API_BASE_URL` from env).
 Generated SDK is imported from `$lib/api/sdk.gen`.
 
@@ -112,15 +85,6 @@ Three jobs in `.github/workflows/ci.yml`:
 - `backend` — `./gradlew build` (compile + all tests)
 - `frontend` — `npm run codegen && npm run build`
 - `e2e` — needs both above; spins up PostgreSQL, boots backend, runs Playwright
-
-## Workflow
-
-1. Define or update the API contract in `openapi.yaml`
-2. Regenerate backend interfaces (`./gradlew build`) and frontend client (`npm run codegen`)
-3. Implement backend: domain model → repository → controller
-4. Write Flyway migrations for any schema changes
-5. Implement frontend against the generated typed client
-6. Add/update E2E tests for new flows
 
 ## Backlog
 
