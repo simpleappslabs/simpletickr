@@ -1,15 +1,16 @@
 <script lang="ts">
-    import { createTransaction } from '$lib/api/sdk.gen';
-    import type { Asset, TransactionType } from '$lib/api/types.gen';
+    import { createTransaction, updateTransaction } from '$lib/api/sdk.gen';
+    import type { Asset, Transaction, TransactionType } from '$lib/api/types.gen';
 
     interface Props {
         assets: Asset[];
         portfolioId: number;
+        transaction?: Transaction | null;
         onSuccess: () => void;
         onCancel: () => void;
     }
 
-    const { assets, portfolioId, onSuccess, onCancel }: Props = $props();
+    const { assets, portfolioId, transaction = null, onSuccess, onCancel }: Props = $props();
 
     let formAssetId = $state(0);
     let formType = $state<TransactionType>('BUY');
@@ -20,6 +21,25 @@
     let formSubmitting = $state(false);
     let formError = $state<string | null>(null);
 
+    $effect(() => {
+        if (transaction) {
+            formAssetId = transaction.assetId;
+            formType = transaction.type;
+            formQuantity = String(transaction.quantity);
+            formPrice = String(transaction.price);
+            formDate = transaction.date;
+            formFees = transaction.fees != null ? String(transaction.fees) : '';
+        } else {
+            formAssetId = 0;
+            formType = 'BUY';
+            formQuantity = '';
+            formPrice = '';
+            formDate = new Date().toISOString().slice(0, 10);
+            formFees = '';
+        }
+        formError = null;
+    });
+
     const canSubmit = $derived(
         formAssetId > 0 && formQuantity !== '' && formPrice !== '' && formDate !== '' && !formSubmitting
     );
@@ -29,30 +49,26 @@
         formSubmitting = true;
         formError = null;
 
-        const res = await createTransaction({
-            body: {
-                portfolioId,
-                assetId: formAssetId,
-                type: formType,
-                quantity: Number(formQuantity),
-                price: Number(formPrice),
-                date: formDate,
-                fees: formFees ? Number(formFees) : undefined,
-            },
-        });
+        const body = {
+            portfolioId,
+            assetId: formAssetId,
+            type: formType,
+            quantity: Number(formQuantity),
+            price: Number(formPrice),
+            date: formDate,
+            fees: formFees ? Number(formFees) : undefined,
+        };
+
+        const res = transaction
+            ? await updateTransaction({ path: { id: transaction.id }, body })
+            : await createTransaction({ body });
 
         if (res.error) {
-            formError = 'Failed to record transaction.';
+            formError = transaction ? 'Failed to update transaction.' : 'Failed to record transaction.';
             formSubmitting = false;
             return;
         }
 
-        formAssetId = 0;
-        formType = 'BUY';
-        formQuantity = '';
-        formPrice = '';
-        formDate = '';
-        formFees = '';
         formSubmitting = false;
         onSuccess();
     }
@@ -114,7 +130,7 @@
             {#if formSubmitting}
                 <span class="loading loading-spinner loading-sm"></span>
             {:else}
-                Record
+                {transaction ? 'Update' : 'Record'}
             {/if}
         </button>
     </div>

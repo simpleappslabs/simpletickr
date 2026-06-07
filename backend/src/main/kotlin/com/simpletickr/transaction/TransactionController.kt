@@ -34,6 +34,19 @@ class TransactionController(
         return ResponseEntity.status(201).body(transaction.toModel())
     }
 
+    override fun updateTransaction(id: Long, transactionRequest: TransactionRequest): ResponseEntity<TransactionModel> {
+        val transaction = transactionRepository.update(
+            id = id,
+            assetId = transactionRequest.assetId,
+            type = TransactionType.valueOf(transactionRequest.type.value),
+            quantity = BigDecimal.valueOf(transactionRequest.quantity),
+            price = BigDecimal.valueOf(transactionRequest.price),
+            date = transactionRequest.date,
+            fees = transactionRequest.fees?.let { BigDecimal.valueOf(it) },
+        ) ?: return ResponseEntity.notFound().build()
+        return ResponseEntity.ok(transaction.toModel())
+    }
+
     override fun deleteTransaction(id: Long): ResponseEntity<Unit> {
         if (transactionRepository.findById(id) == null) return ResponseEntity.notFound().build()
         transactionRepository.delete(id)

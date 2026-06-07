@@ -70,6 +70,22 @@ class TransactionRepository(private val jdbcTemplate: JdbcTemplate) {
         return Transaction(keyHolder.key!!.toLong(), portfolioId, assetId, type, quantity, price, date, fees)
     }
 
+    fun update(
+        id: Long,
+        assetId: Long,
+        type: TransactionType,
+        quantity: BigDecimal,
+        price: BigDecimal,
+        date: LocalDate,
+        fees: BigDecimal?,
+    ): Transaction? {
+        val updated = jdbcTemplate.update(
+            "UPDATE transactions SET asset_id = ?, type = ?, quantity = ?, price = ?, date = ?, fees = ? WHERE id = ?",
+            assetId, type.name, quantity, price, date, fees, id
+        )
+        return if (updated == 0) null else findById(id)
+    }
+
     fun delete(id: Long) {
         jdbcTemplate.update("DELETE FROM transactions WHERE id = ?", id)
     }
