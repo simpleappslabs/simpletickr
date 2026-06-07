@@ -5,7 +5,7 @@
     import {getPortfolio, getHoldings, listAssets, listTransactions, deletePortfolio, deleteTransaction} from '$lib/api/sdk.gen';
     import type {Asset, Holding, Portfolio, Transaction} from '$lib/api/types.gen';
     import TransactionForm from './TransactionForm.svelte';
-    import RenamePortfolioModal from '$lib/RenamePortfolioModal.svelte';
+    import PortfolioModal from '$lib/PortfolioModal.svelte';
     import {Chart, ArcElement, Tooltip, Legend, DoughnutController} from 'chart.js';
     import '$lib/client';
 
@@ -34,6 +34,7 @@
     let deleteTransactionSubmitting = $state(false);
     let deleteTransactionError = $state<string | null>(null);
 
+    let renameModalOpen = $state(false);
     let renamePortfolio = $state<Portfolio | null>(null);
 
     let deletePortfolioOpen = $state(false);
@@ -168,7 +169,7 @@
         <a href="/" class="btn btn-ghost btn-sm">← Portfolios</a>
         {#if portfolio}
             <h1 class="text-2xl font-bold flex-1">{portfolio.name}</h1>
-            <button class="btn btn-ghost btn-sm" title="Rename" onclick={() => renamePortfolio = portfolio}>
+            <button class="btn btn-ghost btn-sm" title="Rename" onclick={() => { renamePortfolio = portfolio; renameModalOpen = true; }}>
                 <svg xmlns="http://www.w3.org/2000/svg" class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
                     <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
@@ -341,10 +342,11 @@
     </form>
 </dialog>
 
-<RenamePortfolioModal
+<PortfolioModal
+    open={renameModalOpen}
     portfolio={renamePortfolio}
-    onSuccess={(updated) => { portfolio = updated; renamePortfolio = null; }}
-    onCancel={() => renamePortfolio = null}
+    onSuccess={(updated) => { portfolio = updated; renamePortfolio = null; renameModalOpen = false; }}
+    onCancel={() => { renamePortfolio = null; renameModalOpen = false; }}
 />
 
 <!-- Delete transaction confirmation modal -->

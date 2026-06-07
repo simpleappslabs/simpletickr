@@ -1,50 +1,52 @@
 <script lang="ts">
-    import { updatePortfolio } from '$lib/api/sdk.gen';
+    import { createPortfolio, updatePortfolio } from '$lib/api/sdk.gen';
     import type { Portfolio } from '$lib/api/types.gen';
 
     interface Props {
-        portfolio: Portfolio | null;
-        onSuccess: (updated: Portfolio) => void;
+        open: boolean;
+        portfolio?: Portfolio | null;
+        onSuccess: (portfolio: Portfolio) => void;
         onCancel: () => void;
     }
 
-    const { portfolio, onSuccess, onCancel }: Props = $props();
+    const { open, portfolio = null, onSuccess, onCancel }: Props = $props();
 
     let name = $state('');
     let submitting = $state(false);
     let error = $state<string | null>(null);
 
     $effect(() => {
-        if (portfolio) {
-            name = portfolio.name;
+        if (open) {
+            name = portfolio?.name ?? '';
             error = null;
         }
     });
 
     async function handleSubmit(e: Event) {
         e.preventDefault();
-        if (!portfolio || !name.trim()) return;
+        if (!name.trim()) return;
         submitting = true;
         error = null;
-        const { data, error: err } = await updatePortfolio({
-            path: { id: portfolio.id },
-            body: { name: name.trim() },
-        });
+        const { data, error: err } = portfolio
+            ? await updatePortfolio({ path: { id: portfolio.id }, body: { name: name.trim() } })
+            : await createPortfolio({ body: { name: name.trim() } });
         if (err || !data) {
-            error = 'Failed to rename portfolio.';
-        } else {
-            onSuccess(data);
+            error = portfolio ? 'Failed to rename portfolio.' : 'Failed to create portfolio.';
+            submitting = false;
+            return;
         }
         submitting = false;
+        onSuccess(data);
     }
 </script>
 
-<dialog class="modal modal-bottom sm:modal-middle" class:modal-open={portfolio !== null}>
+<dialog class="modal modal-bottom sm:modal-middle" class:modal-open={open}>
     <div class="modal-box">
-        <h3 class="text-lg font-bold mb-6">Rename portfolio</h3>
+        <h3 class="text-lg font-bold mb-6">{portfolio ? 'Rename portfolio' : 'New portfolio'}</h3>
         <form onsubmit={handleSubmit} class="space-y-4">
             <input
                 type="text"
+                placeholder="Portfolio name"
                 bind:value={name}
                 disabled={submitting}
                 required
@@ -58,7 +60,11 @@
                     Cancel
                 </button>
                 <button type="submit" class="btn btn-primary" disabled={submitting || !name.trim()}>
-                    {submitting ? 'Saving…' : 'Save'}
+                    {#if submitting}
+                        <span class="loading loading-spinner loading-sm"></span>
+                    {:else}
+                        {portfolio ? 'Save' : 'Create'}
+                    {/if}
                 </button>
             </div>
         </form>
