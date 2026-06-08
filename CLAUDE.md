@@ -104,6 +104,15 @@ gh project item-edit --project-id PVT_kwDOCTgvzs4BVhCw --id <item-id> \
   --field-id PVTSSF_lADOCTgvzs4BVhCwzhQ8U5U --single-select-option-id <option-id>
 ```
 
+When logging a new issue, always add it to the project board in the **Backlog** status (`57f4641b`) immediately after creation:
+```bash
+# 1. capture the item ID returned by item-add
+ITEM_ID=$(gh project item-add 2 --owner simpleappslabs --url <issue-url> --format json | jq -r '.id')
+# 2. set status to Backlog
+gh project item-edit --project-id PVT_kwDOCTgvzs4BVhCw --id "$ITEM_ID" \
+  --field-id PVTSSF_lADOCTgvzs4BVhCwzhQ8U5U --single-select-option-id 57f4641b
+```
+
 ## Git
 
 - Do **not** append `Co-Authored-By: Claude` trailers to commit messages
