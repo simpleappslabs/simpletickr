@@ -14,6 +14,10 @@ spec:
       labels:
         {{- include "simpletickr.frontend.selectorLabels" . | nindent 8 }}
     spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
         - name: frontend
           image: {{ include "simpletickr.frontend.image" . }}

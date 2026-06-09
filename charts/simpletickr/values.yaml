@@ -1,5 +1,7 @@
 # Global image settings — tag applies to both backend and frontend.
 # Defaults to the chart's appVersion when left empty.
+imagePullSecrets: []
+
 image:
   registry: ghcr.io
   project: simpleappslabs
@@ -20,6 +22,10 @@ backend:
     name: simpletickr
     user: simpletickr
     password: ""
+    # Use an existing secret instead of creating one from backend.db.password
+    existingSecret:
+      name: ""
+      key: db-password
 
 frontend:
   replicaCount: 1

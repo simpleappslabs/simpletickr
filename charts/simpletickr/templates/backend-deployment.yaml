@@ -14,6 +14,10 @@ spec:
       labels:
         {{- include "simpletickr.backend.selectorLabels" . | nindent 8 }}
     spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
         - name: backend
           image: {{ include "simpletickr.backend.image" . }}
@@ -49,6 +53,9 @@ spec:
                   {{- if .Values.postgresql.enabled }}
                   name: {{ .Release.Name }}-postgresql
                   key: password
+                  {{- else if .Values.backend.db.existingSecret.name }}
+                  name: {{ .Values.backend.db.existingSecret.name }}
+                  key: {{ .Values.backend.db.existingSecret.key }}
                   {{- else }}
                   name: {{ include "simpletickr.backend.fullname" . }}
                   key: db-password
