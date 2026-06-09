@@ -107,6 +107,16 @@ tasks:
       - docker:build:backend
       - docker:build:frontend
 
+  helm:lint:
+    desc: Lint the Helm chart
+    cmds:
+      - helm lint charts/simpletickr
+
+  helm:template:
+    desc: Render chart templates to stdout (dry-run)
+    cmds:
+      - helm template simpletickr charts/simpletickr --set backend.db.host=localhost --set backend.db.password=secret
+
   ci:
     desc: Run all tests and linting locally (excludes E2E)
     deps:

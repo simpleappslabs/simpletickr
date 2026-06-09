@@ -80,6 +80,18 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: Publish Helm chart
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          CHART_VERSION="${VERSION#v}"
+          REGISTRY="${{ secrets.REGISTRY || 'ghcr.io' }}"
+          PROJECT="${{ secrets.REGISTRY_PROJECT || github.repository_owner }}"
+          helm dependency build charts/simpletickr
+          helm package charts/simpletickr \
+            --version "${CHART_VERSION}" \
+            --app-version "${VERSION}"
+          helm push "simpletickr-${CHART_VERSION}.tgz" "oci://${REGISTRY}/${PROJECT}"
+
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

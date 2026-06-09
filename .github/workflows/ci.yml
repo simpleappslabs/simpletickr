@@ -41,6 +41,17 @@ jobs:
       - run: npm run codegen
       - run: npm run build
 
+  helm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch chart dependencies
+        run: helm dependency build charts/simpletickr
+      - name: Lint
+        run: helm lint charts/simpletickr --set backend.db.host=localhost --set backend.db.password=secret
+      - name: Template
+        run: helm template simpletickr charts/simpletickr --set backend.db.host=localhost --set backend.db.password=secret > /dev/null
+
   e2e:
     runs-on: ubuntu-latest
     needs: [backend, frontend]

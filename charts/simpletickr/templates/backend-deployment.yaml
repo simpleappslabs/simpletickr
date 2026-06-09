@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "simpletickr.backend.fullname" . }}
+  labels:
+    {{- include "simpletickr.backend.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.backend.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "simpletickr.backend.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "simpletickr.backend.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+        - name: backend
+          image: {{ include "simpletickr.backend.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          env:
+            - name: DB_HOST
+              value: {{ include "simpletickr.backend.dbHost" . | quote }}
+            - name: DB_PORT
+              {{- if .Values.postgresql.enabled }}
+              value: "5432"
+              {{- else }}
+              value: {{ .Values.backend.db.port | toString | quote }}
+              {{- end }}
+            - name: DB_NAME
+              {{- if .Values.postgresql.enabled }}
+              value: {{ .Values.postgresql.auth.database | quote }}
+              {{- else }}
+              value: {{ .Values.backend.db.name | quote }}
+              {{- end }}
+            - name: DB_USER
+              {{- if .Values.postgresql.enabled }}
+              value: {{ .Values.postgresql.auth.username | quote }}
+              {{- else }}
+              value: {{ .Values.backend.db.user | quote }}
+              {{- end }}
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  {{- if .Values.postgresql.enabled }}
+                  name: {{ .Release.Name }}-postgresql
+                  key: password
+                  {{- else }}
+                  name: {{ include "simpletickr.backend.fullname" . }}
+                  key: db-password
+                  {{- end }}
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 5

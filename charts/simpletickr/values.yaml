@@ -1,0 +1,48 @@
+# Global image settings — tag applies to both backend and frontend.
+# Defaults to the chart's appVersion when left empty.
+image:
+  registry: ghcr.io
+  project: simpleappslabs
+  tag: ""
+  pullPolicy: IfNotPresent
+
+backend:
+  replicaCount: 1
+  image:
+    repository: simpletickr-backend
+  service:
+    type: ClusterIP
+    port: 8080
+  # DB connection — required when postgresql.enabled is false
+  db:
+    host: ""
+    port: 5432
+    name: simpletickr
+    user: simpletickr
+    password: ""
+
+frontend:
+  replicaCount: 1
+  image:
+    repository: simpletickr-frontend
+  service:
+    type: ClusterIP
+    port: 3000
+  # Overrides the backend URL seen by the frontend.
+  # Defaults to the backend ClusterIP service within the cluster.
+  apiBaseUrl: ""
+  ingress:
+    enabled: false
+    className: ""
+    hostname: simpletickr.example.com
+    tls: false
+
+# Optional Bitnami PostgreSQL subchart for dev clusters.
+# Set postgresql.enabled=true to deploy PostgreSQL alongside the app.
+# When enabled, backend.db.* values are ignored in favour of postgresql.auth.*.
+postgresql:
+  enabled: false
+  auth:
+    database: simpletickr
+    username: simpletickr
+    password: ""
