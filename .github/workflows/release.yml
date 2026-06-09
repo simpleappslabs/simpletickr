@@ -86,6 +86,7 @@ jobs:
           CHART_VERSION="${VERSION#v}"
           REGISTRY="${{ secrets.REGISTRY || 'ghcr.io' }}"
           PROJECT="${{ secrets.REGISTRY_PROJECT || github.repository_owner }}"
+          helm repo add bitnami https://charts.bitnami.com/bitnami
           helm dependency build charts/simpletickr
           helm package charts/simpletickr \
             --version "${CHART_VERSION}" \

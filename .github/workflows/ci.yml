@@ -46,7 +46,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Fetch chart dependencies
-        run: helm dependency build charts/simpletickr
+        run: |
+          helm repo add bitnami https://charts.bitnami.com/bitnami
+          helm dependency build charts/simpletickr
       - name: Lint
         run: helm lint charts/simpletickr --set backend.db.host=localhost --set backend.db.password=secret
       - name: Template
