@@ -15,6 +15,11 @@ backend:
   service:
     type: ClusterIP
     port: 8080
+  ingress:
+    enabled: false
+    className: ""
+    hostname: api.simpletickr.example.com
+    tls: false
   # DB connection — required when postgresql.enabled is false
   db:
     host: ""

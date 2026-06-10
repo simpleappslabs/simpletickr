@@ -1,0 +1,29 @@
+{{- if .Values.backend.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "simpletickr.backend.fullname" . }}
+  labels:
+    {{- include "simpletickr.backend.labels" . | nindent 4 }}
+spec:
+  {{- if .Values.backend.ingress.className }}
+  ingressClassName: {{ .Values.backend.ingress.className }}
+  {{- end }}
+  rules:
+    - host: {{ .Values.backend.ingress.hostname }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "simpletickr.backend.fullname" . }}
+                port:
+                  name: http
+  {{- if .Values.backend.ingress.tls }}
+  tls:
+    - hosts:
+        - {{ .Values.backend.ingress.hostname }}
+      secretName: {{ include "simpletickr.backend.fullname" . }}-tls
+  {{- end }}
+{{- end }}
