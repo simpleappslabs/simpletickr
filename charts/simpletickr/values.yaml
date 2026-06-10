@@ -15,6 +15,9 @@ backend:
   service:
     type: ClusterIP
     port: 8080
+  # Comma-separated list of allowed CORS origins.
+  # Defaults to localhost dev origins when left empty.
+  corsAllowedOrigins: ""
   ingress:
     enabled: false
     className: ""
