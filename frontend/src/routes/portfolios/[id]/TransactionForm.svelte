@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { createTransaction, updateTransaction } from '$lib/api/sdk.gen';
+    import { recordTransaction, amendTransaction } from '$lib/api/sdk.gen';
     import type { Asset, Transaction, TransactionType } from '$lib/api/types.gen';
 
     interface Props {
@@ -50,7 +50,6 @@
         formError = null;
 
         const body = {
-            portfolioId,
             assetId: formAssetId,
             type: formType,
             quantity: Number(formQuantity),
@@ -60,8 +59,8 @@
         };
 
         const res = transaction
-            ? await updateTransaction({ path: { id: transaction.id }, body })
-            : await createTransaction({ body });
+            ? await amendTransaction({ path: { portfolioId, id: transaction.id }, body })
+            : await recordTransaction({ path: { portfolioId }, body });
 
         if (res.error) {
             formError = transaction ? 'Failed to update transaction.' : 'Failed to record transaction.';

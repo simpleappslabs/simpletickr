@@ -54,7 +54,7 @@ class TransactionRepositoryTest {
         type: TransactionType = TransactionType.BUY,
         quantity: BigDecimal = BigDecimal("10"),
         price: BigDecimal = BigDecimal("150.00"),
-    ) = repository.save(portfolioId, assetId, type, quantity, price, LocalDate.of(2024, 1, 15), null)
+    ) = repository.save(Transaction(0L, portfolioId, assetId, type, quantity, price, LocalDate.of(2024, 1, 15), null))
 
     @Test
     fun `findAll returns empty list when no transactions exist`() {
@@ -76,7 +76,7 @@ class TransactionRepositoryTest {
 
     @Test
     fun `save stores fees when provided`() {
-        val tx = repository.save(portfolioId, assetId, TransactionType.BUY, BigDecimal("5"), BigDecimal("100"), LocalDate.now(), BigDecimal("1.99"))
+        val tx = repository.save(Transaction(0L, portfolioId, assetId, TransactionType.BUY, BigDecimal("5"), BigDecimal("100"), LocalDate.now(), BigDecimal("1.99")))
         assertEquals(0, BigDecimal("1.99").compareTo(tx.fees))
     }
 
@@ -86,7 +86,7 @@ class TransactionRepositoryTest {
         val otherAssetId = assetRepository.save("TST_TXN2", "Test Asset 2", AssetType.STOCK, "USD", null).id
 
         saveTransaction()
-        repository.save(otherPortfolioId, otherAssetId, TransactionType.BUY, BigDecimal("1"), BigDecimal("300"), LocalDate.now(), null)
+        repository.save(Transaction(0L, otherPortfolioId, otherAssetId, TransactionType.BUY, BigDecimal("1"), BigDecimal("300"), LocalDate.now(), null))
 
         val results = repository.findAll(portfolioId)
         assertEquals(1, results.size)

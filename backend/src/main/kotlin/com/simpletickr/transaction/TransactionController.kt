@@ -11,6 +11,9 @@ import com.simpletickr.generated.model.TransactionType as GeneratedTransactionTy
 @RestController
 class TransactionController(
     private val transactionRepository: TransactionRepository,
+    private val recordTransactionUseCase: RecordTransactionUseCase,
+    private val amendTransactionUseCase: AmendTransactionUseCase,
+    private val removeTransactionUseCase: RemoveTransactionUseCase,
 ) : TransactionsApi {
 
     override fun listTransactions(portfolioId: Long?): ResponseEntity<List<TransactionModel>> =
@@ -21,9 +24,8 @@ class TransactionController(
         return ResponseEntity.ok(transaction.toModel())
     }
 
-    override fun createTransaction(transactionRequest: TransactionRequest): ResponseEntity<TransactionModel> {
-        val transaction = transactionRepository.save(
-            portfolioId = transactionRequest.portfolioId,
+    override fun recordTransaction(portfolioId: Long, transactionRequest: TransactionRequest): ResponseEntity<TransactionModel> {
+        val command = RecordTransactionCommand(
             assetId = transactionRequest.assetId,
             type = TransactionType.valueOf(transactionRequest.type.value),
             quantity = BigDecimal.valueOf(transactionRequest.quantity),
@@ -31,25 +33,26 @@ class TransactionController(
             date = transactionRequest.date,
             fees = transactionRequest.fees?.let { BigDecimal.valueOf(it) },
         )
+        val transaction = recordTransactionUseCase.execute(portfolioId, command)
         return ResponseEntity.status(201).body(transaction.toModel())
     }
 
-    override fun updateTransaction(id: Long, transactionRequest: TransactionRequest): ResponseEntity<TransactionModel> {
-        val transaction = transactionRepository.update(
-            id = id,
+    override fun amendTransaction(portfolioId: Long, id: Long, transactionRequest: TransactionRequest): ResponseEntity<TransactionModel> {
+        val command = AmendTransactionCommand(
             assetId = transactionRequest.assetId,
             type = TransactionType.valueOf(transactionRequest.type.value),
             quantity = BigDecimal.valueOf(transactionRequest.quantity),
             price = BigDecimal.valueOf(transactionRequest.price),
             date = transactionRequest.date,
             fees = transactionRequest.fees?.let { BigDecimal.valueOf(it) },
-        ) ?: return ResponseEntity.notFound().build()
+        )
+        val transaction = amendTransactionUseCase.execute(portfolioId, id, command)
+            ?: return ResponseEntity.notFound().build()
         return ResponseEntity.ok(transaction.toModel())
     }
 
-    override fun deleteTransaction(id: Long): ResponseEntity<Unit> {
-        if (transactionRepository.findById(id) == null) return ResponseEntity.notFound().build()
-        transactionRepository.delete(id)
+    override fun removeTransaction(portfolioId: Long, id: Long): ResponseEntity<Unit> {
+        if (!removeTransactionUseCase.execute(portfolioId, id)) return ResponseEntity.notFound().build()
         return ResponseEntity.noContent().build()
     }
 

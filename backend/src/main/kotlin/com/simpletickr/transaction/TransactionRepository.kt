@@ -43,47 +43,32 @@ class TransactionRepository(private val jdbcTemplate: JdbcTemplate) {
         )
     } catch (_: EmptyResultDataAccessException) { null }
 
-    fun save(
-        portfolioId: Long,
-        assetId: Long,
-        type: TransactionType,
-        quantity: BigDecimal,
-        price: BigDecimal,
-        date: LocalDate,
-        fees: BigDecimal?,
-    ): Transaction {
+    fun save(transaction: Transaction): Transaction {
         val keyHolder = GeneratedKeyHolder()
         jdbcTemplate.update({ con ->
             con.prepareStatement(
                 "INSERT INTO transactions (portfolio_id, asset_id, type, quantity, price, date, fees) VALUES (?, ?, ?, ?, ?, ?, ?)",
                 arrayOf("id")
             ).apply {
-                setLong(1, portfolioId)
-                setLong(2, assetId)
-                setString(3, type.name)
-                setBigDecimal(4, quantity)
-                setBigDecimal(5, price)
-                setObject(6, date)
-                setBigDecimal(7, fees)
+                setLong(1, transaction.portfolioId)
+                setLong(2, transaction.assetId)
+                setString(3, transaction.type.name)
+                setBigDecimal(4, transaction.quantity)
+                setBigDecimal(5, transaction.price)
+                setObject(6, transaction.date)
+                setBigDecimal(7, transaction.fees)
             }
         }, keyHolder)
-        return Transaction(keyHolder.key!!.toLong(), portfolioId, assetId, type, quantity, price, date, fees)
+        return transaction.copy(id = keyHolder.key!!.toLong())
     }
 
-    fun update(
-        id: Long,
-        assetId: Long,
-        type: TransactionType,
-        quantity: BigDecimal,
-        price: BigDecimal,
-        date: LocalDate,
-        fees: BigDecimal?,
-    ): Transaction? {
+    fun update(transaction: Transaction): Transaction? {
         val updated = jdbcTemplate.update(
             "UPDATE transactions SET asset_id = ?, type = ?, quantity = ?, price = ?, date = ?, fees = ? WHERE id = ?",
-            assetId, type.name, quantity, price, date, fees, id
+            transaction.assetId, transaction.type.name, transaction.quantity, transaction.price,
+            transaction.date, transaction.fees, transaction.id
         )
-        return if (updated == 0) null else findById(id)
+        return if (updated == 0) null else transaction
     }
 
     fun delete(id: Long) {

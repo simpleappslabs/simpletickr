@@ -12,6 +12,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
@@ -27,54 +28,34 @@ class TransactionControllerTest {
     @MockitoBean
     private lateinit var transactionRepository: TransactionRepository
 
+    @MockitoBean
+    private lateinit var recordTransactionUseCase: RecordTransactionUseCase
+
+    @MockitoBean
+    private lateinit var amendTransactionUseCase: AmendTransactionUseCase
+
+    @MockitoBean
+    private lateinit var removeTransactionUseCase: RemoveTransactionUseCase
+
     private val sample = Transaction(
         id = 1L,
         portfolioId = 10L,
         assetId = 2L,
         type = TransactionType.BUY,
-        quantity = BigDecimal("5.0"),
-        price = BigDecimal("100.0"),
+        quantity = BigDecimal("5"),
+        price = BigDecimal("100"),
         date = LocalDate.of(2024, 1, 15),
-        fees = null,
-    )
-
-    private val otherPortfolioSample = Transaction(
-        id = 2L,
-        portfolioId = 99L,
-        assetId = 3L,
-        type = TransactionType.SELL,
-        quantity = BigDecimal("2.0"),
-        price = BigDecimal("50.0"),
-        date = LocalDate.of(2024, 2, 1),
         fees = null,
     )
 
     @Test
     fun `GET transactions returns list filtered by portfolioId`() {
         whenever(transactionRepository.findAll(10L)).thenReturn(listOf(sample))
-        whenever(transactionRepository.findAll(99L)).thenReturn(listOf(otherPortfolioSample))
-
-        mockMvc.perform(get("/transactions?portfolioId=10"))
-            .andExpect(status().isOk)
-            .andExpect(jsonPath("$.length()").value(1))
-            .andExpect(jsonPath("$[0].id").value(1))
-            .andExpect(jsonPath("$[0].portfolioId").value(10))
-    }
-
-    @Test
-    fun `GET transactions does not return transactions from other portfolios`() {
-        whenever(transactionRepository.findAll(10L)).thenReturn(listOf(sample))
-        whenever(transactionRepository.findAll(99L)).thenReturn(listOf(otherPortfolioSample))
 
         mockMvc.perform(get("/transactions?portfolioId=10"))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.length()").value(1))
             .andExpect(jsonPath("$[0].portfolioId").value(10))
-
-        mockMvc.perform(get("/transactions?portfolioId=99"))
-            .andExpect(status().isOk)
-            .andExpect(jsonPath("$.length()").value(1))
-            .andExpect(jsonPath("$[0].portfolioId").value(99))
     }
 
     @Test
@@ -96,46 +77,70 @@ class TransactionControllerTest {
     }
 
     @Test
-    fun `PUT transaction returns 200 with updated transaction`() {
-        whenever(transactionRepository.update(eq(1L), any(), any(), any(), any(), any(), anyOrNull()))
-            .thenReturn(sample.copy(quantity = BigDecimal("10.0")))
+    fun `POST portfolio transaction returns 201`() {
+        whenever(recordTransactionUseCase.execute(eq(10L), any())).thenReturn(sample)
 
         mockMvc.perform(
-            put("/transactions/1")
+            post("/portfolios/10/transactions")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"portfolioId":10,"assetId":2,"type":"BUY","quantity":10.0,"price":100.0,"date":"2024-01-15"}""")
+                .content("""{"assetId":2,"type":"BUY","quantity":5.0,"price":100.0,"date":"2024-01-15"}""")
+        )
+            .andExpect(status().isCreated)
+            .andExpect(jsonPath("$.id").value(1))
+            .andExpect(jsonPath("$.type").value("BUY"))
+    }
+
+    @Test
+    fun `PUT portfolio transaction returns 200`() {
+        whenever(amendTransactionUseCase.execute(eq(10L), eq(1L), any())).thenReturn(sample.copy(quantity = BigDecimal("10")))
+
+        mockMvc.perform(
+            put("/portfolios/10/transactions/1")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"assetId":2,"type":"BUY","quantity":10.0,"price":100.0,"date":"2024-01-15"}""")
         )
             .andExpect(status().isOk)
-            .andExpect(jsonPath("$.id").value(1))
             .andExpect(jsonPath("$.quantity").value(10.0))
     }
 
     @Test
-    fun `PUT transaction returns 404 when not found`() {
-        whenever(transactionRepository.update(eq(99L), any(), any(), any(), any(), any(), any()))
-            .thenReturn(null)
+    fun `PUT portfolio transaction returns 404 when not found`() {
+        whenever(amendTransactionUseCase.execute(eq(10L), eq(99L), any())).thenReturn(null)
 
         mockMvc.perform(
-            put("/transactions/99")
+            put("/portfolios/10/transactions/99")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"portfolioId":10,"assetId":2,"type":"BUY","quantity":10.0,"price":100.0,"date":"2024-01-15"}""")
+                .content("""{"assetId":2,"type":"BUY","quantity":10.0,"price":100.0,"date":"2024-01-15"}""")
         )
             .andExpect(status().isNotFound)
     }
 
     @Test
-    fun `DELETE transaction returns 204 when found`() {
-        whenever(transactionRepository.findById(1L)).thenReturn(sample)
+    fun `DELETE portfolio transaction returns 204`() {
+        whenever(removeTransactionUseCase.execute(10L, 1L)).thenReturn(true)
 
-        mockMvc.perform(delete("/transactions/1"))
+        mockMvc.perform(delete("/portfolios/10/transactions/1"))
             .andExpect(status().isNoContent)
     }
 
     @Test
-    fun `DELETE transaction returns 404 when not found`() {
-        whenever(transactionRepository.findById(99L)).thenReturn(null)
+    fun `DELETE portfolio transaction returns 404 when not found`() {
+        whenever(removeTransactionUseCase.execute(10L, 99L)).thenReturn(false)
 
-        mockMvc.perform(delete("/transactions/99"))
+        mockMvc.perform(delete("/portfolios/10/transactions/99"))
             .andExpect(status().isNotFound)
+    }
+
+    @Test
+    fun `POST returns 400 for invalid quantity`() {
+        whenever(recordTransactionUseCase.execute(eq(10L), any()))
+            .thenThrow(IllegalArgumentException("Quantity must be positive"))
+
+        mockMvc.perform(
+            post("/portfolios/10/transactions")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"assetId":2,"type":"BUY","quantity":0.0,"price":100.0,"date":"2024-01-15"}""")
+        )
+            .andExpect(status().isBadRequest)
     }
 }

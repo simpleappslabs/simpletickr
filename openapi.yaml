@@ -144,6 +144,83 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
 
+  /portfolios/{portfolioId}/transactions:
+    parameters:
+      - name: portfolioId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+    post:
+      tags: [Transactions]
+      operationId: recordTransaction
+      summary: Record a transaction in a portfolio
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransactionRequest"
+      responses:
+        "201":
+          description: Transaction recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Transaction"
+
+  /portfolios/{portfolioId}/transactions/{id}:
+    parameters:
+      - name: portfolioId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+    put:
+      tags: [Transactions]
+      operationId: amendTransaction
+      summary: Amend a transaction
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransactionRequest"
+      responses:
+        "200":
+          description: Transaction amended
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Transaction"
+        "404":
+          description: Transaction not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      tags: [Transactions]
+      operationId: removeTransaction
+      summary: Remove a transaction
+      responses:
+        "204":
+          description: Transaction removed
+        "404":
+          description: Transaction not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
   /portfolios/{id}/holdings:
     parameters:
       - name: id
@@ -293,23 +370,6 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Transaction"
-    post:
-      tags: [Transactions]
-      operationId: createTransaction
-      summary: Record a transaction
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/TransactionRequest"
-      responses:
-        "201":
-          description: Transaction recorded
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Transaction"
 
   /transactions/{id}:
     parameters:
@@ -330,42 +390,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Transaction"
-        "404":
-          description: Transaction not found
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-    put:
-      tags: [Transactions]
-      operationId: updateTransaction
-      summary: Update a transaction
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/TransactionRequest"
-      responses:
-        "200":
-          description: Transaction updated
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Transaction"
-        "404":
-          description: Transaction not found
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-    delete:
-      tags: [Transactions]
-      operationId: deleteTransaction
-      summary: Delete a transaction
-      responses:
-        "204":
-          description: Transaction deleted
         "404":
           description: Transaction not found
           content:
@@ -499,16 +523,12 @@ components:
     TransactionRequest:
       type: object
       required:
-        - portfolioId
         - assetId
         - type
         - quantity
         - price
         - date
       properties:
-        portfolioId:
-          type: integer
-          format: int64
         assetId:
           type: integer
           format: int64

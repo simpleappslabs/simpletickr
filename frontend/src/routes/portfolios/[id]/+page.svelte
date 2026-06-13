@@ -2,7 +2,7 @@
     import {onMount} from 'svelte';
     import {page} from '$app/state';
     import {goto} from '$app/navigation';
-    import {getPortfolio, getHoldings, listAssets, listTransactions, deletePortfolio, deleteTransaction} from '$lib/api/sdk.gen';
+    import {getPortfolio, getHoldings, listAssets, listTransactions, deletePortfolio, removeTransaction} from '$lib/api/sdk.gen';
     import type {Asset, Holding, Portfolio, Transaction} from '$lib/api/types.gen';
     import TransactionForm from './TransactionForm.svelte';
     import PortfolioModal from '$lib/PortfolioModal.svelte';
@@ -79,7 +79,7 @@
         if (!deletingTransaction) return;
         deleteTransactionSubmitting = true;
         deleteTransactionError = null;
-        const { error: err } = await deleteTransaction({ path: { id: deletingTransaction.id } });
+        const { error: err } = await removeTransaction({ path: { portfolioId: portfolio!.id, id: deletingTransaction.id } });
         if (err) {
             deleteTransactionError = 'Failed to delete transaction.';
         } else {
