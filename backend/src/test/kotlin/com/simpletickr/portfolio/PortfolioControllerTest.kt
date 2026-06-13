@@ -1,5 +1,7 @@
 package com.simpletickr.portfolio
 
+import com.simpletickr.asset.AssetRepository
+import com.simpletickr.transaction.TransactionRepository
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.whenever
 import org.springframework.beans.factory.annotation.Autowired
@@ -25,6 +27,12 @@ class PortfolioControllerTest {
 
     @MockitoBean
     private lateinit var holdingRepository: HoldingRepository
+
+    @MockitoBean
+    private lateinit var transactionRepository: TransactionRepository
+
+    @MockitoBean
+    private lateinit var assetRepository: AssetRepository
 
     @Test
     fun `GET portfolios returns empty list`() {

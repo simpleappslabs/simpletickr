@@ -183,6 +183,7 @@
                     <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
                 </svg>
             </button>
+            <a href="/portfolios/{portfolio.id}/realized-gains" class="btn btn-ghost btn-sm">Realized gains</a>
             <button class="btn btn-primary btn-sm" onclick={() => { editingTransaction = null; transactionModalOpen = true; }}>+ Record transaction</button>
         {/if}
     </div>

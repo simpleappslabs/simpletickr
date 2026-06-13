@@ -221,6 +221,50 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
 
+  /portfolios/{id}/realized-gains:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+    get:
+      tags: [Portfolios]
+      operationId: getRealizedGains
+      summary: Compute realized gains for a portfolio
+      parameters:
+        - name: method
+          in: query
+          required: true
+          schema:
+            $ref: "#/components/schemas/RealizationMethod"
+        - name: from
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Realized gains report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RealizedGainsReport"
+        "404":
+          description: Portfolio not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
   /portfolios/{id}/holdings:
     parameters:
       - name: id
@@ -553,6 +597,93 @@ components:
       enum:
         - BUY
         - SELL
+
+    RealizationMethod:
+      type: string
+      enum:
+        - FIFO
+        - AVERAGE_COST
+
+    RealizedGainEntry:
+      type: object
+      required:
+        - assetId
+        - ticker
+        - date
+        - quantity
+        - proceeds
+        - buyFees
+        - sellFees
+        - costBasis
+        - gain
+      properties:
+        assetId:
+          type: integer
+          format: int64
+        ticker:
+          type: string
+        date:
+          type: string
+          format: date
+        quantity:
+          type: number
+          format: double
+        proceeds:
+          type: number
+          format: double
+        buyFees:
+          type: number
+          format: double
+        sellFees:
+          type: number
+          format: double
+        costBasis:
+          type: number
+          format: double
+        gain:
+          type: number
+          format: double
+
+    RealizedGainsReport:
+      type: object
+      required:
+        - method
+        - from
+        - to
+        - entries
+        - totalProceeds
+        - totalBuyFees
+        - totalSellFees
+        - totalCostBasis
+        - totalGain
+      properties:
+        method:
+          $ref: "#/components/schemas/RealizationMethod"
+        from:
+          type: string
+          format: date
+        to:
+          type: string
+          format: date
+        entries:
+          type: array
+          items:
+            $ref: "#/components/schemas/RealizedGainEntry"
+        totalProceeds:
+          type: number
+          format: double
+        totalBuyFees:
+          type: number
+          format: double
+        totalSellFees:
+          type: number
+          format: double
+        totalCostBasis:
+          type: number
+          format: double
+        totalGain:
+          type: number
+          format: double
 
     Holding:
       type: object
