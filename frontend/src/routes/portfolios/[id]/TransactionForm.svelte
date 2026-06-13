@@ -1,6 +1,7 @@
 <script lang="ts">
     import { recordTransaction, amendTransaction } from '$lib/api/sdk.gen';
     import type { Asset, Transaction, TransactionType } from '$lib/api/types.gen';
+    import AssetAutocomplete from '$lib/AssetAutocomplete.svelte';
 
     interface Props {
         assets: Asset[];
@@ -76,12 +77,7 @@
 <form class="space-y-4" onsubmit={submit}>
     <fieldset class="fieldset">
         <legend class="fieldset-legend">Asset</legend>
-        <select class="select w-full" bind:value={formAssetId} required>
-            <option value={0} disabled>Select an asset</option>
-            {#each assets as a}
-                <option value={a.id}>{a.ticker} — {a.name}</option>
-            {/each}
-        </select>
+        <AssetAutocomplete {assets} bind:value={formAssetId} />
     </fieldset>
 
     <fieldset class="fieldset">
