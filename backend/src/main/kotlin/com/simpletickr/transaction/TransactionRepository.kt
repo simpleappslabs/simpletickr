@@ -27,12 +27,12 @@ class TransactionRepository(private val jdbcTemplate: JdbcTemplate) {
     fun findAll(portfolioId: Long?): List<Transaction> =
         if (portfolioId != null)
             jdbcTemplate.query(
-                "SELECT id, portfolio_id, asset_id, type, quantity, price, date, fees FROM transactions WHERE portfolio_id = ?",
+                "SELECT id, portfolio_id, asset_id, type, quantity, price, date, fees FROM transactions WHERE portfolio_id = ? ORDER BY date desc",
                 rowMapper, portfolioId
             )
         else
             jdbcTemplate.query(
-                "SELECT id, portfolio_id, asset_id, type, quantity, price, date, fees FROM transactions",
+                "SELECT id, portfolio_id, asset_id, type, quantity, price, date, fees FROM transactions ORDER BY date desc",
                 rowMapper
             )
 
