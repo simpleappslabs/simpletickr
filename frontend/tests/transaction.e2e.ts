@@ -2,9 +2,9 @@ import { expect, test, type Page } from '@playwright/test';
 
 test.describe('Transaction recording', () => {
 	async function selectAssetByTicker(page: Page, ticker: string) {
-		const select = page.getByRole('group', { name: 'Asset' }).getByRole('combobox');
-		const value = await select.locator('option', { hasText: ticker }).getAttribute('value');
-		await select.selectOption(value!);
+		const input = page.getByRole('group', { name: 'Asset' }).getByRole('textbox');
+		await input.fill(ticker);
+		await page.getByRole('button', { name: new RegExp(`^${ticker}`) }).first().click();
 	}
 
 	async function createPortfolioAndNavigate(page: Page) {

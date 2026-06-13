@@ -8,17 +8,16 @@
 
     let { assets, value = $bindable(0) }: Props = $props();
 
-    const initialAsset = assets.find(a => a.id === value);
-    let query = $state(initialAsset ? `${initialAsset.ticker} — ${initialAsset.name}` : '');
+    let query = $state('');
     let open = $state(false);
     let highlighted = $state(-1);
-    let selectedId = $state(value);
+    let selectedId = $state(-1); // -1 sentinel forces initial sync
     let containerEl: HTMLDivElement | undefined = $state();
 
-    // Sync when the parent changes value externally (form reset or edit mode).
-    // The selectedId guard prevents overwriting query while the user is typing
-    // (handleInput sets both value and selectedId to 0 atomically).
-    $effect(() => {
+    // Sync query from value before DOM updates (covers initial render and external resets).
+    // The selectedId guard prevents overwriting what the user is typing — handleInput sets
+    // both value and selectedId to 0 atomically, so the effect sees them equal and skips.
+    $effect.pre(() => {
         if (value !== selectedId) {
             selectedId = value;
             const a = assets.find(a => a.id === value);
