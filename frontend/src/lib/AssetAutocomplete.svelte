@@ -26,18 +26,19 @@
         }
     });
 
-    const filtered = $derived(
+    const matched = $derived(
         value === 0
             ? (query.trim().length === 0
-                ? assets.slice(0, 8)
-                : assets
-                    .filter(a =>
-                        a.ticker.toLowerCase().includes(query.toLowerCase()) ||
-                        a.name.toLowerCase().includes(query.toLowerCase())
-                    )
-                    .slice(0, 8))
+                ? assets
+                : assets.filter(a =>
+                    a.ticker.toLowerCase().includes(query.toLowerCase()) ||
+                    a.name.toLowerCase().includes(query.toLowerCase())
+                ))
             : []
     );
+
+    const filtered = $derived(matched.slice(0, 8));
+    const hasMore = $derived(matched.length > 8);
 
     function handleInput(e: Event) {
         query = (e.currentTarget as HTMLInputElement).value;
@@ -109,6 +110,9 @@
                         </button>
                     </li>
                 {/each}
+                {#if hasMore}
+                    <li class="px-4 py-2 text-xs text-base-content/40 italic">Type for more…</li>
+                {/if}
             </ul>
         {:else if query.trim().length > 0}
             <div class="absolute z-50 mt-1 w-full bg-base-100 border border-base-300 rounded-box shadow-lg px-4 py-3 text-sm text-base-content/60">
