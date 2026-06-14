@@ -144,14 +144,18 @@
 
     const canSubmit = $derived(
         name.trim() !== '' &&
-        (asset ? listings.length > 0 : listings.filter(l => l.tempId < 0 ? false : true).length > 0 || (editingTempId !== null && editTicker.trim() !== '')) &&
-        !submitting &&
-        editingTempId === null
+        (listings.length > 0 || (editingTempId !== null && editTicker.trim() !== '')) &&
+        !submitting
     );
 
     async function handleSubmit(e: Event) {
         e.preventDefault();
-        if (listings.length === 0 && editingTempId === null) {
+        // Auto-save the pending listing form if still open (create mode only)
+        if (!asset && editingTempId !== null && editTicker.trim() !== '') {
+            await saveListingEdit();
+            if (listingError) return;
+        }
+        if (listings.length === 0) {
             error = 'At least one listing is required.';
             return;
         }

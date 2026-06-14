@@ -14,7 +14,6 @@
     let open = $state(false);
     let highlighted = $state(-1);
     let selectedId = $state(-1);
-    let expandedAssets = $state(new Set<number>());
     let containerEl: HTMLDivElement | undefined = $state();
 
     $effect.pre(() => {
@@ -49,15 +48,7 @@
 
     // Flat list of visible listings for keyboard nav
     const visibleListings = $derived<ListingItem[]>(
-        matchingAssets.flatMap(a => {
-            const [first, ...rest] = a.listings;
-            if (!first) return [];
-            const items: ListingItem[] = [{ listing: first, asset: a }];
-            if (expandedAssets.has(a.id)) {
-                items.push(...rest.map(l => ({ listing: l, asset: a })));
-            }
-            return items;
-        })
+        matchingAssets.flatMap(a => a.listings.map(l => ({ listing: l, asset: a })))
     );
 
     const highlightMap = $derived(
@@ -70,7 +61,6 @@
         value = 0;
         open = true;
         highlighted = -1;
-        expandedAssets = new Set();
     }
 
     function select(listing: Listing, asset: Asset) {
@@ -78,13 +68,6 @@
         selectedId = listing.id;
         query = listing.exchange ? `${listing.ticker} — ${asset.name} · ${listing.exchange}` : `${listing.ticker} — ${asset.name}`;
         open = false;
-        highlighted = -1;
-    }
-
-    function toggleExpand(assetId: number) {
-        const next = new Set(expandedAssets);
-        if (next.has(assetId)) next.delete(assetId); else next.add(assetId);
-        expandedAssets = next;
         highlighted = -1;
     }
 
@@ -135,39 +118,23 @@
                     <span class="text-xs font-semibold text-base-content/50 uppercase tracking-wide">{asset.name}</span>
                 </li>
 
-                {#each asset.listings as listing, i}
-                    {#if i === 0 || expandedAssets.has(asset.id)}
-                        <li>
-                            <button
-                                type="button"
-                                class="w-full text-left pl-6 pr-4 py-1.5 flex items-center gap-2 hover:bg-base-200"
-                                class:bg-base-200={highlightMap.get(listing.id) === highlighted}
-                                onmousedown={(e) => { e.preventDefault(); select(listing, asset); }}
-                            >
-                                <span class="text-base-content/30 text-xs">↳</span>
-                                <span class="font-mono font-semibold text-sm">{listing.ticker}</span>
-                                {#if listing.exchange}
-                                    <span class="text-base-content/60 text-sm">{listing.exchange}</span>
-                                {/if}
-                                <span class="ml-auto text-xs text-base-content/40 shrink-0">{listing.currency}</span>
-                            </button>
-                        </li>
-                    {/if}
-                {/each}
-
-                {#if asset.listings.length > 1}
+                {#each asset.listings as listing}
                     <li>
                         <button
                             type="button"
-                            class="w-full text-left pl-8 pr-4 py-1 text-xs text-base-content/40 hover:text-base-content/70"
-                            onmousedown={(e) => { e.preventDefault(); toggleExpand(asset.id); }}
+                            class="w-full text-left pl-6 pr-4 py-1.5 flex items-center gap-2 hover:bg-base-200"
+                            class:bg-base-200={highlightMap.get(listing.id) === highlighted}
+                            onmousedown={(e) => { e.preventDefault(); select(listing, asset); }}
                         >
-                            {expandedAssets.has(asset.id)
-                                ? '▲ Hide other listings'
-                                : `▼ ${asset.listings.length - 1} more listing${asset.listings.length > 2 ? 's' : ''}`}
+                            <span class="text-base-content/30 text-xs">↳</span>
+                            <span class="font-mono font-semibold text-sm">{listing.ticker}</span>
+                            {#if listing.exchange}
+                                <span class="text-base-content/60 text-sm">{listing.exchange}</span>
+                            {/if}
+                            <span class="ml-auto text-xs text-base-content/40 shrink-0">{listing.currency}</span>
                         </button>
                     </li>
-                {/if}
+                {/each}
             {/each}
 
             {#if hasMore}
