@@ -24,6 +24,12 @@ class PriceProviderMappingRepository(private val jdbcTemplate: JdbcTemplate) {
             rowMapper
         )
 
+    fun findByListingId(listingId: Long): List<PriceProviderMapping> =
+        jdbcTemplate.query(
+            "SELECT id, listing_id, provider, external_id FROM price_provider_mappings WHERE listing_id = ? ORDER BY provider",
+            rowMapper, listingId
+        )
+
     fun findByListingAndProvider(listingId: Long, provider: String): PriceProviderMapping? = try {
         jdbcTemplate.queryForObject(
             "SELECT id, listing_id, provider, external_id FROM price_provider_mappings WHERE listing_id = ? AND provider = ?",

@@ -1,8 +1,6 @@
 <script lang="ts">
-    import { createAsset, updateAsset, getAsset, createListing, updateListing, deleteListing, setPriceMapping, deletePriceMapping, getPriceMapping } from '$lib/api/sdk.gen';
-    import type { Asset, AssetType, Listing, PriceMapping } from '$lib/api/types.gen';
-
-    const ACTIVE_PROVIDER = 'YAHOO';
+    import { createAsset, updateAsset, getAsset, createListing, updateListing, deleteListing, setPriceMapping, deletePriceMapping, listPriceMappings } from '$lib/api/sdk.gen';
+    import type { Asset, AssetType, PriceMapping } from '$lib/api/types.gen';
 
     const ASSET_TYPES: AssetType[] = ['STOCK', 'ETF', 'CRYPTO', 'OTHER'];
 
@@ -37,10 +35,9 @@
     let listingError = $state<string | null>(null);
     let nextTempId = $state(-1);
 
-    // Price mappings — keyed by listingId (only available in edit mode)
-    let priceMappings = $state<Record<number, string>>({});
-    let editingMappingListingId = $state<number | null>(null);
-    let editMappingExternalId = $state('');
+    // Price mappings — keyed by listingId, value is list of mappings (edit mode only)
+    let priceMappings = $state<Record<number, PriceMapping[]>>({});
+    let editingMapping = $state<{ listingId: number; provider: string; externalId: string } | null>(null);
 
     $effect(() => {
         if (open) {
@@ -58,7 +55,7 @@
                     ticker: l.ticker,
                     currency: l.currency,
                 }));
-                editingMappingListingId = null;
+                editingMapping = null;
                 priceMappings = {};
                 loadPriceMappings(asset.listings.map(l => l.id));
             } else {
@@ -161,27 +158,36 @@
     async function loadPriceMappings(listingIds: number[]) {
         const entries = await Promise.all(
             listingIds.map(async id => {
-                const { data } = await getPriceMapping({ path: { id, provider: ACTIVE_PROVIDER } });
-                return data ? [id, data.externalId] as const : null;
+                const { data } = await listPriceMappings({ path: { id } });
+                return [id, data ?? []] as const;
             })
         );
-        priceMappings = Object.fromEntries(entries.filter(e => e !== null) as [number, string][]);
+        priceMappings = Object.fromEntries(entries);
     }
 
-    async function savePriceMapping(listingId: number) {
-        const externalId = editMappingExternalId.trim();
-        if (!externalId) {
-            const { error: err } = await deletePriceMapping({ path: { id: listingId, provider: ACTIVE_PROVIDER } });
+    async function savePriceMapping() {
+        if (!editingMapping) return;
+        const { listingId, provider, externalId } = editingMapping;
+        if (!provider.trim()) return;
+        if (!externalId.trim()) {
+            const { error: err } = await deletePriceMapping({ path: { id: listingId, provider: provider.trim() } });
             if (!err) {
-                const next = { ...priceMappings };
-                delete next[listingId];
-                priceMappings = next;
+                priceMappings = {
+                    ...priceMappings,
+                    [listingId]: (priceMappings[listingId] ?? []).filter(m => m.provider !== provider.trim()),
+                };
             }
         } else {
-            const { data } = await setPriceMapping({ path: { id: listingId, provider: ACTIVE_PROVIDER }, body: { externalId } });
-            if (data) priceMappings = { ...priceMappings, [listingId]: data.externalId };
+            const { data } = await setPriceMapping({ path: { id: listingId, provider: provider.trim() }, body: { externalId: externalId.trim() } });
+            if (data) {
+                const existing = priceMappings[listingId] ?? [];
+                const updated = existing.some(m => m.provider === data.provider)
+                    ? existing.map(m => m.provider === data.provider ? data : m)
+                    : [...existing, data];
+                priceMappings = { ...priceMappings, [listingId]: updated };
+            }
         }
-        editingMappingListingId = null;
+        editingMapping = null;
     }
 
     async function handleSubmit(e: Event) {
@@ -341,36 +347,67 @@
             <!-- Price mappings — only shown in edit mode for saved listings -->
             {#if asset && listings.some(l => l.tempId > 0)}
                 <div class="space-y-2">
-                    <span class="text-xs font-semibold uppercase tracking-widest text-base-content/50">Price mappings</span>
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-semibold uppercase tracking-widest text-base-content/50">Price mappings</span>
+                        {#if editingMapping === null}
+                            <button
+                                type="button"
+                                class="btn btn-ghost btn-xs"
+                                onclick={() => { editingMapping = { listingId: listings.find(l => l.tempId > 0)!.tempId, provider: '', externalId: '' }; }}
+                            >+ Add mapping</button>
+                        {/if}
+                    </div>
+
                     {#each listings.filter(l => l.tempId > 0) as l}
-                        <div class="flex items-center gap-2 px-3 py-2 bg-base-200 rounded-box">
-                            <span class="font-mono text-sm shrink-0">{l.ticker}</span>
-                            {#if editingMappingListingId === l.tempId}
-                                <input
-                                    class="input input-sm flex-1"
-                                    type="text"
-                                    placeholder="e.g. VWCE.AS"
-                                    bind:value={editMappingExternalId}
-                                    onkeydown={(e) => e.key === 'Enter' && savePriceMapping(l.tempId)}
-                                />
-                                <button type="button" class="btn btn-ghost btn-xs" onclick={() => editingMappingListingId = null}>Cancel</button>
-                                <button type="button" class="btn btn-primary btn-xs" onclick={() => savePriceMapping(l.tempId)}>Save</button>
-                            {:else}
-                                <span class="text-base-content/50 text-sm flex-1">
-                                    {#if priceMappings[l.tempId]}
-                                        {priceMappings[l.tempId]}
-                                    {:else}
-                                        <span class="italic text-base-content/30">no mapping</span>
-                                    {/if}
-                                </span>
+                        {#each (priceMappings[l.tempId] ?? []) as m}
+                            <div class="flex items-center gap-2 px-3 py-2 bg-base-200 rounded-box text-sm">
+                                <span class="font-mono font-semibold shrink-0">{l.ticker}</span>
+                                <span class="badge badge-ghost badge-sm">{m.provider}</span>
+                                <span class="text-base-content/60 flex-1">{m.externalId}</span>
                                 <button
                                     type="button"
                                     class="btn btn-ghost btn-xs"
-                                    onclick={() => { editingMappingListingId = l.tempId; editMappingExternalId = priceMappings[l.tempId] ?? ''; }}
+                                    onclick={() => { editingMapping = { listingId: l.tempId, provider: m.provider, externalId: m.externalId }; }}
                                 >Edit</button>
-                            {/if}
-                        </div>
+                                <button
+                                    type="button"
+                                    class="btn btn-ghost btn-xs text-error"
+                                    onclick={async () => { editingMapping = { listingId: l.tempId, provider: m.provider, externalId: '' }; await savePriceMapping(); }}
+                                >Delete</button>
+                            </div>
+                        {/each}
                     {/each}
+
+                    {#if listings.filter(l => l.tempId > 0).every(l => (priceMappings[l.tempId] ?? []).length === 0) && editingMapping === null}
+                        <p class="text-sm text-base-content/40 italic">No price mappings yet.</p>
+                    {/if}
+
+                    {#if editingMapping !== null}
+                        <div class="bg-base-200 rounded-box p-3 space-y-2">
+                            <div class="grid grid-cols-3 gap-2">
+                                <fieldset class="fieldset">
+                                    <legend class="fieldset-legend">Listing</legend>
+                                    <select class="select select-sm w-full" bind:value={editingMapping.listingId}>
+                                        {#each listings.filter(l => l.tempId > 0) as l}
+                                            <option value={l.tempId}>{l.ticker}{l.exchange ? ` · ${l.exchange}` : ''}</option>
+                                        {/each}
+                                    </select>
+                                </fieldset>
+                                <fieldset class="fieldset">
+                                    <legend class="fieldset-legend">Provider</legend>
+                                    <input class="input input-sm w-full" type="text" placeholder="e.g. YAHOO" bind:value={editingMapping.provider} />
+                                </fieldset>
+                                <fieldset class="fieldset">
+                                    <legend class="fieldset-legend">External ID</legend>
+                                    <input class="input input-sm w-full" type="text" placeholder="e.g. VWCE.AS" bind:value={editingMapping.externalId} />
+                                </fieldset>
+                            </div>
+                            <div class="flex gap-2 justify-end">
+                                <button type="button" class="btn btn-ghost btn-xs" onclick={() => editingMapping = null}>Cancel</button>
+                                <button type="button" class="btn btn-primary btn-xs" onclick={savePriceMapping}>Save</button>
+                            </div>
+                        </div>
+                    {/if}
                 </div>
             {/if}
 

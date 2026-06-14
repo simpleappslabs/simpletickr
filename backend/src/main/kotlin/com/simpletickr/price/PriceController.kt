@@ -18,6 +18,11 @@ class PriceController(
     private val priceService: PriceService,
 ) : PricesApi {
 
+    override fun listPriceMappings(id: Long): ResponseEntity<List<PriceMappingModel>> {
+        if (listingRepository.findById(id) == null) return ResponseEntity.notFound().build()
+        return ResponseEntity.ok(mappingRepository.findByListingId(id).map { it.toModel() })
+    }
+
     override fun getPriceMapping(id: Long, provider: String): ResponseEntity<PriceMappingModel> {
         val mapping = mappingRepository.findByListingAndProvider(id, provider)
             ?: return ResponseEntity.notFound().build()

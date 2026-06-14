@@ -364,6 +364,34 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
 
+  /listings/{id}/price-mappings:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+    get:
+      tags: [Prices]
+      operationId: listPriceMappings
+      summary: List all price provider mappings for a listing
+      responses:
+        "200":
+          description: Price mappings
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PriceMapping"
+        "404":
+          description: Listing not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
   /listings/{id}/price-mappings/{provider}:
     parameters:
       - name: id
