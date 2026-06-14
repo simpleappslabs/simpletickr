@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { listAssets, deleteAsset } from '$lib/api/sdk.gen';
+  import { listAssets, deleteAsset, syncPrices } from '$lib/api/sdk.gen';
   import type { Asset } from '$lib/api/types.gen';
   import AssetModal from '$lib/AssetModal.svelte';
   import '$lib/client';
@@ -14,6 +14,21 @@
   let deletingAsset = $state<Asset | null>(null);
   let deleteSubmitting = $state(false);
   let deleteError = $state<string | null>(null);
+
+  let syncing = $state(false);
+  let syncMessage = $state<string | null>(null);
+
+  async function handleSyncPrices() {
+    syncing = true;
+    syncMessage = null;
+    const { data, error: err } = await syncPrices();
+    if (err) {
+      syncMessage = 'Sync failed.';
+    } else {
+      syncMessage = `Synced ${data!.synced} listing${data!.synced !== 1 ? 's' : ''}${data!.failed > 0 ? `, ${data!.failed} failed` : ''}.`;
+    }
+    syncing = false;
+  }
 
   async function load() {
     loading = true;
@@ -48,8 +63,15 @@
 <div class="max-w-4xl mx-auto p-6 space-y-8">
   <div class="flex items-center gap-3">
     <h1 class="text-2xl font-bold flex-1">Assets</h1>
+    <button class="btn btn-ghost btn-sm" onclick={handleSyncPrices} disabled={syncing}>
+      {syncing ? 'Syncing…' : 'Sync prices'}
+    </button>
     <button class="btn btn-primary btn-sm" onclick={() => { editingAsset = null; modalOpen = true; }}>+ Add asset</button>
   </div>
+
+  {#if syncMessage}
+    <div class="alert alert-info text-sm"><span>{syncMessage}</span></div>
+  {/if}
 
   <section class="space-y-3">
     <h2 class="text-xs font-semibold uppercase tracking-widest text-base-content/50">Catalog</h2>

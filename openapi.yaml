@@ -18,6 +18,7 @@ tags:
   - name: Portfolios
   - name: Assets
   - name: Transactions
+  - name: Prices
 
 paths:
   /health:
@@ -362,6 +363,127 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+
+  /listings/{id}/price-mappings/{provider}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      - name: provider
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      tags: [Prices]
+      operationId: getPriceMapping
+      summary: Get the price mapping for a provider on a listing
+      responses:
+        "200":
+          description: Price mapping found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PriceMapping"
+        "404":
+          description: Listing or mapping not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    put:
+      tags: [Prices]
+      operationId: setPriceMapping
+      summary: Set the external ID for a price provider on a listing
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PriceMappingRequest"
+      responses:
+        "200":
+          description: Price mapping set
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PriceMapping"
+        "404":
+          description: Listing not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      tags: [Prices]
+      operationId: deletePriceMapping
+      summary: Remove a price provider mapping from a listing
+      responses:
+        "204":
+          description: Mapping removed
+        "404":
+          description: Listing or mapping not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /listings/{id}/price-history:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+    get:
+      tags: [Prices]
+      operationId: getPriceHistory
+      summary: Get price history for a listing
+      parameters:
+        - name: from
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Price history
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PricePoint"
+        "404":
+          description: Listing not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /prices/sync:
+    post:
+      tags: [Prices]
+      operationId: syncPrices
+      summary: Trigger a manual price sync for all mapped listings
+      responses:
+        "200":
+          description: Sync result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SyncResult"
 
   /listings/{id}:
     parameters:
@@ -710,6 +832,51 @@ components:
       enum:
         - BUY
         - SELL
+
+    PriceMapping:
+      type: object
+      required: [id, listingId, provider, externalId]
+      properties:
+        id:
+          type: integer
+          format: int64
+        listingId:
+          type: integer
+          format: int64
+        provider:
+          type: string
+          example: YAHOO
+        externalId:
+          type: string
+          example: VWCE.AS
+
+    PriceMappingRequest:
+      type: object
+      required: [externalId]
+      properties:
+        externalId:
+          type: string
+          example: VWCE.AS
+
+    PricePoint:
+      type: object
+      required: [date, price]
+      properties:
+        date:
+          type: string
+          format: date
+        price:
+          type: number
+          format: double
+
+    SyncResult:
+      type: object
+      required: [synced, failed]
+      properties:
+        synced:
+          type: integer
+        failed:
+          type: integer
 
     RealizationMethod:
       type: string
