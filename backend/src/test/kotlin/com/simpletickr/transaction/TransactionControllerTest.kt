@@ -2,7 +2,6 @@ package com.simpletickr.transaction
 
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
-import org.mockito.kotlin.anyOrNull
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.whenever
 import org.springframework.beans.factory.annotation.Autowired
@@ -25,27 +24,16 @@ class TransactionControllerTest {
     @Autowired
     private lateinit var mockMvc: MockMvc
 
-    @MockitoBean
-    private lateinit var transactionRepository: TransactionRepository
-
-    @MockitoBean
-    private lateinit var recordTransactionUseCase: RecordTransactionUseCase
-
-    @MockitoBean
-    private lateinit var amendTransactionUseCase: AmendTransactionUseCase
-
-    @MockitoBean
-    private lateinit var removeTransactionUseCase: RemoveTransactionUseCase
+    @MockitoBean private lateinit var transactionRepository: TransactionRepository
+    @MockitoBean private lateinit var recordTransactionUseCase: RecordTransactionUseCase
+    @MockitoBean private lateinit var amendTransactionUseCase: AmendTransactionUseCase
+    @MockitoBean private lateinit var removeTransactionUseCase: RemoveTransactionUseCase
 
     private val sample = Transaction(
-        id = 1L,
-        portfolioId = 10L,
-        assetId = 2L,
+        id = 1L, portfolioId = 10L, listingId = 5L, assetId = 2L,
         type = TransactionType.BUY,
-        quantity = BigDecimal("5"),
-        price = BigDecimal("100"),
-        date = LocalDate.of(2024, 1, 15),
-        fees = null,
+        quantity = BigDecimal("5"), price = BigDecimal("100"),
+        date = LocalDate.of(2024, 1, 15), fees = null,
     )
 
     @Test
@@ -56,6 +44,8 @@ class TransactionControllerTest {
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.length()").value(1))
             .andExpect(jsonPath("$[0].portfolioId").value(10))
+            .andExpect(jsonPath("$[0].listingId").value(5))
+            .andExpect(jsonPath("$[0].assetId").value(2))
     }
 
     @Test
@@ -83,7 +73,7 @@ class TransactionControllerTest {
         mockMvc.perform(
             post("/portfolios/10/transactions")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"assetId":2,"type":"BUY","quantity":5.0,"price":100.0,"date":"2024-01-15"}""")
+                .content("""{"listingId":5,"type":"BUY","quantity":5.0,"price":100.0,"date":"2024-01-15"}""")
         )
             .andExpect(status().isCreated)
             .andExpect(jsonPath("$.id").value(1))
@@ -92,12 +82,13 @@ class TransactionControllerTest {
 
     @Test
     fun `PUT portfolio transaction returns 200`() {
-        whenever(amendTransactionUseCase.execute(eq(10L), eq(1L), any())).thenReturn(sample.copy(quantity = BigDecimal("10")))
+        whenever(amendTransactionUseCase.execute(eq(10L), eq(1L), any()))
+            .thenReturn(sample.copy(quantity = BigDecimal("10")))
 
         mockMvc.perform(
             put("/portfolios/10/transactions/1")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"assetId":2,"type":"BUY","quantity":10.0,"price":100.0,"date":"2024-01-15"}""")
+                .content("""{"listingId":5,"type":"BUY","quantity":10.0,"price":100.0,"date":"2024-01-15"}""")
         )
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.quantity").value(10.0))
@@ -110,7 +101,7 @@ class TransactionControllerTest {
         mockMvc.perform(
             put("/portfolios/10/transactions/99")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"assetId":2,"type":"BUY","quantity":10.0,"price":100.0,"date":"2024-01-15"}""")
+                .content("""{"listingId":5,"type":"BUY","quantity":10.0,"price":100.0,"date":"2024-01-15"}""")
         )
             .andExpect(status().isNotFound)
     }
@@ -139,7 +130,7 @@ class TransactionControllerTest {
         mockMvc.perform(
             post("/portfolios/10/transactions")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"assetId":2,"type":"BUY","quantity":0.0,"price":100.0,"date":"2024-01-15"}""")
+                .content("""{"listingId":5,"type":"BUY","quantity":0.0,"price":100.0,"date":"2024-01-15"}""")
         )
             .andExpect(status().isBadRequest)
     }

@@ -1,5 +1,7 @@
 package com.simpletickr.transaction
 
+import com.simpletickr.asset.Listing
+import com.simpletickr.asset.ListingRepository
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
 import org.mockito.kotlin.mock
@@ -14,16 +16,18 @@ import kotlin.test.assertNull
 class AmendTransactionUseCaseTest {
 
     private val transactionRepository = mock<TransactionRepository>()
-    private val useCase = AmendTransactionUseCase(transactionRepository)
+    private val listingRepository = mock<ListingRepository>()
+    private val useCase = AmendTransactionUseCase(transactionRepository, listingRepository)
 
     private val date = LocalDate.of(2024, 1, 15)
-    private val existing = Transaction(1L, 10L, 2L, TransactionType.BUY, BigDecimal("5"), BigDecimal("100"), date, null)
+    private val listing = Listing(id = 5L, assetId = 2L, exchange = null, ticker = "AAPL", currency = "USD")
+    private val existing = Transaction(1L, 10L, 5L, 2L, TransactionType.BUY, BigDecimal("5"), BigDecimal("100"), date, null)
 
     private fun amendCommand(
         quantity: BigDecimal = BigDecimal("10"),
         price: BigDecimal = BigDecimal("120"),
     ) = AmendTransactionCommand(
-        assetId = existing.assetId,
+        listingId = existing.listingId,
         type = TransactionType.BUY,
         quantity = quantity,
         price = price,
@@ -52,6 +56,7 @@ class AmendTransactionUseCaseTest {
         val command = amendCommand(quantity = BigDecimal("10"), price = BigDecimal("120"))
         val amended = existing.copy(quantity = BigDecimal("10"), price = BigDecimal("120"))
         whenever(transactionRepository.findById(1L)).thenReturn(existing)
+        whenever(listingRepository.findById(5L)).thenReturn(listing)
         whenever(transactionRepository.update(any())).thenReturn(amended)
 
         val result = useCase.execute(10L, 1L, command)

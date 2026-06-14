@@ -4,7 +4,7 @@ import java.math.BigDecimal
 import java.time.LocalDate
 
 data class RecordTransactionCommand(
-    val assetId: Long,
+    val listingId: Long,
     val type: TransactionType,
     val quantity: BigDecimal,
     val price: BigDecimal,
@@ -13,7 +13,7 @@ data class RecordTransactionCommand(
 )
 
 data class AmendTransactionCommand(
-    val assetId: Long,
+    val listingId: Long,
     val type: TransactionType,
     val quantity: BigDecimal,
     val price: BigDecimal,

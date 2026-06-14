@@ -1,6 +1,6 @@
 package com.simpletickr.portfolio
 
-import com.simpletickr.asset.Asset
+import com.simpletickr.asset.Listing
 import com.simpletickr.transaction.Transaction
 import com.simpletickr.transaction.TransactionType
 import java.math.BigDecimal
@@ -11,14 +11,14 @@ object RealizedGainsCalculator {
 
     fun compute(
         transactions: List<Transaction>,
-        assetMap: Map<Long, Asset>,
+        listingMap: Map<Long, Listing>,
         method: RealizationMethod,
         from: LocalDate,
         to: LocalDate,
     ): RealizedGainsReport {
         val entries = when (method) {
-            RealizationMethod.FIFO -> computeFifo(transactions, assetMap, from, to)
-            RealizationMethod.AVERAGE_COST -> computeAverageCost(transactions, assetMap, from, to)
+            RealizationMethod.FIFO -> computeFifo(transactions, listingMap, from, to)
+            RealizationMethod.AVERAGE_COST -> computeAverageCost(transactions, listingMap, from, to)
         }
         return RealizedGainsReport(
             method = method,
@@ -35,7 +35,7 @@ object RealizedGainsCalculator {
 
     private fun computeFifo(
         transactions: List<Transaction>,
-        assetMap: Map<Long, Asset>,
+        listingMap: Map<Long, Listing>,
         from: LocalDate,
         to: LocalDate,
     ): List<RealizedGainEntry> {
@@ -73,7 +73,7 @@ object RealizedGainsCalculator {
                         val proceeds = tx.quantity * tx.price - fees
                         entries += RealizedGainEntry(
                             assetId = tx.assetId,
-                            ticker = assetMap[tx.assetId]?.ticker ?: "?",
+                            ticker = listingMap[tx.listingId]?.ticker ?: "?",
                             date = tx.date,
                             quantity = tx.quantity,
                             proceeds = proceeds,
@@ -92,7 +92,7 @@ object RealizedGainsCalculator {
 
     private fun computeAverageCost(
         transactions: List<Transaction>,
-        assetMap: Map<Long, Asset>,
+        listingMap: Map<Long, Listing>,
         from: LocalDate,
         to: LocalDate,
     ): List<RealizedGainEntry> {
@@ -131,7 +131,7 @@ object RealizedGainsCalculator {
                             val proceeds = tx.quantity * tx.price - fees
                             entries += RealizedGainEntry(
                                 assetId = tx.assetId,
-                                ticker = assetMap[tx.assetId]?.ticker ?: "?",
+                                ticker = listingMap[tx.listingId]?.ticker ?: "?",
                                 date = tx.date,
                                 quantity = tx.quantity,
                                 proceeds = proceeds,

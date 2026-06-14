@@ -59,9 +59,9 @@ class PortfolioController(
     ): ResponseEntity<GeneratedRealizedGainsReport> {
         if (portfolioRepository.findById(id) == null) return ResponseEntity.notFound().build()
         val transactions = transactionRepository.findAll(id)
-        val assetMap = assetRepository.findAll().associateBy { it.id }
+        val listingMap = assetRepository.findAll().flatMap { it.listings }.associateBy { it.id }
         val domainMethod = RealizationMethod.valueOf(method.value)
-        val report = RealizedGainsCalculator.compute(transactions, assetMap, domainMethod, from, to)
+        val report = RealizedGainsCalculator.compute(transactions, listingMap, domainMethod, from, to)
         return ResponseEntity.ok(report.toModel())
     }
 

@@ -2,6 +2,7 @@ package com.simpletickr.transaction
 
 import com.simpletickr.asset.AssetRepository
 import com.simpletickr.asset.AssetType
+import com.simpletickr.asset.ListingRepository
 import com.simpletickr.portfolio.PortfolioRepository
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -23,7 +24,7 @@ import kotlin.test.assertTrue
 @JdbcTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Testcontainers
-@Import(TransactionRepository::class, PortfolioRepository::class, AssetRepository::class)
+@Import(TransactionRepository::class, PortfolioRepository::class, AssetRepository::class, ListingRepository::class)
 class TransactionRepositoryTest {
 
     companion object {
@@ -32,29 +33,28 @@ class TransactionRepositoryTest {
         val postgres = PostgreSQLContainer<Nothing>("postgres:17")
     }
 
-    @Autowired
-    private lateinit var repository: TransactionRepository
-
-    @Autowired
-    private lateinit var portfolioRepository: PortfolioRepository
-
-    @Autowired
-    private lateinit var assetRepository: AssetRepository
+    @Autowired private lateinit var repository: TransactionRepository
+    @Autowired private lateinit var portfolioRepository: PortfolioRepository
+    @Autowired private lateinit var assetRepository: AssetRepository
+    @Autowired private lateinit var listingRepository: ListingRepository
 
     private var portfolioId: Long = 0
+    private var listingId: Long = 0
     private var assetId: Long = 0
 
     @BeforeEach
     fun setup() {
         portfolioId = portfolioRepository.save("Test Portfolio").id
-        assetId = assetRepository.save("TST_TXN", "Test Asset", AssetType.STOCK, "USD", null).id
+        val asset = assetRepository.save(null, "Test Asset", AssetType.STOCK)
+        assetId = asset.id
+        listingId = listingRepository.save(assetId, null, "TST_TXN", "USD").id
     }
 
     private fun saveTransaction(
         type: TransactionType = TransactionType.BUY,
         quantity: BigDecimal = BigDecimal("10"),
         price: BigDecimal = BigDecimal("150.00"),
-    ) = repository.save(Transaction(0L, portfolioId, assetId, type, quantity, price, LocalDate.of(2024, 1, 15), null))
+    ) = repository.save(Transaction(0L, portfolioId, listingId, assetId, type, quantity, price, LocalDate.of(2024, 1, 15), null))
 
     @Test
     fun `findAll returns empty list when no transactions exist`() {
@@ -66,6 +66,7 @@ class TransactionRepositoryTest {
         val tx = saveTransaction()
         assertTrue(tx.id > 0)
         assertEquals(portfolioId, tx.portfolioId)
+        assertEquals(listingId, tx.listingId)
         assertEquals(assetId, tx.assetId)
         assertEquals(TransactionType.BUY, tx.type)
         assertEquals(0, BigDecimal("10").compareTo(tx.quantity))
@@ -76,17 +77,18 @@ class TransactionRepositoryTest {
 
     @Test
     fun `save stores fees when provided`() {
-        val tx = repository.save(Transaction(0L, portfolioId, assetId, TransactionType.BUY, BigDecimal("5"), BigDecimal("100"), LocalDate.now(), BigDecimal("1.99")))
+        val tx = repository.save(Transaction(0L, portfolioId, listingId, assetId, TransactionType.BUY, BigDecimal("5"), BigDecimal("100"), LocalDate.now(), BigDecimal("1.99")))
         assertEquals(0, BigDecimal("1.99").compareTo(tx.fees))
     }
 
     @Test
     fun `findAll with portfolioId filters by portfolio`() {
         val otherPortfolioId = portfolioRepository.save("Other Portfolio").id
-        val otherAssetId = assetRepository.save("TST_TXN2", "Test Asset 2", AssetType.STOCK, "USD", null).id
+        val otherAsset = assetRepository.save(null, "Test Asset 2", AssetType.STOCK)
+        val otherListingId = listingRepository.save(otherAsset.id, null, "TST_TXN2", "USD").id
 
         saveTransaction()
-        repository.save(Transaction(0L, otherPortfolioId, otherAssetId, TransactionType.BUY, BigDecimal("1"), BigDecimal("300"), LocalDate.now(), null))
+        repository.save(Transaction(0L, otherPortfolioId, otherListingId, otherAsset.id, TransactionType.BUY, BigDecimal("1"), BigDecimal("300"), LocalDate.now(), null))
 
         val results = repository.findAll(portfolioId)
         assertEquals(1, results.size)

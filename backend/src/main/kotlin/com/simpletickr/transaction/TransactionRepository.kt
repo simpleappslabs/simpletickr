@@ -15,6 +15,7 @@ class TransactionRepository(private val jdbcTemplate: JdbcTemplate) {
         Transaction(
             id = rs.getLong("id"),
             portfolioId = rs.getLong("portfolio_id"),
+            listingId = rs.getLong("listing_id"),
             assetId = rs.getLong("asset_id"),
             type = TransactionType.valueOf(rs.getString("type")),
             quantity = rs.getBigDecimal("quantity"),
@@ -24,34 +25,32 @@ class TransactionRepository(private val jdbcTemplate: JdbcTemplate) {
         )
     }
 
+    private val baseSelect = """
+        SELECT t.id, t.portfolio_id, t.listing_id, l.asset_id,
+               t.type, t.quantity, t.price, t.date, t.fees
+        FROM transactions t
+        JOIN listings l ON l.id = t.listing_id
+    """.trimIndent()
+
     fun findAll(portfolioId: Long?): List<Transaction> =
         if (portfolioId != null)
-            jdbcTemplate.query(
-                "SELECT id, portfolio_id, asset_id, type, quantity, price, date, fees FROM transactions WHERE portfolio_id = ? ORDER BY date desc",
-                rowMapper, portfolioId
-            )
+            jdbcTemplate.query("$baseSelect WHERE t.portfolio_id = ? ORDER BY t.date DESC", rowMapper, portfolioId)
         else
-            jdbcTemplate.query(
-                "SELECT id, portfolio_id, asset_id, type, quantity, price, date, fees FROM transactions ORDER BY date desc",
-                rowMapper
-            )
+            jdbcTemplate.query("$baseSelect ORDER BY t.date DESC", rowMapper)
 
     fun findById(id: Long): Transaction? = try {
-        jdbcTemplate.queryForObject(
-            "SELECT id, portfolio_id, asset_id, type, quantity, price, date, fees FROM transactions WHERE id = ?",
-            rowMapper, id
-        )
+        jdbcTemplate.queryForObject("$baseSelect WHERE t.id = ?", rowMapper, id)
     } catch (_: EmptyResultDataAccessException) { null }
 
     fun save(transaction: Transaction): Transaction {
         val keyHolder = GeneratedKeyHolder()
         jdbcTemplate.update({ con ->
             con.prepareStatement(
-                "INSERT INTO transactions (portfolio_id, asset_id, type, quantity, price, date, fees) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                "INSERT INTO transactions (portfolio_id, listing_id, type, quantity, price, date, fees) VALUES (?, ?, ?, ?, ?, ?, ?)",
                 arrayOf("id")
             ).apply {
                 setLong(1, transaction.portfolioId)
-                setLong(2, transaction.assetId)
+                setLong(2, transaction.listingId)
                 setString(3, transaction.type.name)
                 setBigDecimal(4, transaction.quantity)
                 setBigDecimal(5, transaction.price)
@@ -64,8 +63,8 @@ class TransactionRepository(private val jdbcTemplate: JdbcTemplate) {
 
     fun update(transaction: Transaction): Transaction? {
         val updated = jdbcTemplate.update(
-            "UPDATE transactions SET asset_id = ?, type = ?, quantity = ?, price = ?, date = ?, fees = ? WHERE id = ?",
-            transaction.assetId, transaction.type.name, transaction.quantity, transaction.price,
+            "UPDATE transactions SET listing_id = ?, type = ?, quantity = ?, price = ?, date = ?, fees = ? WHERE id = ?",
+            transaction.listingId, transaction.type.name, transaction.quantity, transaction.price,
             transaction.date, transaction.fees, transaction.id
         )
         return if (updated == 0) null else transaction

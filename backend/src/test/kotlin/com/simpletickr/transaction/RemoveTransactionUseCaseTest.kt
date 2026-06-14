@@ -15,7 +15,7 @@ class RemoveTransactionUseCaseTest {
     private val transactionRepository = mock<TransactionRepository>()
     private val useCase = RemoveTransactionUseCase(transactionRepository)
 
-    private val existing = Transaction(1L, 10L, 2L, TransactionType.BUY, BigDecimal("5"), BigDecimal("100"), LocalDate.of(2024, 1, 15), null)
+    private val existing = Transaction(1L, 10L, 5L, 2L, TransactionType.BUY, BigDecimal("5"), BigDecimal("100"), LocalDate.of(2024, 1, 15), null)
 
     @Test
     fun `execute returns false when transaction not found`() {

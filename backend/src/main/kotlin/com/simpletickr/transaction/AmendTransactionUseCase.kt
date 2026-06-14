@@ -1,15 +1,22 @@
 package com.simpletickr.transaction
 
+import com.simpletickr.asset.ListingRepository
 import org.springframework.stereotype.Service
 
 @Service
-class AmendTransactionUseCase(private val transactionRepository: TransactionRepository) {
+class AmendTransactionUseCase(
+    private val transactionRepository: TransactionRepository,
+    private val listingRepository: ListingRepository,
+) {
 
     fun execute(portfolioId: Long, id: Long, command: AmendTransactionCommand): Transaction? {
         val existing = transactionRepository.findById(id) ?: return null
         if (existing.portfolioId != portfolioId) return null
+        val listing = listingRepository.findById(command.listingId)
+            ?: throw IllegalArgumentException("Listing ${command.listingId} not found")
         val amended = existing.copy(
-            assetId = command.assetId,
+            listingId = command.listingId,
+            assetId = listing.assetId,
             type = command.type,
             quantity = command.quantity,
             price = command.price,

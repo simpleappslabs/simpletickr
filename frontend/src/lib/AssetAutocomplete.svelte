@@ -1,9 +1,14 @@
 <script lang="ts">
-    import type { Asset } from '$lib/api/types.gen';
+    import type { Asset, Listing } from '$lib/api/types.gen';
+
+    interface ListingOption {
+        listing: Listing;
+        assetName: string;
+    }
 
     interface Props {
         assets: Asset[];
-        value?: number;
+        value?: number;  // listingId
     }
 
     let { assets, value = $bindable(0) }: Props = $props();
@@ -11,32 +16,52 @@
     let query = $state('');
     let open = $state(false);
     let highlighted = $state(-1);
-    let selectedId = $state(-1); // -1 sentinel forces initial sync
+    let selectedId = $state(-1);
     let containerEl: HTMLDivElement | undefined = $state();
 
-    // Sync query from value before DOM updates (covers initial render and external resets).
-    // The selectedId guard prevents overwriting what the user is typing — handleInput sets
-    // both value and selectedId to 0 atomically, so the effect sees them equal and skips.
+    const allOptions = $derived<ListingOption[]>(
+        assets.flatMap(a => a.listings.map(l => ({ listing: l, assetName: a.name })))
+    );
+
+    function displayFor(listingId: number): string {
+        const opt = allOptions.find(o => o.listing.id === listingId);
+        if (!opt) return '';
+        const { listing, assetName } = opt;
+        return listing.exchange
+            ? `${listing.ticker} — ${assetName} [${listing.exchange}]`
+            : `${listing.ticker} — ${assetName}`;
+    }
+
     $effect.pre(() => {
         if (value !== selectedId) {
             selectedId = value;
-            const a = assets.find(a => a.id === value);
-            query = a ? `${a.ticker} — ${a.name}` : '';
+            query = displayFor(value);
         }
     });
+
+    const filtered = $derived(
+        value === 0
+            ? (query.trim().length === 0
+                ? allOptions.slice(0, 8)
+                : allOptions
+                    .filter(o =>
+                        o.listing.ticker.toLowerCase().includes(query.toLowerCase()) ||
+                        o.assetName.toLowerCase().includes(query.toLowerCase())
+                    )
+                    .slice(0, 8))
+            : []
+    );
 
     const matched = $derived(
         value === 0
             ? (query.trim().length === 0
-                ? assets
-                : assets.filter(a =>
-                    a.ticker.toLowerCase().includes(query.toLowerCase()) ||
-                    a.name.toLowerCase().includes(query.toLowerCase())
+                ? allOptions
+                : allOptions.filter(o =>
+                    o.listing.ticker.toLowerCase().includes(query.toLowerCase()) ||
+                    o.assetName.toLowerCase().includes(query.toLowerCase())
                 ))
             : []
     );
-
-    const filtered = $derived(matched.slice(0, 8));
     const hasMore = $derived(matched.length > 8);
 
     function handleInput(e: Event) {
@@ -47,10 +72,13 @@
         highlighted = -1;
     }
 
-    function select(asset: Asset) {
-        value = asset.id;
-        selectedId = asset.id;
-        query = `${asset.ticker} — ${asset.name}`;
+    function select(opt: ListingOption) {
+        value = opt.listing.id;
+        selectedId = opt.listing.id;
+        const { listing, assetName } = opt;
+        query = listing.exchange
+            ? `${listing.ticker} — ${assetName} [${listing.exchange}]`
+            : `${listing.ticker} — ${assetName}`;
         open = false;
         highlighted = -1;
     }
@@ -95,17 +123,20 @@
     {#if open && value === 0}
         {#if filtered.length > 0}
             <ul class="absolute z-50 mt-1 w-full bg-base-100 border border-base-300 rounded-box shadow-lg max-h-60 overflow-y-auto">
-                {#each filtered as asset, i}
+                {#each filtered as opt, i}
                     <li>
                         <button
                             type="button"
                             class="w-full text-left px-4 py-2 flex items-center gap-2 hover:bg-base-200"
                             class:bg-base-200={i === highlighted}
-                            onmousedown={(e) => { e.preventDefault(); select(asset); }}
+                            onmousedown={(e) => { e.preventDefault(); select(opt); }}
                         >
-                            <span class="font-mono font-semibold text-sm">{asset.ticker}</span>
-                            <span class="text-base-content/60 text-sm truncate">{asset.name}</span>
-                            <span class="ml-auto text-xs text-base-content/40 shrink-0">{asset.type}</span>
+                            <span class="font-mono font-semibold text-sm">{opt.listing.ticker}</span>
+                            <span class="text-base-content/60 text-sm truncate">{opt.assetName}</span>
+                            {#if opt.listing.exchange}
+                                <span class="text-base-content/40 text-xs shrink-0">{opt.listing.exchange}</span>
+                            {/if}
+                            <span class="ml-auto text-xs text-base-content/40 shrink-0">{opt.listing.currency}</span>
                         </button>
                     </li>
                 {/each}

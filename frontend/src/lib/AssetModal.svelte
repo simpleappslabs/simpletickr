@@ -13,24 +13,30 @@
 
     const { open, asset = null, onSuccess, onCancel }: Props = $props();
 
-    let ticker = $state('');
+    let isin = $state('');
     let name = $state('');
     let type = $state<AssetType>('STOCK');
+    let exchange = $state('');
+    let ticker = $state('');
     let currency = $state('USD');
     let submitting = $state(false);
     let error = $state<string | null>(null);
 
     $effect(() => {
         if (open) {
-            ticker = asset?.ticker ?? '';
+            isin = asset?.isin ?? '';
             name = asset?.name ?? '';
             type = asset?.type ?? 'STOCK';
-            currency = asset?.currency ?? 'USD';
+            exchange = asset?.listings[0]?.exchange ?? '';
+            ticker = asset?.listings[0]?.ticker ?? '';
+            currency = asset?.listings[0]?.currency ?? 'USD';
             error = null;
         }
     });
 
-    const canSubmit = $derived(ticker.trim() !== '' && name.trim() !== '' && currency.trim() !== '' && !submitting);
+    const canSubmit = $derived(
+        name.trim() !== '' && ticker.trim() !== '' && currency.trim() !== '' && !submitting
+    );
 
     async function handleSubmit(e: Event) {
         e.preventDefault();
@@ -38,20 +44,22 @@
         error = null;
 
         const body = {
-            ticker: ticker.trim().toUpperCase(),
+            isin: isin.trim() || undefined,
             name: name.trim(),
             type,
-            currency: currency.trim().toUpperCase(),
+            listing: {
+                exchange: exchange.trim() || undefined,
+                ticker: ticker.trim().toUpperCase(),
+                currency: currency.trim().toUpperCase(),
+            },
         };
 
-        const { data, error: err, response } = asset
+        const { data, error: err } = asset
             ? await updateAsset({ path: { id: asset.id }, body })
             : await createAsset({ body });
 
         if (err) {
-            error = response.status === 409
-                ? 'A ticker with that symbol already exists.'
-                : asset ? 'Failed to update asset.' : 'Failed to add asset.';
+            error = asset ? 'Failed to update asset.' : 'Failed to add asset.';
             submitting = false;
             return;
         }
@@ -99,13 +107,35 @@
                     required
                 />
             </fieldset>
+            <div class="grid grid-cols-2 gap-4">
+                <fieldset class="fieldset">
+                    <legend class="fieldset-legend">Type</legend>
+                    <select class="select w-full" bind:value={type} disabled={submitting}>
+                        {#each ASSET_TYPES as t}
+                            <option value={t}>{t}</option>
+                        {/each}
+                    </select>
+                </fieldset>
+                <fieldset class="fieldset">
+                    <legend class="fieldset-legend">Exchange <span class="text-base-content/40 font-normal">(optional)</span></legend>
+                    <input
+                        class="input w-full"
+                        type="text"
+                        placeholder="e.g. Euronext Amsterdam"
+                        bind:value={exchange}
+                        disabled={submitting}
+                    />
+                </fieldset>
+            </div>
             <fieldset class="fieldset">
-                <legend class="fieldset-legend">Type</legend>
-                <select class="select w-full" bind:value={type} disabled={submitting}>
-                    {#each ASSET_TYPES as t}
-                        <option value={t}>{t}</option>
-                    {/each}
-                </select>
+                <legend class="fieldset-legend">ISIN <span class="text-base-content/40 font-normal">(optional)</span></legend>
+                <input
+                    class="input w-full"
+                    type="text"
+                    placeholder="e.g. IE00B3RBWM25"
+                    bind:value={isin}
+                    disabled={submitting}
+                />
             </fieldset>
 
             {#if error}

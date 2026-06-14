@@ -9,7 +9,6 @@ import org.springframework.context.annotation.Import
 import org.testcontainers.containers.PostgreSQLContainer
 import org.testcontainers.junit.jupiter.Container
 import org.testcontainers.junit.jupiter.Testcontainers
-import java.math.BigDecimal
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
@@ -18,7 +17,7 @@ import kotlin.test.assertTrue
 @JdbcTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Testcontainers
-@Import(AssetRepository::class)
+@Import(AssetRepository::class, ListingRepository::class)
 class AssetRepositoryTest {
 
     companion object {
@@ -30,36 +29,46 @@ class AssetRepositoryTest {
     @Autowired
     private lateinit var repository: AssetRepository
 
-    @Test
-    fun `findAll returns seeded assets`() {
-        assertTrue(repository.findAll().isNotEmpty())
+    @Autowired
+    private lateinit var listingRepository: ListingRepository
+
+    private fun saveAssetWithListing(
+        name: String = "Test Asset",
+        type: AssetType = AssetType.STOCK,
+        ticker: String = "TST",
+        currency: String = "USD",
+    ): Asset {
+        val asset = repository.save(null, name, type)
+        listingRepository.save(asset.id, null, ticker, currency)
+        return repository.findById(asset.id)!!
     }
 
     @Test
-    fun `save creates an asset and returns it with a generated id`() {
-        val asset = repository.save("TST_STOCK", "Test Stock", AssetType.STOCK, "USD", null)
+    fun `findAll returns seeded assets with listings`() {
+        val assets = repository.findAll()
+        assertTrue(assets.isNotEmpty())
+        assertTrue(assets.all { it.listings.isNotEmpty() })
+    }
+
+    @Test
+    fun `save creates an asset and findById returns it with listing`() {
+        val asset = saveAssetWithListing(name = "Test Stock", ticker = "TST_STOCK")
         assertTrue(asset.id > 0)
-        assertEquals("TST_STOCK", asset.ticker)
         assertEquals("Test Stock", asset.name)
         assertEquals(AssetType.STOCK, asset.type)
-        assertEquals("USD", asset.currency)
-        assertNull(asset.currentPrice)
+        assertEquals(1, asset.listings.size)
+        assertEquals("TST_STOCK", asset.listings[0].ticker)
+        assertEquals("USD", asset.listings[0].currency)
+        assertNull(asset.isin)
     }
 
     @Test
-    fun `save stores current price when provided`() {
-        val price = BigDecimal("182.50")
-        val asset = repository.save("TST_PRICE", "Test Price", AssetType.STOCK, "USD", price)
-        assertEquals(0, price.compareTo(asset.currentPrice))
-    }
-
-    @Test
-    fun `findById returns the asset when it exists`() {
-        val saved = repository.save("TST_FIND", "Test Find", AssetType.CRYPTO, "USD", null)
-        val found = repository.findById(saved.id)
-        assertNotNull(found)
-        assertEquals(saved.id, found.id)
-        assertEquals("TST_FIND", found.ticker)
+    fun `save stores isin when provided`() {
+        val saved = repository.save("IE00B3RBWM25", "Vanguard FTSE All-World", AssetType.ETF)
+        listingRepository.save(saved.id, "Euronext Amsterdam", "VWCE", "EUR")
+        val found = repository.findById(saved.id)!!
+        assertEquals("IE00B3RBWM25", found.isin)
+        assertEquals("Euronext Amsterdam", found.listings[0].exchange)
     }
 
     @Test
@@ -68,22 +77,24 @@ class AssetRepositoryTest {
     }
 
     @Test
-    fun `update changes asset fields and returns updated asset`() {
-        val saved = repository.save("TST_UPD", "Test Update", AssetType.CRYPTO, "USD", null)
-        val updated = repository.update(saved.id, "TST_UPD", "Test Update", AssetType.CRYPTO, "USD", BigDecimal("50000"))
+    fun `update changes asset fields`() {
+        val asset = saveAssetWithListing()
+        val updated = repository.update(asset.id, "US1234567890", "Renamed Asset", AssetType.ETF)
         assertNotNull(updated)
-        assertEquals(0, BigDecimal("50000").compareTo(updated.currentPrice))
+        assertEquals("Renamed Asset", updated.name)
+        assertEquals(AssetType.ETF, updated.type)
+        assertEquals("US1234567890", updated.isin)
     }
 
     @Test
     fun `update returns null when asset does not exist`() {
-        assertNull(repository.update(-1L, "X", "X", AssetType.OTHER, "USD", null))
+        assertNull(repository.update(-1L, null, "X", AssetType.OTHER))
     }
 
     @Test
-    fun `delete removes the asset`() {
-        val saved = repository.save("TST_DEL", "Test Delete", AssetType.ETF, "USD", null)
-        repository.delete(saved.id)
-        assertNull(repository.findById(saved.id))
+    fun `delete removes the asset and its listings`() {
+        val asset = saveAssetWithListing(ticker = "TST_DEL")
+        repository.delete(asset.id)
+        assertNull(repository.findById(asset.id))
     }
 }

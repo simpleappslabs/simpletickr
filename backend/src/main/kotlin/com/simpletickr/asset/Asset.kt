@@ -1,7 +1,5 @@
 package com.simpletickr.asset
 
-import java.math.BigDecimal
-
 enum class AssetType {
     STOCK,
     ETF,
@@ -11,9 +9,8 @@ enum class AssetType {
 
 data class Asset(
     val id: Long,
-    val ticker: String,
+    val isin: String?,
     val name: String,
     val type: AssetType,
-    val currency: String,
-    val currentPrice: BigDecimal?,
+    val listings: List<Listing> = emptyList(),
 )

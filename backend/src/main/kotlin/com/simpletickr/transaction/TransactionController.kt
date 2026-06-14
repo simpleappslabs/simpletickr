@@ -26,7 +26,7 @@ class TransactionController(
 
     override fun recordTransaction(portfolioId: Long, transactionRequest: TransactionRequest): ResponseEntity<TransactionModel> {
         val command = RecordTransactionCommand(
-            assetId = transactionRequest.assetId,
+            listingId = transactionRequest.listingId,
             type = TransactionType.valueOf(transactionRequest.type.value),
             quantity = BigDecimal.valueOf(transactionRequest.quantity),
             price = BigDecimal.valueOf(transactionRequest.price),
@@ -39,7 +39,7 @@ class TransactionController(
 
     override fun amendTransaction(portfolioId: Long, id: Long, transactionRequest: TransactionRequest): ResponseEntity<TransactionModel> {
         val command = AmendTransactionCommand(
-            assetId = transactionRequest.assetId,
+            listingId = transactionRequest.listingId,
             type = TransactionType.valueOf(transactionRequest.type.value),
             quantity = BigDecimal.valueOf(transactionRequest.quantity),
             price = BigDecimal.valueOf(transactionRequest.price),
@@ -59,6 +59,7 @@ class TransactionController(
     private fun Transaction.toModel() = TransactionModel(
         id = id,
         portfolioId = portfolioId,
+        listingId = listingId,
         assetId = assetId,
         type = GeneratedTransactionType.valueOf(type.name),
         quantity = quantity.toDouble(),

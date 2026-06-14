@@ -8,6 +8,7 @@ enum class TransactionType { BUY, SELL }
 data class Transaction(
     val id: Long,
     val portfolioId: Long,
+    val listingId: Long,
     val assetId: Long,
     val type: TransactionType,
     val quantity: BigDecimal,

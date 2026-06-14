@@ -48,8 +48,12 @@
             : null
     );
 
-    function assetTicker(assetId: number): string {
-        return assets.find((a) => a.id === assetId)?.ticker ?? '—';
+    function listingTicker(listingId: number): string {
+        for (const a of assets) {
+            const l = a.listings.find(l => l.id === listingId);
+            if (l) return l.ticker;
+        }
+        return '—';
     }
 
     async function refreshData() {
@@ -280,7 +284,7 @@
                         {#each transactions as t}
                             <tr>
                                 <td class="tabular-nums">{t.date}</td>
-                                <td class="font-mono font-semibold">{assetTicker(t.assetId)}</td>
+                                <td class="font-mono font-semibold">{listingTicker(t.listingId)}</td>
                                 <td>
                                     <span class="badge badge-ghost badge-sm {t.type === 'BUY' ? 'text-success' : 'text-error'}">
                                         {t.type}

@@ -75,10 +75,10 @@
           <tbody>
             {#each assets as asset}
               <tr>
-                <td class="font-mono font-semibold">{asset.ticker}</td>
+                <td class="font-mono font-semibold">{asset.listings[0]?.ticker ?? '—'}</td>
                 <td>{asset.name}</td>
                 <td><span class="badge badge-ghost">{asset.type}</span></td>
-                <td>{asset.currency}</td>
+                <td>{asset.listings[0]?.currency ?? '—'}</td>
                 <td class="text-right">
                   <button
                     class="btn btn-ghost btn-xs"
@@ -130,7 +130,7 @@
   <div class="modal-box">
     <h3 class="text-lg font-bold mb-2">Delete asset</h3>
     <p class="text-base-content/70 mb-6">
-      Are you sure you want to delete <strong>{deletingAsset?.ticker}</strong>?
+      Are you sure you want to delete <strong>{deletingAsset?.name}</strong>?
     </p>
     {#if deleteError}
       <div class="alert alert-error mb-4"><span>{deleteError}</span></div>

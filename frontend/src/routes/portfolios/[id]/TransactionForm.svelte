@@ -13,7 +13,7 @@
 
     const { assets, portfolioId, transaction = null, onSuccess, onCancel }: Props = $props();
 
-    let formAssetId = $state(0);
+    let formListingId = $state(0);
     let formType = $state<TransactionType>('BUY');
     let formQuantity = $state('');
     let formPrice = $state('');
@@ -24,14 +24,14 @@
 
     $effect(() => {
         if (transaction) {
-            formAssetId = transaction.assetId;
+            formListingId = transaction.listingId;
             formType = transaction.type;
             formQuantity = String(transaction.quantity);
             formPrice = String(transaction.price);
             formDate = transaction.date;
             formFees = transaction.fees != null ? String(transaction.fees) : '';
         } else {
-            formAssetId = 0;
+            formListingId = 0;
             formType = 'BUY';
             formQuantity = '';
             formPrice = '';
@@ -42,7 +42,7 @@
     });
 
     const canSubmit = $derived(
-        formAssetId > 0 && formQuantity !== '' && formPrice !== '' && formDate !== '' && !formSubmitting
+        formListingId > 0 && formQuantity !== '' && formPrice !== '' && formDate !== '' && !formSubmitting
     );
 
     async function submit(e: SubmitEvent) {
@@ -51,7 +51,7 @@
         formError = null;
 
         const body = {
-            assetId: formAssetId,
+            listingId: formListingId,
             type: formType,
             quantity: Number(formQuantity),
             price: Number(formPrice),
@@ -77,7 +77,7 @@
 <form class="space-y-4" onsubmit={submit}>
     <fieldset class="fieldset">
         <legend class="fieldset-legend">Asset</legend>
-        <AssetAutocomplete {assets} bind:value={formAssetId} />
+        <AssetAutocomplete {assets} bind:value={formListingId} />
     </fieldset>
 
     <fieldset class="fieldset">

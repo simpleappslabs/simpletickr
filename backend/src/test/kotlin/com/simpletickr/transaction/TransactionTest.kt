@@ -9,41 +9,36 @@ class TransactionTest {
 
     private val date = LocalDate.of(2024, 1, 15)
 
+    private fun tx(qty: BigDecimal, price: BigDecimal, fees: BigDecimal? = null) =
+        Transaction(1L, 10L, 5L, 2L, TransactionType.BUY, qty, price, date, fees)
+
     @Test
     fun `valid transaction is created`() {
-        Transaction(1L, 10L, 2L, TransactionType.BUY, BigDecimal("5"), BigDecimal("100"), date, null)
+        tx(BigDecimal("5"), BigDecimal("100"))
     }
 
     @Test
     fun `zero quantity is rejected`() {
-        assertFailsWith<IllegalArgumentException> {
-            Transaction(1L, 10L, 2L, TransactionType.BUY, BigDecimal.ZERO, BigDecimal("100"), date, null)
-        }
+        assertFailsWith<IllegalArgumentException> { tx(BigDecimal.ZERO, BigDecimal("100")) }
     }
 
     @Test
     fun `negative quantity is rejected`() {
-        assertFailsWith<IllegalArgumentException> {
-            Transaction(1L, 10L, 2L, TransactionType.BUY, BigDecimal("-1"), BigDecimal("100"), date, null)
-        }
+        assertFailsWith<IllegalArgumentException> { tx(BigDecimal("-1"), BigDecimal("100")) }
     }
 
     @Test
     fun `negative price is rejected`() {
-        assertFailsWith<IllegalArgumentException> {
-            Transaction(1L, 10L, 2L, TransactionType.BUY, BigDecimal("5"), BigDecimal("-0.01"), date, null)
-        }
+        assertFailsWith<IllegalArgumentException> { tx(BigDecimal("5"), BigDecimal("-0.01")) }
     }
 
     @Test
     fun `zero price is allowed`() {
-        Transaction(1L, 10L, 2L, TransactionType.BUY, BigDecimal("5"), BigDecimal.ZERO, date, null)
+        tx(BigDecimal("5"), BigDecimal.ZERO)
     }
 
     @Test
     fun `negative fees are rejected`() {
-        assertFailsWith<IllegalArgumentException> {
-            Transaction(1L, 10L, 2L, TransactionType.BUY, BigDecimal("5"), BigDecimal("100"), date, BigDecimal("-1"))
-        }
+        assertFailsWith<IllegalArgumentException> { tx(BigDecimal("5"), BigDecimal("100"), BigDecimal("-1")) }
     }
 }
