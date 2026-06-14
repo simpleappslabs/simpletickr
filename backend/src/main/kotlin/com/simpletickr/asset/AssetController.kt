@@ -42,11 +42,6 @@ class AssetController(
             name = assetRequest.name,
             type = AssetType.valueOf(assetRequest.type.value),
         ) ?: return ResponseEntity.notFound().build()
-        assetRequest.listing?.let { listingReq ->
-            assetRepository.findById(id)?.listings?.firstOrNull()?.let { primary ->
-                listingRepository.update(primary.id, listingReq.exchange, listingReq.ticker, listingReq.currency)
-            }
-        }
         return ResponseEntity.ok(assetRepository.findById(id)!!.toModel())
     }
 

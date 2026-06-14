@@ -1,10 +1,7 @@
 <script lang="ts">
     import type { Asset, Listing } from '$lib/api/types.gen';
 
-    interface ListingOption {
-        listing: Listing;
-        assetName: string;
-    }
+    interface ListingItem { listing: Listing; asset: Asset; }
 
     interface Props {
         assets: Asset[];
@@ -17,20 +14,8 @@
     let open = $state(false);
     let highlighted = $state(-1);
     let selectedId = $state(-1);
+    let expandedAssets = $state(new Set<number>());
     let containerEl: HTMLDivElement | undefined = $state();
-
-    const allOptions = $derived<ListingOption[]>(
-        assets.flatMap(a => a.listings.map(l => ({ listing: l, assetName: a.name })))
-    );
-
-    function displayFor(listingId: number): string {
-        const opt = allOptions.find(o => o.listing.id === listingId);
-        if (!opt) return '';
-        const { listing, assetName } = opt;
-        return listing.exchange
-            ? `${listing.ticker} — ${assetName} [${listing.exchange}]`
-            : `${listing.ticker} — ${assetName}`;
-    }
 
     $effect.pre(() => {
         if (value !== selectedId) {
@@ -39,30 +24,45 @@
         }
     });
 
-    const filtered = $derived(
-        value === 0
-            ? (query.trim().length === 0
-                ? allOptions.slice(0, 8)
-                : allOptions
-                    .filter(o =>
-                        o.listing.ticker.toLowerCase().includes(query.toLowerCase()) ||
-                        o.assetName.toLowerCase().includes(query.toLowerCase())
-                    )
-                    .slice(0, 8))
-            : []
+    function displayFor(listingId: number): string {
+        if (listingId === 0) return '';
+        for (const a of assets) {
+            const l = a.listings.find(l => l.id === listingId);
+            if (l) return l.exchange ? `${l.ticker} — ${a.name} · ${l.exchange}` : `${l.ticker} — ${a.name}`;
+        }
+        return '';
+    }
+
+    const q = $derived(query.trim().toLowerCase());
+
+    const allMatching = $derived(
+        value !== 0 ? [] :
+        q.length === 0 ? assets :
+        assets.filter(a =>
+            a.name.toLowerCase().includes(q) ||
+            a.listings.some(l => l.ticker.toLowerCase().includes(q))
+        )
     );
 
-    const matched = $derived(
-        value === 0
-            ? (query.trim().length === 0
-                ? allOptions
-                : allOptions.filter(o =>
-                    o.listing.ticker.toLowerCase().includes(query.toLowerCase()) ||
-                    o.assetName.toLowerCase().includes(query.toLowerCase())
-                ))
-            : []
+    const matchingAssets = $derived(allMatching.slice(0, 8));
+    const hasMore = $derived(allMatching.length > 8);
+
+    // Flat list of visible listings for keyboard nav
+    const visibleListings = $derived<ListingItem[]>(
+        matchingAssets.flatMap(a => {
+            const [first, ...rest] = a.listings;
+            if (!first) return [];
+            const items: ListingItem[] = [{ listing: first, asset: a }];
+            if (expandedAssets.has(a.id)) {
+                items.push(...rest.map(l => ({ listing: l, asset: a })));
+            }
+            return items;
+        })
     );
-    const hasMore = $derived(matched.length > 8);
+
+    const highlightMap = $derived(
+        new Map(visibleListings.map((item, i) => [item.listing.id, i]))
+    );
 
     function handleInput(e: Event) {
         query = (e.currentTarget as HTMLInputElement).value;
@@ -70,16 +70,21 @@
         value = 0;
         open = true;
         highlighted = -1;
+        expandedAssets = new Set();
     }
 
-    function select(opt: ListingOption) {
-        value = opt.listing.id;
-        selectedId = opt.listing.id;
-        const { listing, assetName } = opt;
-        query = listing.exchange
-            ? `${listing.ticker} — ${assetName} [${listing.exchange}]`
-            : `${listing.ticker} — ${assetName}`;
+    function select(listing: Listing, asset: Asset) {
+        value = listing.id;
+        selectedId = listing.id;
+        query = listing.exchange ? `${listing.ticker} — ${asset.name} · ${listing.exchange}` : `${listing.ticker} — ${asset.name}`;
         open = false;
+        highlighted = -1;
+    }
+
+    function toggleExpand(assetId: number) {
+        const next = new Set(expandedAssets);
+        if (next.has(assetId)) next.delete(assetId); else next.add(assetId);
+        expandedAssets = next;
         highlighted = -1;
     }
 
@@ -87,13 +92,14 @@
         if (e.key === 'ArrowDown') {
             e.preventDefault();
             if (!open) { open = true; return; }
-            highlighted = Math.min(highlighted + 1, filtered.length - 1);
+            highlighted = Math.min(highlighted + 1, visibleListings.length - 1);
         } else if (e.key === 'ArrowUp') {
             e.preventDefault();
             highlighted = Math.max(highlighted - 1, 0);
         } else if (e.key === 'Enter' && open && highlighted >= 0) {
             e.preventDefault();
-            if (filtered[highlighted]) select(filtered[highlighted]);
+            const item = visibleListings[highlighted];
+            if (item) select(item.listing, item.asset);
         } else if (e.key === 'Escape') {
             open = false;
             highlighted = -1;
@@ -120,34 +126,57 @@
         onfocus={() => { open = true; }}
         autocomplete="off"
     />
-    {#if open && value === 0}
-        {#if filtered.length > 0}
-            <ul class="absolute z-50 mt-1 w-full bg-base-100 border border-base-300 rounded-box shadow-lg max-h-60 overflow-y-auto">
-                {#each filtered as opt, i}
+
+    {#if open && value === 0 && matchingAssets.length > 0}
+        <ul class="absolute z-50 mt-1 w-full bg-base-100 border border-base-300 rounded-box shadow-lg max-h-72 overflow-y-auto">
+            {#each matchingAssets as asset}
+                <!-- Asset header -->
+                <li class="px-4 pt-2 pb-0.5">
+                    <span class="text-xs font-semibold text-base-content/50 uppercase tracking-wide">{asset.name}</span>
+                </li>
+
+                {#each asset.listings as listing, i}
+                    {#if i === 0 || expandedAssets.has(asset.id)}
+                        <li>
+                            <button
+                                type="button"
+                                class="w-full text-left pl-6 pr-4 py-1.5 flex items-center gap-2 hover:bg-base-200"
+                                class:bg-base-200={highlightMap.get(listing.id) === highlighted}
+                                onmousedown={(e) => { e.preventDefault(); select(listing, asset); }}
+                            >
+                                <span class="text-base-content/30 text-xs">↳</span>
+                                <span class="font-mono font-semibold text-sm">{listing.ticker}</span>
+                                {#if listing.exchange}
+                                    <span class="text-base-content/60 text-sm">{listing.exchange}</span>
+                                {/if}
+                                <span class="ml-auto text-xs text-base-content/40 shrink-0">{listing.currency}</span>
+                            </button>
+                        </li>
+                    {/if}
+                {/each}
+
+                {#if asset.listings.length > 1}
                     <li>
                         <button
                             type="button"
-                            class="w-full text-left px-4 py-2 flex items-center gap-2 hover:bg-base-200"
-                            class:bg-base-200={i === highlighted}
-                            onmousedown={(e) => { e.preventDefault(); select(opt); }}
+                            class="w-full text-left pl-8 pr-4 py-1 text-xs text-base-content/40 hover:text-base-content/70"
+                            onmousedown={(e) => { e.preventDefault(); toggleExpand(asset.id); }}
                         >
-                            <span class="font-mono font-semibold text-sm">{opt.listing.ticker}</span>
-                            <span class="text-base-content/60 text-sm truncate">{opt.assetName}</span>
-                            {#if opt.listing.exchange}
-                                <span class="text-base-content/40 text-xs shrink-0">{opt.listing.exchange}</span>
-                            {/if}
-                            <span class="ml-auto text-xs text-base-content/40 shrink-0">{opt.listing.currency}</span>
+                            {expandedAssets.has(asset.id)
+                                ? '▲ Hide other listings'
+                                : `▼ ${asset.listings.length - 1} more listing${asset.listings.length > 2 ? 's' : ''}`}
                         </button>
                     </li>
-                {/each}
-                {#if hasMore}
-                    <li class="px-4 py-2 text-xs text-base-content/40 italic">Type for more…</li>
                 {/if}
-            </ul>
-        {:else if query.trim().length > 0}
-            <div class="absolute z-50 mt-1 w-full bg-base-100 border border-base-300 rounded-box shadow-lg px-4 py-3 text-sm text-base-content/60">
-                No assets found.
-            </div>
-        {/if}
+            {/each}
+
+            {#if hasMore}
+                <li class="px-4 py-2 text-xs text-base-content/40 italic border-t border-base-200 mt-1">Type for more…</li>
+            {/if}
+        </ul>
+    {:else if open && value === 0 && q.length > 0}
+        <div class="absolute z-50 mt-1 w-full bg-base-100 border border-base-300 rounded-box shadow-lg px-4 py-3 text-sm text-base-content/60">
+            No assets found.
+        </div>
     {/if}
 </div>
