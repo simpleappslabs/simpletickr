@@ -126,7 +126,7 @@
                             class:bg-base-200={highlightMap.get(listing.id) === highlighted}
                             onmousedown={(e) => { e.preventDefault(); select(listing, asset); }}
                         >
-                            <span class="text-base-content/30 text-xs">↳</span>
+                            <span class="text-base-content/30 text-xs" aria-hidden="true">↳</span>
                             <span class="font-mono font-semibold text-sm">{listing.ticker}</span>
                             {#if listing.exchange}
                                 <span class="text-base-content/60 text-sm">{listing.exchange}</span>

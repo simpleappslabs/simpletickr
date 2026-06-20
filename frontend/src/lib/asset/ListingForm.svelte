@@ -18,16 +18,21 @@
     const { listing, onRemove }: Props = $props();
 </script>
 
-<div class="bg-base-200 rounded-box p-4 space-y-4">
-    <div class="grid grid-cols-[auto_1fr] gap-x-6 gap-y-1 items-center">
-        <span class="text-sm text-base-content/50">Symbol</span>
+<div class="bg-base-200 rounded-box p-4 space-y-3">
+    <fieldset class="fieldset">
+        <legend class="fieldset-legend">Ticker</legend>
         <input class="input input-sm w-full font-mono font-semibold" type="text" placeholder="VWCE" bind:value={listing.ticker} />
+    </fieldset>
 
-        <span class="text-sm text-base-content/50">Venue</span>
-        <input class="input input-sm w-full" type="text" placeholder="e.g. XETRA" bind:value={listing.exchange} />
-
-        <span class="text-sm text-base-content/50">Currency</span>
-        <input class="input input-sm w-full" type="text" placeholder="EUR" bind:value={listing.currency} />
+    <div class="grid grid-cols-2 gap-3">
+        <fieldset class="fieldset">
+            <legend class="fieldset-legend">Exchange <span class="text-base-content/40 font-normal">(optional)</span></legend>
+            <input class="input input-sm w-full" type="text" placeholder="e.g. XETRA" bind:value={listing.exchange} />
+        </fieldset>
+        <fieldset class="fieldset">
+            <legend class="fieldset-legend">Currency</legend>
+            <input class="input input-sm w-full" type="text" placeholder="EUR" bind:value={listing.currency} />
+        </fieldset>
     </div>
 
     <PriceMappingForm mappings={listing.mappings} />
