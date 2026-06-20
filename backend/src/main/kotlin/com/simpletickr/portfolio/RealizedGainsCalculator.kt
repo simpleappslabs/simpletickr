@@ -20,17 +20,16 @@ object RealizedGainsCalculator {
             RealizationMethod.FIFO -> computeFifo(transactions, listingMap, from, to)
             RealizationMethod.AVERAGE_COST -> computeAverageCost(transactions, listingMap, from, to)
         }
-        return RealizedGainsReport(
-            method = method,
-            from = from,
-            to = to,
-            entries = entries,
-            totalProceeds = entries.fold(BigDecimal.ZERO) { acc, e -> acc + e.proceeds },
-            totalBuyFees = entries.fold(BigDecimal.ZERO) { acc, e -> acc + e.buyFees },
-            totalSellFees = entries.fold(BigDecimal.ZERO) { acc, e -> acc + e.sellFees },
-            totalCostBasis = entries.fold(BigDecimal.ZERO) { acc, e -> acc + e.costBasis },
-            totalGain = entries.fold(BigDecimal.ZERO) { acc, e -> acc + e.gain },
-        )
+        val byCurrency = entries.groupBy { it.currency }.mapValues { (currency, group) ->
+            CurrencyTotal(
+                currency = currency,
+                tradeCount = group.size,
+                totalProceeds = group.sumOf { it.proceeds },
+                totalCostBasis = group.sumOf { it.costBasis },
+                totalGain = group.sumOf { it.gain },
+            )
+        }
+        return RealizedGainsReport(method = method, from = from, to = to, entries = entries, byCurrency = byCurrency)
     }
 
     private fun computeFifo(
@@ -74,6 +73,7 @@ object RealizedGainsCalculator {
                         entries += RealizedGainEntry(
                             assetId = tx.assetId,
                             ticker = listingMap[tx.listingId]?.ticker ?: "?",
+                            currency = listingMap[tx.listingId]?.currency ?: "?",
                             date = tx.date,
                             quantity = tx.quantity,
                             proceeds = proceeds,
@@ -132,6 +132,7 @@ object RealizedGainsCalculator {
                             entries += RealizedGainEntry(
                                 assetId = tx.assetId,
                                 ticker = listingMap[tx.listingId]?.ticker ?: "?",
+                                currency = listingMap[tx.listingId]?.currency ?: "?",
                                 date = tx.date,
                                 quantity = tx.quantity,
                                 proceeds = proceeds,

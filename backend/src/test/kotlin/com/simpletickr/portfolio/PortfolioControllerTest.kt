@@ -1,6 +1,7 @@
 package com.simpletickr.portfolio
 
 import com.simpletickr.asset.AssetRepository
+import com.simpletickr.settings.UserSettingsRepository
 import com.simpletickr.transaction.TransactionRepository
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.whenever
@@ -26,13 +27,16 @@ class PortfolioControllerTest {
     private lateinit var portfolioRepository: PortfolioRepository
 
     @MockitoBean
-    private lateinit var holdingRepository: HoldingRepository
+    private lateinit var valuationService: ValuationService
 
     @MockitoBean
     private lateinit var transactionRepository: TransactionRepository
 
     @MockitoBean
     private lateinit var assetRepository: AssetRepository
+
+    @MockitoBean
+    private lateinit var userSettingsRepository: UserSettingsRepository
 
     @Test
     fun `GET portfolios returns empty list`() {

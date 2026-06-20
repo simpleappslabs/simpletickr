@@ -1,46 +1,68 @@
 package com.simpletickr.portfolio
 
+import com.simpletickr.transaction.TransactionType
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.stereotype.Repository
+import java.math.BigDecimal
+import java.time.LocalDate
 
 @Repository
 class HoldingRepository(private val jdbcTemplate: JdbcTemplate) {
 
-    fun findByPortfolioId(portfolioId: Long): List<Holding> =
+    data class TransactionRow(
+        val transactionId: Long,
+        val assetId: Long,
+        val assetName: String,
+        val listingId: Long,
+        val exchange: String?,
+        val ticker: String,
+        val currency: String,
+        val type: TransactionType,
+        val quantity: BigDecimal,
+        val price: BigDecimal,
+        val fees: BigDecimal?,
+        val fxRate: BigDecimal?,
+        val date: LocalDate,
+    )
+
+    // Returns raw transaction rows with listing/asset context. No aggregation.
+    // Ordered for deterministic service-side processing.
+    fun findTransactionRows(portfolioId: Long): List<TransactionRow> =
         jdbcTemplate.query("""
             SELECT
-                a.id                                                              AS asset_id,
-                a.name,
-                MIN(l.ticker)                                                     AS ticker,
-                SUM(CASE WHEN t.type = 'BUY' THEN t.quantity ELSE -t.quantity END) AS quantity,
-                SUM(CASE WHEN t.type = 'BUY' THEN t.quantity * t.price ELSE 0 END) /
-                    NULLIF(SUM(CASE WHEN t.type = 'BUY' THEN t.quantity ELSE 0 END), 0) AS avg_cost_basis,
-                (
-                    SELECT ph.close_price
-                    FROM asset_price_history ph
-                    JOIN listings pl ON pl.id = ph.listing_id
-                    WHERE pl.asset_id = a.id
-                    ORDER BY ph.date DESC, pl.id ASC
-                    LIMIT 1
-                ) AS current_price
+                t.id          AS transaction_id,
+                a.id          AS asset_id,
+                a.name        AS asset_name,
+                l.id          AS listing_id,
+                l.exchange,
+                l.ticker,
+                l.currency,
+                t.type,
+                t.quantity,
+                t.price,
+                t.fees,
+                t.fx_rate,
+                t.date
             FROM transactions t
             JOIN listings l ON l.id = t.listing_id
             JOIN assets a ON a.id = l.asset_id
             WHERE t.portfolio_id = ?
-            GROUP BY a.id, a.name
-            HAVING SUM(CASE WHEN t.type = 'BUY' THEN t.quantity ELSE -t.quantity END) > 0
+            ORDER BY a.id ASC, l.id ASC, t.date ASC, t.id ASC
         """.trimIndent(), { rs, _ ->
-            val quantity = rs.getBigDecimal("quantity")
-            val avgCostBasis = rs.getBigDecimal("avg_cost_basis")
-            val currentPrice = rs.getBigDecimal("current_price")
-            Holding(
+            TransactionRow(
+                transactionId = rs.getLong("transaction_id"),
                 assetId = rs.getLong("asset_id"),
+                assetName = rs.getString("asset_name"),
+                listingId = rs.getLong("listing_id"),
+                exchange = rs.getString("exchange"),
                 ticker = rs.getString("ticker"),
-                name = rs.getString("name"),
-                quantity = quantity,
-                avgCostBasis = avgCostBasis,
-                totalCost = quantity.multiply(avgCostBasis),
-                unrealizedGain = currentPrice?.let { it.subtract(avgCostBasis).multiply(quantity) },
+                currency = rs.getString("currency"),
+                type = TransactionType.valueOf(rs.getString("type")),
+                quantity = rs.getBigDecimal("quantity"),
+                price = rs.getBigDecimal("price"),
+                fees = rs.getBigDecimal("fees"),
+                fxRate = rs.getBigDecimal("fx_rate"),
+                date = rs.getDate("date").toLocalDate(),
             )
         }, portfolioId)
 }

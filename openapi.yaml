@@ -19,6 +19,7 @@ tags:
   - name: Assets
   - name: Transactions
   - name: Prices
+  - name: Settings
 
 paths:
   /health:
@@ -499,6 +500,36 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+
+  /settings:
+    get:
+      tags: [Settings]
+      operationId: getSettings
+      summary: Get user settings
+      responses:
+        "200":
+          description: User settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Settings"
+    put:
+      tags: [Settings]
+      operationId: updateSettings
+      summary: Update user settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Settings"
+      responses:
+        "200":
+          description: Settings updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Settings"
 
   /prices/sync:
     post:
@@ -1024,6 +1055,7 @@ components:
       required:
         - assetId
         - ticker
+        - currency
         - date
         - quantity
         - proceeds
@@ -1037,6 +1069,10 @@ components:
           format: int64
         ticker:
           type: string
+        currency:
+          type: string
+          description: Local currency of the sell transaction.
+          example: EUR
         date:
           type: string
           format: date
@@ -1046,18 +1082,23 @@ components:
         proceeds:
           type: number
           format: double
+          description: In local currency.
         buyFees:
           type: number
           format: double
+          description: In local currency.
         sellFees:
           type: number
           format: double
+          description: In local currency.
         costBasis:
           type: number
           format: double
+          description: In local currency.
         gain:
           type: number
           format: double
+          description: In local currency. Do not sum across currencies.
 
     RealizedGainsReport:
       type: object
@@ -1066,11 +1107,7 @@ components:
         - from
         - to
         - entries
-        - totalProceeds
-        - totalBuyFees
-        - totalSellFees
-        - totalCostBasis
-        - totalGain
+        - byCurrency
       properties:
         method:
           $ref: "#/components/schemas/RealizationMethod"
@@ -1084,13 +1121,26 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/RealizedGainEntry"
+        byCurrency:
+          type: object
+          description: Per-currency totals. Safe to display independently; never sum across currencies.
+          additionalProperties:
+            $ref: "#/components/schemas/CurrencyTotal"
+
+    CurrencyTotal:
+      type: object
+      required:
+        - currency
+        - tradeCount
+        - totalProceeds
+        - totalCostBasis
+        - totalGain
+      properties:
+        currency:
+          type: string
+        tradeCount:
+          type: integer
         totalProceeds:
-          type: number
-          format: double
-        totalBuyFees:
-          type: number
-          format: double
-        totalSellFees:
           type: number
           format: double
         totalCostBasis:
@@ -1100,33 +1150,103 @@ components:
           type: number
           format: double
 
-    Holding:
+    Settings:
       type: object
       required:
+        - baseCurrency
+      properties:
+        baseCurrency:
+          type: string
+          example: EUR
+
+    Holding:
+      type: object
+      description: Asset-level holdings view with per-listing drill-down. All monetary values are in baseCurrency.
+      required:
         - assetId
-        - ticker
-        - name
-        - quantity
-        - avgCostBasis
-        - totalCost
+        - assetName
+        - baseCurrency
+        - totalQuantity
+        - listings
       properties:
         assetId:
           type: integer
           format: int64
+        assetName:
+          type: string
+        baseCurrency:
+          type: string
+          example: EUR
+        totalQuantity:
+          type: number
+          format: double
+        avgCostBasisBase:
+          type: number
+          format: double
+          nullable: true
+          description: FX-normalized weighted average cost per unit. Null when any listing lacks an FX rate.
+        totalCostBase:
+          type: number
+          format: double
+          nullable: true
+          description: FX-normalized total cost. Null when any listing lacks an FX rate.
+        marketValueBase:
+          type: number
+          format: double
+          nullable: true
+        unrealizedPnlBase:
+          type: number
+          format: double
+          nullable: true
+        unrealizedPnlPct:
+          type: number
+          format: double
+          nullable: true
+        listings:
+          type: array
+          items:
+            $ref: "#/components/schemas/ListingHolding"
+
+    ListingHolding:
+      type: object
+      required:
+        - listingId
+        - ticker
+        - currency
+        - quantity
+        - avgCostLocal
+        - totalCostLocal
+      properties:
+        listingId:
+          type: integer
+          format: int64
+        exchange:
+          type: string
+          nullable: true
         ticker:
           type: string
-        name:
+        currency:
           type: string
+          example: USD
         quantity:
           type: number
           format: double
-        avgCostBasis:
+        avgCostLocal:
           type: number
           format: double
-        totalCost:
+        totalCostLocal:
           type: number
           format: double
-        unrealizedGain:
+        marketValueLocal:
+          type: number
+          format: double
+          nullable: true
+        fxRate:
+          type: number
+          format: double
+          nullable: true
+          description: Rate used for conversion (1 baseCurrency = fxRate listingCurrency). Null when currencies match.
+        marketValueBase:
           type: number
           format: double
           nullable: true

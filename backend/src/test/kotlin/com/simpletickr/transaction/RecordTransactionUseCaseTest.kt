@@ -2,6 +2,9 @@ package com.simpletickr.transaction
 
 import com.simpletickr.asset.Listing
 import com.simpletickr.asset.ListingRepository
+import com.simpletickr.fx.FxRateRepository
+import com.simpletickr.settings.UserSettings
+import com.simpletickr.settings.UserSettingsRepository
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
 import org.mockito.kotlin.mock
@@ -14,7 +17,13 @@ class RecordTransactionUseCaseTest {
 
     private val transactionRepository = mock<TransactionRepository>()
     private val listingRepository = mock<ListingRepository>()
-    private val useCase = RecordTransactionUseCase(transactionRepository, listingRepository)
+    private val fxRateRepository = mock<FxRateRepository>()
+    private val userSettingsRepository = mock<UserSettingsRepository>()
+    private val useCase = RecordTransactionUseCase(transactionRepository, listingRepository, fxRateRepository, userSettingsRepository)
+
+    init {
+        whenever(userSettingsRepository.find()).thenReturn(UserSettings("EUR"))
+    }
 
     private val date = LocalDate.of(2024, 1, 15)
     private val listing = Listing(id = 5L, assetId = 2L, exchange = null, ticker = "AAPL", currency = "USD")

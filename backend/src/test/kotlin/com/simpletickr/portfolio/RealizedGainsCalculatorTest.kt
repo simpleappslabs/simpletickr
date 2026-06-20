@@ -45,7 +45,7 @@ class RealizedGainsCalculatorTest {
         assertBd("750", report.entries[0].proceeds)
         assertBd("500", report.entries[0].costBasis)
         assertBd("250", report.entries[0].gain)
-        assertBd("250", report.totalGain)
+        assertBd("250", report.byCurrency["USD"]!!.totalGain)
     }
 
     @Test
@@ -140,7 +140,7 @@ class RealizedGainsCalculatorTest {
         val report = RealizedGainsCalculator.compute(txs, listingMap, RealizationMethod.FIFO, from, to)
         assertEquals(2, report.entries.size)
         val expectedGain = report.entries.fold(BigDecimal.ZERO) { acc, e -> acc + e.gain }
-        assertEquals(0, expectedGain.compareTo(report.totalGain))
+        assertEquals(0, expectedGain.compareTo(report.byCurrency["USD"]!!.totalGain))
     }
 
     private fun assertBd(expected: String, actual: BigDecimal, message: String = "") =

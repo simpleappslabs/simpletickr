@@ -6,6 +6,7 @@ import java.time.LocalDate
 data class RealizedGainEntry(
     val assetId: Long,
     val ticker: String,
+    val currency: String,
     val date: LocalDate,
     val quantity: BigDecimal,
     val proceeds: BigDecimal,

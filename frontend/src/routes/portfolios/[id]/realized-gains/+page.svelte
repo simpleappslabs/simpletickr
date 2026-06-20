@@ -44,10 +44,9 @@
         return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
 
-    function fmtGain(n: number) {
-        const sign = n >= 0 ? '+' : '';
-        return `${sign}$${fmt(Math.abs(n))}`;
-    }
+    const currencyTotals = $derived(
+        report ? Object.values(report.byCurrency) : []
+    );
 </script>
 
 <div class="max-w-4xl mx-auto p-6 space-y-8">
@@ -98,23 +97,26 @@
             {#if report.entries.length === 0}
                 <p class="text-base-content/40 italic text-sm">No realized gains in this period.</p>
             {:else}
-                <!-- Summary stats -->
-                <div class="stats bg-base-200 w-full">
-                    <div class="stat">
-                        <div class="stat-title">Total proceeds</div>
-                        <div class="stat-value text-xl">${fmt(report.totalProceeds)}</div>
-                    </div>
-                    <div class="stat">
-                        <div class="stat-title">Total cost basis</div>
-                        <div class="stat-value text-xl">${fmt(report.totalCostBasis)}</div>
-                    </div>
-                    <div class="stat">
-                        <div class="stat-title">Total gain / loss</div>
-                        <div class="stat-value text-xl {report.totalGain >= 0 ? 'text-success' : 'text-error'}">
-                            {fmtGain(report.totalGain)}
+                <!-- Per-currency summary stats -->
+                {#each currencyTotals as ct}
+                    <div class="stats bg-base-200 w-full">
+                        <div class="stat">
+                            <div class="stat-title">Proceeds <span class="badge badge-ghost badge-sm ml-1">{ct.currency}</span></div>
+                            <div class="stat-value text-xl">{fmt(ct.totalProceeds)} {ct.currency}</div>
+                            <div class="stat-desc">{ct.tradeCount} trade{ct.tradeCount === 1 ? '' : 's'}</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-title">Cost basis</div>
+                            <div class="stat-value text-xl">{fmt(ct.totalCostBasis)} {ct.currency}</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-title">Gain / loss</div>
+                            <div class="stat-value text-xl {ct.totalGain >= 0 ? 'text-success' : 'text-error'}">
+                                {ct.totalGain >= 0 ? '+' : ''}{fmt(ct.totalGain)} {ct.currency}
+                            </div>
                         </div>
                     </div>
-                </div>
+                {/each}
 
                 <!-- Entries table -->
                 <section class="space-y-3">
@@ -127,6 +129,7 @@
                                 <tr>
                                     <th>Date</th>
                                     <th>Ticker</th>
+                                    <th>CCY</th>
                                     <th class="text-right">Qty</th>
                                     <th class="text-right">Proceeds</th>
                                     <th class="text-right">Buy fees</th>
@@ -140,29 +143,18 @@
                                     <tr>
                                         <td class="tabular-nums">{e.date}</td>
                                         <td class="font-mono font-semibold">{e.ticker}</td>
+                                        <td class="text-xs text-base-content/50">{e.currency}</td>
                                         <td class="text-right tabular-nums">{fmt(e.quantity)}</td>
-                                        <td class="text-right tabular-nums">${fmt(e.proceeds)}</td>
-                                        <td class="text-right tabular-nums">{e.buyFees > 0 ? `$${fmt(e.buyFees)}` : '—'}</td>
-                                        <td class="text-right tabular-nums">{e.sellFees > 0 ? `$${fmt(e.sellFees)}` : '—'}</td>
-                                        <td class="text-right tabular-nums">${fmt(e.costBasis)}</td>
+                                        <td class="text-right tabular-nums">{fmt(e.proceeds)}</td>
+                                        <td class="text-right tabular-nums">{e.buyFees > 0 ? fmt(e.buyFees) : '—'}</td>
+                                        <td class="text-right tabular-nums">{e.sellFees > 0 ? fmt(e.sellFees) : '—'}</td>
+                                        <td class="text-right tabular-nums">{fmt(e.costBasis)}</td>
                                         <td class="text-right tabular-nums font-semibold {e.gain >= 0 ? 'text-success' : 'text-error'}">
-                                            {fmtGain(e.gain)}
+                                            {e.gain >= 0 ? '+' : ''}{fmt(e.gain)} {e.currency}
                                         </td>
                                     </tr>
                                 {/each}
                             </tbody>
-                            <tfoot>
-                                <tr class="font-semibold border-t border-base-300">
-                                    <td colspan="3">Total</td>
-                                    <td class="text-right tabular-nums">${fmt(report.totalProceeds)}</td>
-                                    <td class="text-right tabular-nums">${fmt(report.totalBuyFees)}</td>
-                                    <td class="text-right tabular-nums">${fmt(report.totalSellFees)}</td>
-                                    <td class="text-right tabular-nums">${fmt(report.totalCostBasis)}</td>
-                                    <td class="text-right tabular-nums {report.totalGain >= 0 ? 'text-success' : 'text-error'}">
-                                        {fmtGain(report.totalGain)}
-                                    </td>
-                                </tr>
-                            </tfoot>
                         </table>
                     </div>
                 </section>

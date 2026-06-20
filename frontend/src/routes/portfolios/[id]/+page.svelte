@@ -41,12 +41,25 @@
     let deletePortfolioSubmitting = $state(false);
     let deletePortfolioError = $state<string | null>(null);
 
-    const totalCost = $derived(holdings.reduce((sum, h) => sum + h.totalCost, 0));
+    let expandedAssets = $state<Set<number>>(new Set());
+
+    const totalCost = $derived(holdings.reduce((sum, h) => sum + (h.totalCostBase ?? 0), 0));
     const totalGain = $derived(
-        holdings.length > 0 && holdings.every((h) => h.unrealizedGain != null)
-            ? holdings.reduce((sum, h) => sum + (h.unrealizedGain ?? 0), 0)
+        holdings.length > 0 && holdings.every((h) => h.unrealizedPnlBase != null)
+            ? holdings.reduce((sum, h) => sum + (h.unrealizedPnlBase ?? 0), 0)
             : null
     );
+
+    function toggleExpand(assetId: number) {
+        const next = new Set(expandedAssets);
+        if (next.has(assetId)) next.delete(assetId);
+        else next.add(assetId);
+        expandedAssets = next;
+    }
+
+    function representativeTicker(h: Holding): string {
+        return h.listings[0]?.ticker ?? '—';
+    }
 
     function listingTicker(listingId: number): string {
         for (const a of assets) {
@@ -112,9 +125,9 @@
         chart = new Chart(chartCanvas, {
             type: 'doughnut',
             data: {
-                labels: holdings.map((h) => h.ticker),
+                labels: holdings.map((h) => representativeTicker(h)),
                 datasets: [{
-                    data: holdings.map((h) => h.totalCost),
+                    data: holdings.map((h) => h.totalCostBase ?? 0),
                     backgroundColor: holdings.map((_, i) => CHART_COLORS[i % CHART_COLORS.length]),
                     borderWidth: 0,
                 }],
@@ -137,6 +150,11 @@
 
     function fmt(n: number) {
         return n.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    }
+
+    function fmtCcy(n: number | undefined | null, ccy: string) {
+        if (n == null) return '—';
+        return `${fmt(n)} ${ccy}`;
     }
 
     onMount(async () => {
@@ -203,12 +221,12 @@
         <div class="stats bg-base-200 w-full">
             <div class="stat">
                 <div class="stat-title">Total cost</div>
-                <div class="stat-value text-xl">${fmt(totalCost)}</div>
+                <div class="stat-value text-xl">{fmt(totalCost)} {holdings[0]?.baseCurrency ?? ''}</div>
             </div>
             <div class="stat">
                 <div class="stat-title">Unrealized gain</div>
                 <div class="stat-value text-xl {totalGain == null ? '' : totalGain >= 0 ? 'text-success' : 'text-error'}">
-                    {totalGain == null ? '—' : `${totalGain >= 0 ? '+' : ''}$${fmt(totalGain)}`}
+                    {totalGain == null ? '—' : `${totalGain >= 0 ? '+' : ''}${fmt(totalGain)} ${holdings[0]?.baseCurrency ?? ''}`}
                 </div>
             </div>
             <div class="stat">
@@ -230,32 +248,68 @@
                     <table class="table table-zebra w-full">
                         <thead>
                         <tr>
-                            <th>Ticker</th>
-                            <th>Name</th>
+                            <th></th>
+                            <th>Asset</th>
                             <th class="text-right">Qty</th>
                             <th class="text-right">Avg cost</th>
                             <th class="text-right">Total cost</th>
+                            <th class="text-right">Market value</th>
                             <th class="text-right">Gain</th>
                         </tr>
                         </thead>
                         <tbody>
                         {#each holdings as h}
-                            <tr>
-                                <td class="font-mono font-semibold">{h.ticker}</td>
-                                <td>{h.name}</td>
-                                <td class="text-right">{fmt(h.quantity)}</td>
-                                <td class="text-right">${fmt(h.avgCostBasis)}</td>
-                                <td class="text-right">${fmt(h.totalCost)}</td>
-                                <td class="text-right">
-                                    {#if h.unrealizedGain == null}
+                            <tr class="cursor-pointer hover" onclick={() => toggleExpand(h.assetId)}>
+                                <td class="w-6 text-base-content/40">
+                                    {#if h.listings.length > 1}
+                                        {expandedAssets.has(h.assetId) ? '▾' : '▸'}
+                                    {/if}
+                                </td>
+                                <td>
+                                    <div class="font-semibold">{h.assetName}</div>
+                                    <div class="text-xs text-base-content/50 font-mono">{h.listings.map(l => l.ticker).join(' · ')}</div>
+                                </td>
+                                <td class="text-right tabular-nums">{fmt(h.totalQuantity)}</td>
+                                <td class="text-right tabular-nums">
+                                    {h.avgCostBasisBase != null ? fmtCcy(h.avgCostBasisBase, h.baseCurrency) : '—'}
+                                </td>
+                                <td class="text-right tabular-nums">
+                                    {fmtCcy(h.totalCostBase, h.baseCurrency)}
+                                </td>
+                                <td class="text-right tabular-nums">
+                                    {fmtCcy(h.marketValueBase, h.baseCurrency)}
+                                </td>
+                                <td class="text-right tabular-nums">
+                                    {#if h.unrealizedPnlBase == null}
                                         <span class="text-base-content/30">—</span>
                                     {:else}
-                                        <span class="{h.unrealizedGain >= 0 ? 'text-success' : 'text-error'}">
-                                            {h.unrealizedGain >= 0 ? '+' : ''}${fmt(h.unrealizedGain)}
+                                        <span class="{h.unrealizedPnlBase >= 0 ? 'text-success' : 'text-error'}">
+                                            {h.unrealizedPnlBase >= 0 ? '+' : ''}{fmt(h.unrealizedPnlBase)} {h.baseCurrency}
+                                            {#if h.unrealizedPnlPct != null}
+                                                <span class="text-xs opacity-70">({h.unrealizedPnlPct >= 0 ? '+' : ''}{fmt(h.unrealizedPnlPct)}%)</span>
+                                            {/if}
                                         </span>
                                     {/if}
                                 </td>
                             </tr>
+                            {#if expandedAssets.has(h.assetId) && h.listings.length > 1}
+                                {#each h.listings as l}
+                                    <tr class="bg-base-300/30 text-sm">
+                                        <td></td>
+                                        <td class="pl-6 text-base-content/70">
+                                            <span class="font-mono">{l.ticker}</span>
+                                            {#if l.exchange}
+                                                <span class="text-xs text-base-content/40 ml-1">{l.exchange}</span>
+                                            {/if}
+                                        </td>
+                                        <td class="text-right tabular-nums">{fmt(l.quantity)}</td>
+                                        <td class="text-right tabular-nums">{fmtCcy(l.avgCostLocal, l.currency)}</td>
+                                        <td class="text-right tabular-nums">{fmtCcy(l.totalCostLocal, l.currency)}</td>
+                                        <td class="text-right tabular-nums">{fmtCcy(l.marketValueBase, h.baseCurrency)}</td>
+                                        <td></td>
+                                    </tr>
+                                {/each}
+                            {/if}
                         {/each}
                         </tbody>
                     </table>
@@ -291,8 +345,8 @@
                                     </span>
                                 </td>
                                 <td class="text-right tabular-nums">{fmt(t.quantity)}</td>
-                                <td class="text-right tabular-nums">${fmt(t.price)}</td>
-                                <td class="text-right tabular-nums">{t.fees != null ? `$${fmt(t.fees)}` : '—'}</td>
+                                <td class="text-right tabular-nums">{fmt(t.price)}</td>
+                                <td class="text-right tabular-nums">{t.fees != null ? fmt(t.fees) : '—'}</td>
                                 <td class="text-right">
                                     <button
                                         class="btn btn-ghost btn-xs"

@@ -22,12 +22,13 @@ class TransactionRepository(private val jdbcTemplate: JdbcTemplate) {
             price = rs.getBigDecimal("price"),
             date = rs.getDate("date").toLocalDate(),
             fees = rs.getBigDecimal("fees"),
+            fxRate = rs.getBigDecimal("fx_rate"),
         )
     }
 
     private val baseSelect = """
         SELECT t.id, t.portfolio_id, t.listing_id, l.asset_id,
-               t.type, t.quantity, t.price, t.date, t.fees
+               t.type, t.quantity, t.price, t.date, t.fees, t.fx_rate
         FROM transactions t
         JOIN listings l ON l.id = t.listing_id
     """.trimIndent()
@@ -46,7 +47,7 @@ class TransactionRepository(private val jdbcTemplate: JdbcTemplate) {
         val keyHolder = GeneratedKeyHolder()
         jdbcTemplate.update({ con ->
             con.prepareStatement(
-                "INSERT INTO transactions (portfolio_id, listing_id, type, quantity, price, date, fees) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                "INSERT INTO transactions (portfolio_id, listing_id, type, quantity, price, date, fees, fx_rate) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                 arrayOf("id")
             ).apply {
                 setLong(1, transaction.portfolioId)
@@ -56,6 +57,7 @@ class TransactionRepository(private val jdbcTemplate: JdbcTemplate) {
                 setBigDecimal(5, transaction.price)
                 setObject(6, transaction.date)
                 setBigDecimal(7, transaction.fees)
+                setBigDecimal(8, transaction.fxRate)
             }
         }, keyHolder)
         return transaction.copy(id = keyHolder.key!!.toLong())
@@ -63,9 +65,9 @@ class TransactionRepository(private val jdbcTemplate: JdbcTemplate) {
 
     fun update(transaction: Transaction): Transaction? {
         val updated = jdbcTemplate.update(
-            "UPDATE transactions SET listing_id = ?, type = ?, quantity = ?, price = ?, date = ?, fees = ? WHERE id = ?",
+            "UPDATE transactions SET listing_id = ?, type = ?, quantity = ?, price = ?, date = ?, fees = ?, fx_rate = ? WHERE id = ?",
             transaction.listingId, transaction.type.name, transaction.quantity, transaction.price,
-            transaction.date, transaction.fees, transaction.id
+            transaction.date, transaction.fees, transaction.fxRate, transaction.id
         )
         return if (updated == 0) null else transaction
     }
