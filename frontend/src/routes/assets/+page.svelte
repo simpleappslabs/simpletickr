@@ -95,7 +95,6 @@
               <th>Ticker</th>
               <th>Name</th>
               <th>Type</th>
-              <th>Currency</th>
               <th></th>
             </tr>
           </thead>
@@ -105,7 +104,6 @@
                 <td class="font-mono font-semibold">{asset.listings[0]?.ticker ?? '—'}</td>
                 <td>{asset.name}</td>
                 <td><span class="badge badge-ghost">{asset.type}</span></td>
-                <td>{asset.listings[0]?.currency ?? '—'}</td>
                 <td class="text-right">
                   <button
                     class="btn btn-ghost btn-xs"
