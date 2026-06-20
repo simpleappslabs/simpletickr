@@ -17,7 +17,7 @@ task frontend:dev        # start frontend dev server on localhost:5173
 
 # Tests
 task backend:test        # run all backend tests (Testcontainers, no running DB needed)
-task frontend:test:e2e   # run Playwright E2E tests (requires backend on localhost:8080)
+task frontend:test:e2e   # run Playwright E2E tests (starts isolated test DB + backend automatically)
 task ci                  # api:lint + backend:build + frontend pipeline in parallel (no E2E)
 
 # Run a single backend test class:

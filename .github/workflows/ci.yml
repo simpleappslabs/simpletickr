@@ -75,7 +75,7 @@ jobs:
       DB_NAME: simpletickr
       DB_USER: simpletickr
       DB_PASSWORD: simpletickr
-      PUBLIC_API_BASE_URL: http://localhost:8080
+      PUBLIC_API_BASE_URL: http://localhost:8081
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -88,9 +88,6 @@ jobs:
           node-version: '20'
           cache: npm
           cache-dependency-path: frontend/package-lock.json
-      - name: Start backend
-        working-directory: backend
-        run: ./gradlew bootRun &
       - name: Install frontend dependencies
         working-directory: frontend
         run: npm ci
@@ -100,9 +97,6 @@ jobs:
       - name: Install Playwright browsers
         working-directory: frontend
         run: npx playwright install --with-deps chromium
-      - name: Wait for backend
-        run: until curl -s http://localhost:8080/health; do sleep 2; done
-        timeout-minutes: 2
       - name: Run E2E tests
         working-directory: frontend
         run: npm run test:e2e
