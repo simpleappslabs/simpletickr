@@ -8,6 +8,19 @@ tasks:
     cmds:
       - docker compose up -d db
 
+  db:reset:
+    desc: Drop and recreate the dev database (Flyway migrates on next backend start)
+    cmds:
+      - docker compose exec db psql -U ${DB_USER} postgres -c "DROP DATABASE IF EXISTS \"${DB_NAME}\""
+      - docker compose exec db psql -U ${DB_USER} postgres -c "CREATE DATABASE \"${DB_NAME}\""
+
+  db:seed:
+    desc: Seed the dev database with a demo portfolio and transactions (requires running backend)
+    vars:
+      API: '{{.API | default "http://localhost:8080"}}'
+    cmds:
+      - API={{.API}} ./scripts/seed-demo.sh
+
   api:lint:
     desc: Lint openapi.yaml with Redocly
     cmds:
@@ -56,16 +69,16 @@ tasks:
       - npm run test
 
   frontend:test:e2e:
-    desc: Run frontend E2E tests (requires backend on localhost:8080)
-    dir: frontend
+    desc: Run E2E tests against an isolated test DB (starts DB automatically)
     cmds:
-      - npm run test:e2e
+      - docker compose --profile test up -d --wait db-test
+      - cd frontend && npm run test:e2e
 
   frontend:test:e2e:ui:
     desc: Run frontend E2E tests in Playwright UI mode (visual debugger with time-travel)
-    dir: frontend
     cmds:
-      - npx playwright test --ui
+      - docker compose --profile test up -d --wait db-test
+      - cd frontend && npx playwright test --ui
 
   frontend:check:
     desc: Type-check the frontend with svelte-check
