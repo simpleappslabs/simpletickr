@@ -17,9 +17,6 @@ class YahooFinancePriceProvider : PriceProvider {
     private val log = LoggerFactory.getLogger(javaClass)
     private val client = RestClient.create("https://query1.finance.yahoo.com")
 
-    override fun fetchLatest(externalId: String): PricePoint? =
-        fetchHistory(externalId, LocalDate.now().minusDays(7), LocalDate.now()).lastOrNull()
-
     override fun fetchHistory(externalId: String, from: LocalDate, to: LocalDate): List<PricePoint> {
         val fromEpoch = from.atStartOfDay(ZoneOffset.UTC).toEpochSecond()
         val toEpoch = to.plusDays(1).atStartOfDay(ZoneOffset.UTC).toEpochSecond()

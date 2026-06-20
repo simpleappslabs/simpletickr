@@ -505,6 +505,21 @@ paths:
       tags: [Prices]
       operationId: syncPrices
       summary: Trigger a manual price sync for all mapped listings
+      parameters:
+        - name: from
+          in: query
+          required: false
+          description: Start of the history window (defaults to today minus configured lookback-days)
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          required: false
+          description: End of the history window (defaults to today)
+          schema:
+            type: string
+            format: date
       responses:
         "200":
           description: Sync result

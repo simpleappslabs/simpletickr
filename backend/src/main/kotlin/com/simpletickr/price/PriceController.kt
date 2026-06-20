@@ -46,8 +46,8 @@ class PriceController(
         return ResponseEntity.ok(points)
     }
 
-    override fun syncPrices(): ResponseEntity<SyncResultModel> {
-        val result = priceService.syncAll()
+    override fun syncPrices(from: LocalDate?, to: LocalDate?): ResponseEntity<SyncResultModel> {
+        val result = priceService.syncAll(from, to)
         return ResponseEntity.ok(SyncResultModel(synced = result.synced, failed = result.failed))
     }
 
