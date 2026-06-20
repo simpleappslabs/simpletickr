@@ -1,46 +1,60 @@
 package com.simpletickr.asset
 
 import com.simpletickr.generated.api.AssetsApi
-import com.simpletickr.generated.model.AssetRequest
+import com.simpletickr.generated.model.CreateAssetRequest
 import com.simpletickr.generated.model.ListingRequest
+import com.simpletickr.generated.model.UpdateAssetRequest
+import com.simpletickr.price.PriceProviderMapping
+import com.simpletickr.price.PriceProviderMappingRepository
 import org.springframework.http.ResponseEntity
+import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.bind.annotation.RestController
 import com.simpletickr.generated.model.Asset as AssetModel
+import com.simpletickr.generated.model.AssetDetail as AssetDetailModel
 import com.simpletickr.generated.model.AssetType as GeneratedAssetType
 import com.simpletickr.generated.model.Listing as ListingModel
+import com.simpletickr.generated.model.ListingDetail as ListingDetailModel
+import com.simpletickr.generated.model.PriceMapping as PriceMappingModel
 
 @RestController
 class AssetController(
     private val assetRepository: AssetRepository,
     private val listingRepository: ListingRepository,
+    private val mappingRepository: PriceProviderMappingRepository,
 ) : AssetsApi {
 
     override fun listAssets(): ResponseEntity<List<AssetModel>> =
         ResponseEntity.ok(assetRepository.findAll().map { it.toModel() })
 
-    override fun getAsset(id: Long): ResponseEntity<AssetModel> {
+    override fun getAsset(id: Long): ResponseEntity<AssetDetailModel> {
         val asset = assetRepository.findById(id) ?: return ResponseEntity.notFound().build()
-        return ResponseEntity.ok(asset.toModel())
+        val mappings = mappingRepository.findByListingIds(asset.listings.map { it.id })
+        return ResponseEntity.ok(asset.toDetailModel(mappings))
     }
 
-    override fun createAsset(assetRequest: AssetRequest): ResponseEntity<AssetModel> {
-        val listingReq = assetRequest.listing
-            ?: return ResponseEntity.badRequest().build()
+    @Transactional
+    override fun createAsset(createAssetRequest: CreateAssetRequest): ResponseEntity<AssetModel> {
+        if (createAssetRequest.listings.isEmpty()) return ResponseEntity.badRequest().build()
         val saved = assetRepository.save(
-            isin = assetRequest.isin,
-            name = assetRequest.name,
-            type = AssetType.valueOf(assetRequest.type.value),
+            isin = createAssetRequest.isin,
+            name = createAssetRequest.name,
+            type = AssetType.valueOf(createAssetRequest.type.value),
         )
-        listingRepository.save(saved.id, listingReq.exchange, listingReq.ticker, listingReq.currency)
+        for (listingReq in createAssetRequest.listings) {
+            val listing = listingRepository.save(saved.id, listingReq.exchange, listingReq.ticker, listingReq.currency)
+            listingReq.priceMappings?.forEach { m ->
+                mappingRepository.upsert(listing.id, m.provider, m.externalId)
+            }
+        }
         return ResponseEntity.status(201).body(assetRepository.findById(saved.id)!!.toModel())
     }
 
-    override fun updateAsset(id: Long, assetRequest: AssetRequest): ResponseEntity<AssetModel> {
+    override fun updateAsset(id: Long, updateAssetRequest: UpdateAssetRequest): ResponseEntity<AssetModel> {
         assetRepository.update(
             id = id,
-            isin = assetRequest.isin,
-            name = assetRequest.name,
-            type = AssetType.valueOf(assetRequest.type.value),
+            isin = updateAssetRequest.isin,
+            name = updateAssetRequest.name,
+            type = AssetType.valueOf(updateAssetRequest.type.value),
         ) ?: return ResponseEntity.notFound().build()
         return ResponseEntity.ok(assetRepository.findById(id)!!.toModel())
     }
@@ -75,6 +89,25 @@ class AssetController(
         name = name,
         type = GeneratedAssetType.valueOf(type.name),
         listings = listings.map { it.toModel() },
+    )
+
+    private fun Asset.toDetailModel(mappings: Map<Long, List<PriceProviderMapping>>) = AssetDetailModel(
+        id = id,
+        isin = isin,
+        name = name,
+        type = GeneratedAssetType.valueOf(type.name),
+        listings = listings.map { l ->
+            ListingDetailModel(
+                id = l.id,
+                assetId = l.assetId,
+                exchange = l.exchange,
+                ticker = l.ticker,
+                currency = l.currency,
+                priceMappings = (mappings[l.id] ?: emptyList()).map { m ->
+                    PriceMappingModel(id = m.id, listingId = m.listingId, provider = m.provider, externalId = m.externalId)
+                },
+            )
+        },
     )
 
     private fun Listing.toModel() = ListingModel(

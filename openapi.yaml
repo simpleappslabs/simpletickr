@@ -317,7 +317,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/AssetRequest"
+              $ref: "#/components/schemas/CreateAssetRequest"
       responses:
         "201":
           description: Asset created
@@ -576,7 +576,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Asset"
+                $ref: "#/components/schemas/AssetDetail"
         "404":
           description: Asset not found
           content:
@@ -592,7 +592,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/AssetRequest"
+              $ref: "#/components/schemas/UpdateAssetRequest"
       responses:
         "200":
           description: Asset updated
@@ -615,6 +615,12 @@ paths:
           description: Asset deleted
         "404":
           description: Asset not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Asset has linked transactions and cannot be deleted
           content:
             application/json:
               schema:
@@ -723,7 +729,26 @@ components:
           items:
             $ref: "#/components/schemas/Listing"
 
-    AssetRequest:
+    CreateAssetRequest:
+      type: object
+      required:
+        - name
+        - type
+        - listings
+      properties:
+        isin:
+          type: string
+          nullable: true
+        name:
+          type: string
+        type:
+          $ref: "#/components/schemas/AssetType"
+        listings:
+          type: array
+          items:
+            $ref: "#/components/schemas/ListingRequest"
+
+    UpdateAssetRequest:
       type: object
       required:
         - name
@@ -736,9 +761,6 @@ components:
           type: string
         type:
           $ref: "#/components/schemas/AssetType"
-        listing:
-          $ref: "#/components/schemas/ListingRequest"
-          nullable: true
 
     Listing:
       type: object
@@ -765,6 +787,61 @@ components:
           type: string
           example: EUR
 
+    ListingDetail:
+      type: object
+      required:
+        - id
+        - assetId
+        - ticker
+        - currency
+        - priceMappings
+      properties:
+        id:
+          type: integer
+          format: int64
+        assetId:
+          type: integer
+          format: int64
+        exchange:
+          type: string
+          nullable: true
+          example: Euronext Amsterdam
+        ticker:
+          type: string
+          example: VWCE
+        currency:
+          type: string
+          example: EUR
+        priceMappings:
+          type: array
+          items:
+            $ref: "#/components/schemas/PriceMapping"
+
+    AssetDetail:
+      type: object
+      required:
+        - id
+        - name
+        - type
+        - listings
+      properties:
+        id:
+          type: integer
+          format: int64
+        isin:
+          type: string
+          nullable: true
+          example: IE00B3RBWM25
+        name:
+          type: string
+          example: Vanguard FTSE All-World
+        type:
+          $ref: "#/components/schemas/AssetType"
+        listings:
+          type: array
+          items:
+            $ref: "#/components/schemas/ListingDetail"
+
     ListingRequest:
       type: object
       required:
@@ -778,6 +855,21 @@ components:
           type: string
         currency:
           type: string
+        priceMappings:
+          type: array
+          items:
+            $ref: "#/components/schemas/ListingPriceMappingRequest"
+
+    ListingPriceMappingRequest:
+      type: object
+      required: [provider, externalId]
+      properties:
+        provider:
+          type: string
+          example: YAHOO
+        externalId:
+          type: string
+          example: VWCE.AS
 
     AssetType:
       type: string

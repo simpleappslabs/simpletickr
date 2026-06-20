@@ -1,8 +1,8 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { listAssets, deleteAsset, syncPrices } from '$lib/api/sdk.gen';
-  import type { Asset } from '$lib/api/types.gen';
-  import AssetModal from '$lib/AssetModal.svelte';
+  import { listAssets, getAsset, deleteAsset, syncPrices } from '$lib/api/sdk.gen';
+  import type { Asset, AssetDetail } from '$lib/api/types.gen';
+  import AssetModal from '$lib/asset/AssetModal.svelte';
   import '$lib/client';
 
   let assets = $state<Asset[]>([]);
@@ -10,7 +10,7 @@
   let error = $state<string | null>(null);
 
   let modalOpen = $state(false);
-  let editingAsset = $state<Asset | null>(null);
+  let editingAsset = $state<AssetDetail | null>(null);
   let deletingAsset = $state<Asset | null>(null);
   let deleteSubmitting = $state(false);
   let deleteError = $state<string | null>(null);
@@ -48,13 +48,18 @@
     deleteError = null;
     const { error: err } = await deleteAsset({ path: { id: deletingAsset.id } });
     if (err) {
-      deleteError = 'Failed to delete asset.';
+      deleteError = err.message ?? 'Failed to delete asset.';
       deleteSubmitting = false;
       return;
     }
     assets = assets.filter((a) => a.id !== deletingAsset!.id);
     deletingAsset = null;
     deleteSubmitting = false;
+  }
+
+  async function openEdit(asset: Asset) {
+    const { data } = await getAsset({ path: { id: asset.id } });
+    if (data) { editingAsset = data; modalOpen = true; }
   }
 
   onMount(load);
@@ -105,7 +110,7 @@
                   <button
                     class="btn btn-ghost btn-xs"
                     title="Edit"
-                    onclick={() => { editingAsset = asset; modalOpen = true; }}
+                    onclick={() => openEdit(asset)}
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                       <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>

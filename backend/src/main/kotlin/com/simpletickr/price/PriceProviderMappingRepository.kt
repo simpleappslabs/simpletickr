@@ -30,6 +30,15 @@ class PriceProviderMappingRepository(private val jdbcTemplate: JdbcTemplate) {
             rowMapper, listingId
         )
 
+    fun findByListingIds(listingIds: List<Long>): Map<Long, List<PriceProviderMapping>> {
+        if (listingIds.isEmpty()) return emptyMap()
+        val placeholders = listingIds.joinToString(",") { "?" }
+        return jdbcTemplate.query(
+            "SELECT id, listing_id, provider, external_id FROM price_provider_mappings WHERE listing_id IN ($placeholders) ORDER BY listing_id, provider",
+            rowMapper, *listingIds.toTypedArray()
+        ).groupBy { it.listingId }
+    }
+
     fun findByListingAndProvider(listingId: Long, provider: String): PriceProviderMapping? = try {
         jdbcTemplate.queryForObject(
             "SELECT id, listing_id, provider, external_id FROM price_provider_mappings WHERE listing_id = ? AND provider = ?",

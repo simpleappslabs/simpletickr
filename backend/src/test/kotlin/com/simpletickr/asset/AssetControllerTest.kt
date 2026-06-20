@@ -1,5 +1,7 @@
 package com.simpletickr.asset
 
+import com.simpletickr.price.PriceProviderMapping
+import com.simpletickr.price.PriceProviderMappingRepository
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
 import org.mockito.kotlin.anyOrNull
@@ -9,6 +11,8 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest
 import org.springframework.http.MediaType
 import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.web.servlet.MockMvc
+import org.springframework.dao.DataIntegrityViolationException
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
@@ -25,6 +29,9 @@ class AssetControllerTest {
 
     @MockitoBean
     private lateinit var listingRepository: ListingRepository
+
+    @MockitoBean
+    private lateinit var mappingRepository: PriceProviderMappingRepository
 
     private fun listing(id: Long, assetId: Long, ticker: String, currency: String = "USD") =
         Listing(id, assetId, null, ticker, currency)
@@ -50,14 +57,19 @@ class AssetControllerTest {
     }
 
     @Test
-    fun `GET asset by id returns 200 when found`() {
+    fun `GET asset by id returns 200 with listings and price mappings`() {
         whenever(assetRepository.findById(1L)).thenReturn(
             asset(1L, "Apple Inc.", AssetType.STOCK, listing(10L, 1L, "AAPL"))
+        )
+        whenever(mappingRepository.findByListingIds(listOf(10L))).thenReturn(
+            mapOf(10L to listOf(PriceProviderMapping(1L, 10L, "YAHOO", "AAPL")))
         )
 
         mockMvc.perform(get("/assets/1"))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.listings[0].ticker").value("AAPL"))
+            .andExpect(jsonPath("$.listings[0].priceMappings[0].provider").value("YAHOO"))
+            .andExpect(jsonPath("$.listings[0].priceMappings[0].externalId").value("AAPL"))
     }
 
     @Test
@@ -79,7 +91,7 @@ class AssetControllerTest {
         mockMvc.perform(
             post("/assets")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"name":"NVIDIA Corporation","type":"STOCK","listing":{"ticker":"NVDA","currency":"USD"}}""")
+                .content("""{"name":"NVIDIA Corporation","type":"STOCK","listings":[{"ticker":"NVDA","currency":"USD"}]}""")
         )
             .andExpect(status().isCreated)
             .andExpect(jsonPath("$.id").value(5))
@@ -87,11 +99,25 @@ class AssetControllerTest {
     }
 
     @Test
-    fun `POST asset returns 400 when listing is missing`() {
+    fun `DELETE asset returns 409 when asset has linked transactions`() {
+        whenever(assetRepository.findById(1L)).thenReturn(
+            asset(1L, "Apple Inc.", AssetType.STOCK, listing(10L, 1L, "AAPL"))
+        )
+        whenever(assetRepository.delete(1L)).thenThrow(
+            DataIntegrityViolationException("fk_transactions_listing")
+        )
+
+        mockMvc.perform(delete("/assets/1"))
+            .andExpect(status().isConflict)
+            .andExpect(jsonPath("$.message").value("This asset cannot be deleted because it has linked transactions."))
+    }
+
+    @Test
+    fun `POST asset returns 400 when listings is empty`() {
         mockMvc.perform(
             post("/assets")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"name":"NVIDIA Corporation","type":"STOCK"}""")
+                .content("""{"name":"NVIDIA Corporation","type":"STOCK","listings":[]}""")
         )
             .andExpect(status().isBadRequest)
     }
