@@ -6,6 +6,7 @@ import com.simpletickr.generated.model.ListingRequest
 import com.simpletickr.generated.model.UpdateAssetRequest
 import com.simpletickr.price.PriceProviderMapping
 import com.simpletickr.price.PriceProviderMappingRepository
+import com.simpletickr.shared.CurrencyCode
 import org.springframework.http.ResponseEntity
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.bind.annotation.RestController
@@ -41,7 +42,7 @@ class AssetController(
             type = AssetType.valueOf(createAssetRequest.type.value),
         )
         for (listingReq in createAssetRequest.listings) {
-            val listing = listingRepository.save(saved.id, listingReq.exchange, listingReq.ticker, listingReq.currency)
+            val listing = listingRepository.save(saved.id, listingReq.exchange, listingReq.ticker, CurrencyCode(listingReq.currency))
             listingReq.priceMappings?.forEach { m ->
                 mappingRepository.upsert(listing.id, m.provider, m.externalId)
             }
@@ -67,12 +68,12 @@ class AssetController(
 
     override fun createListing(id: Long, listingRequest: ListingRequest): ResponseEntity<ListingModel> {
         if (assetRepository.findById(id) == null) return ResponseEntity.notFound().build()
-        val listing = listingRepository.save(id, listingRequest.exchange, listingRequest.ticker, listingRequest.currency)
+        val listing = listingRepository.save(id, listingRequest.exchange, listingRequest.ticker, CurrencyCode(listingRequest.currency))
         return ResponseEntity.status(201).body(listing.toModel())
     }
 
     override fun updateListing(id: Long, listingRequest: ListingRequest): ResponseEntity<ListingModel> {
-        val updated = listingRepository.update(id, listingRequest.exchange, listingRequest.ticker, listingRequest.currency)
+        val updated = listingRepository.update(id, listingRequest.exchange, listingRequest.ticker, CurrencyCode(listingRequest.currency))
             ?: return ResponseEntity.notFound().build()
         return ResponseEntity.ok(updated.toModel())
     }
@@ -102,7 +103,7 @@ class AssetController(
                 assetId = l.assetId,
                 exchange = l.exchange,
                 ticker = l.ticker,
-                currency = l.currency,
+                currency = l.currency.value,
                 priceMappings = (mappings[l.id] ?: emptyList()).map { m ->
                     PriceMappingModel(id = m.id, listingId = m.listingId, provider = m.provider, externalId = m.externalId)
                 },
@@ -115,6 +116,6 @@ class AssetController(
         assetId = assetId,
         exchange = exchange,
         ticker = ticker,
-        currency = currency,
+        currency = currency.value,
     )
 }

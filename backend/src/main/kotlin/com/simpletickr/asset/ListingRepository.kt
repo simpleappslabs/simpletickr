@@ -1,5 +1,6 @@
 package com.simpletickr.asset
 
+import com.simpletickr.shared.CurrencyCode
 import org.springframework.dao.EmptyResultDataAccessException
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.jdbc.core.RowMapper
@@ -15,7 +16,7 @@ class ListingRepository(private val jdbcTemplate: JdbcTemplate) {
             assetId = rs.getLong("asset_id"),
             exchange = rs.getString("exchange"),
             ticker = rs.getString("ticker"),
-            currency = rs.getString("currency"),
+            currency = CurrencyCode(rs.getString("currency")),
         )
     }
 
@@ -32,7 +33,7 @@ class ListingRepository(private val jdbcTemplate: JdbcTemplate) {
         )
     } catch (_: EmptyResultDataAccessException) { null }
 
-    fun save(assetId: Long, exchange: String?, ticker: String, currency: String): Listing {
+    fun save(assetId: Long, exchange: String?, ticker: String, currency: CurrencyCode): Listing {
         val keyHolder = GeneratedKeyHolder()
         jdbcTemplate.update({ con ->
             con.prepareStatement(
@@ -42,16 +43,16 @@ class ListingRepository(private val jdbcTemplate: JdbcTemplate) {
                 setLong(1, assetId)
                 setString(2, exchange)
                 setString(3, ticker)
-                setString(4, currency)
+                setString(4, currency.value)
             }
         }, keyHolder)
         return Listing(keyHolder.key!!.toLong(), assetId, exchange, ticker, currency)
     }
 
-    fun update(id: Long, exchange: String?, ticker: String, currency: String): Listing? {
+    fun update(id: Long, exchange: String?, ticker: String, currency: CurrencyCode): Listing? {
         val rows = jdbcTemplate.update(
             "UPDATE listings SET exchange = ?, ticker = ?, currency = ? WHERE id = ?",
-            exchange, ticker, currency, id
+            exchange, ticker, currency.value, id
         )
         return if (rows == 0) null else findById(id)
     }
@@ -59,4 +60,8 @@ class ListingRepository(private val jdbcTemplate: JdbcTemplate) {
     fun delete(id: Long) {
         jdbcTemplate.update("DELETE FROM listings WHERE id = ?", id)
     }
+
+    fun findDistinctCurrencies(): List<CurrencyCode> =
+        jdbcTemplate.queryForList("SELECT DISTINCT currency FROM listings ORDER BY currency", String::class.java)
+            .map { CurrencyCode(it) }
 }

@@ -1,5 +1,6 @@
 package com.simpletickr.portfolio
 
+import com.simpletickr.shared.CurrencyCode
 import com.simpletickr.transaction.TransactionType
 import org.springframework.stereotype.Service
 import java.math.BigDecimal
@@ -12,7 +13,7 @@ class HoldingService(private val holdingRepository: HoldingRepository) {
     fun getHoldings(portfolioId: Long): List<Holding> {
         data class Key(
             val assetId: Long, val assetName: String,
-            val listingId: Long, val exchange: String?, val ticker: String, val currency: String,
+            val listingId: Long, val exchange: String?, val ticker: String, val currency: CurrencyCode,
         )
 
         return holdingRepository.findTransactionRows(portfolioId)

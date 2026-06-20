@@ -1,5 +1,6 @@
 package com.simpletickr.portfolio
 
+import com.simpletickr.shared.CurrencyCode
 import java.time.LocalDate
 
 data class RealizedGainsReport(
@@ -8,5 +9,5 @@ data class RealizedGainsReport(
     val to: LocalDate,
     val entries: List<RealizedGainEntry>,
     // Per-currency totals — safe to display independently. Never sum across currencies.
-    val byCurrency: Map<String, CurrencyTotal>,
+    val byCurrency: Map<CurrencyCode, CurrencyTotal>,
 )

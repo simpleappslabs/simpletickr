@@ -3,6 +3,7 @@ package com.simpletickr.portfolio
 import com.simpletickr.fx.FxRateRepository
 import com.simpletickr.price.AssetPriceHistoryRepository
 import com.simpletickr.settings.UserSettingsRepository
+import com.simpletickr.shared.CurrencyCode
 import org.springframework.stereotype.Service
 import java.math.BigDecimal
 import java.math.RoundingMode
@@ -22,7 +23,7 @@ class ValuationService(
         }
     }
 
-    private fun valuate(holding: Holding, baseCurrency: String): HoldingWithValuation {
+    private fun valuate(holding: Holding, baseCurrency: CurrencyCode): HoldingWithValuation {
         val latestPrice = priceHistoryRepository.findLatestByListingId(holding.listingId)?.price
         val fxRate = if (holding.currency == baseCurrency) null
                      else fxRateRepository.findLatest(baseCurrency, holding.currency)

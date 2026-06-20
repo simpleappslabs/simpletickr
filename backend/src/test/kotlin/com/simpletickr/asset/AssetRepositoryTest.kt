@@ -1,5 +1,6 @@
 package com.simpletickr.asset
 
+import com.simpletickr.shared.CurrencyCode
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase
@@ -39,7 +40,7 @@ class AssetRepositoryTest {
         currency: String = "USD",
     ): Asset {
         val asset = repository.save(null, name, type)
-        listingRepository.save(asset.id, null, ticker, currency)
+        listingRepository.save(asset.id, null, ticker, CurrencyCode(currency))
         return repository.findById(asset.id)!!
     }
 
@@ -58,14 +59,14 @@ class AssetRepositoryTest {
         assertEquals(AssetType.STOCK, asset.type)
         assertEquals(1, asset.listings.size)
         assertEquals("TST_STOCK", asset.listings[0].ticker)
-        assertEquals("USD", asset.listings[0].currency)
+        assertEquals(CurrencyCode("USD"), asset.listings[0].currency)
         assertNull(asset.isin)
     }
 
     @Test
     fun `save stores isin when provided`() {
         val saved = repository.save("IE00B3RBWM25", "Vanguard FTSE All-World", AssetType.ETF)
-        listingRepository.save(saved.id, "Euronext Amsterdam", "VWCE", "EUR")
+        listingRepository.save(saved.id, "Euronext Amsterdam", "VWCE", CurrencyCode("EUR"))
         val found = repository.findById(saved.id)!!
         assertEquals("IE00B3RBWM25", found.isin)
         assertEquals("Euronext Amsterdam", found.listings[0].exchange)

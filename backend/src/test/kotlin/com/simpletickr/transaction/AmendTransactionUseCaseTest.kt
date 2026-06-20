@@ -2,6 +2,11 @@ package com.simpletickr.transaction
 
 import com.simpletickr.asset.Listing
 import com.simpletickr.asset.ListingRepository
+import com.simpletickr.fx.FxRate
+import com.simpletickr.fx.FxRateService
+import com.simpletickr.settings.UserSettings
+import com.simpletickr.settings.UserSettingsRepository
+import com.simpletickr.shared.CurrencyCode
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
 import org.mockito.kotlin.mock
@@ -17,11 +22,20 @@ class AmendTransactionUseCaseTest {
 
     private val transactionRepository = mock<TransactionRepository>()
     private val listingRepository = mock<ListingRepository>()
-    private val useCase = AmendTransactionUseCase(transactionRepository, listingRepository)
+    private val fxRateService = mock<FxRateService>()
+    private val userSettingsRepository = mock<UserSettingsRepository>()
+    private val useCase = AmendTransactionUseCase(transactionRepository, listingRepository, fxRateService, userSettingsRepository)
 
     private val date = LocalDate.of(2024, 1, 15)
-    private val listing = Listing(id = 5L, assetId = 2L, exchange = null, ticker = "AAPL", currency = "USD")
+    private val listing = Listing(id = 5L, assetId = 2L, exchange = null, ticker = "AAPL", currency = CurrencyCode("USD"))
     private val existing = Transaction(1L, 10L, 5L, 2L, TransactionType.BUY, BigDecimal("5"), BigDecimal("100"), date, null)
+
+    init {
+        whenever(userSettingsRepository.find()).thenReturn(UserSettings(CurrencyCode("EUR")))
+        whenever(fxRateService.lookupOrFetch(any(), any(), any())).thenReturn(
+            FxRate(CurrencyCode("EUR"), CurrencyCode("USD"), date, BigDecimal("1.08"))
+        )
+    }
 
     private fun amendCommand(
         quantity: BigDecimal = BigDecimal("10"),

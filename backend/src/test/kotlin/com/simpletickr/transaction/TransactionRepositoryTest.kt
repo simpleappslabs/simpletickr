@@ -3,6 +3,7 @@ package com.simpletickr.transaction
 import com.simpletickr.asset.AssetRepository
 import com.simpletickr.asset.AssetType
 import com.simpletickr.asset.ListingRepository
+import com.simpletickr.shared.CurrencyCode
 import com.simpletickr.portfolio.PortfolioRepository
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -47,7 +48,7 @@ class TransactionRepositoryTest {
         portfolioId = portfolioRepository.save("Test Portfolio").id
         val asset = assetRepository.save(null, "Test Asset", AssetType.STOCK)
         assetId = asset.id
-        listingId = listingRepository.save(assetId, null, "TST_TXN", "USD").id
+        listingId = listingRepository.save(assetId, null, "TST_TXN", CurrencyCode("USD")).id
     }
 
     private fun saveTransaction(
@@ -85,7 +86,7 @@ class TransactionRepositoryTest {
     fun `findAll with portfolioId filters by portfolio`() {
         val otherPortfolioId = portfolioRepository.save("Other Portfolio").id
         val otherAsset = assetRepository.save(null, "Test Asset 2", AssetType.STOCK)
-        val otherListingId = listingRepository.save(otherAsset.id, null, "TST_TXN2", "USD").id
+        val otherListingId = listingRepository.save(otherAsset.id, null, "TST_TXN2", CurrencyCode("USD")).id
 
         saveTransaction()
         repository.save(Transaction(0L, otherPortfolioId, otherListingId, otherAsset.id, TransactionType.BUY, BigDecimal("1"), BigDecimal("300"), LocalDate.now(), null))

@@ -1,5 +1,6 @@
 package com.simpletickr.transaction
 
+import com.simpletickr.fx.FxRateSource
 import org.springframework.dao.EmptyResultDataAccessException
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.jdbc.core.RowMapper
@@ -23,12 +24,13 @@ class TransactionRepository(private val jdbcTemplate: JdbcTemplate) {
             date = rs.getDate("date").toLocalDate(),
             fees = rs.getBigDecimal("fees"),
             fxRate = rs.getBigDecimal("fx_rate"),
+            fxRateSource = rs.getString("fx_rate_source")?.let { FxRateSource.valueOf(it) },
         )
     }
 
     private val baseSelect = """
         SELECT t.id, t.portfolio_id, t.listing_id, l.asset_id,
-               t.type, t.quantity, t.price, t.date, t.fees, t.fx_rate
+               t.type, t.quantity, t.price, t.date, t.fees, t.fx_rate, t.fx_rate_source
         FROM transactions t
         JOIN listings l ON l.id = t.listing_id
     """.trimIndent()
@@ -47,7 +49,7 @@ class TransactionRepository(private val jdbcTemplate: JdbcTemplate) {
         val keyHolder = GeneratedKeyHolder()
         jdbcTemplate.update({ con ->
             con.prepareStatement(
-                "INSERT INTO transactions (portfolio_id, listing_id, type, quantity, price, date, fees, fx_rate) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                "INSERT INTO transactions (portfolio_id, listing_id, type, quantity, price, date, fees, fx_rate, fx_rate_source) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 arrayOf("id")
             ).apply {
                 setLong(1, transaction.portfolioId)
@@ -58,6 +60,7 @@ class TransactionRepository(private val jdbcTemplate: JdbcTemplate) {
                 setObject(6, transaction.date)
                 setBigDecimal(7, transaction.fees)
                 setBigDecimal(8, transaction.fxRate)
+                setString(9, transaction.fxRateSource?.name)
             }
         }, keyHolder)
         return transaction.copy(id = keyHolder.key!!.toLong())
@@ -65,9 +68,9 @@ class TransactionRepository(private val jdbcTemplate: JdbcTemplate) {
 
     fun update(transaction: Transaction): Transaction? {
         val updated = jdbcTemplate.update(
-            "UPDATE transactions SET listing_id = ?, type = ?, quantity = ?, price = ?, date = ?, fees = ?, fx_rate = ? WHERE id = ?",
+            "UPDATE transactions SET listing_id = ?, type = ?, quantity = ?, price = ?, date = ?, fees = ?, fx_rate = ?, fx_rate_source = ? WHERE id = ?",
             transaction.listingId, transaction.type.name, transaction.quantity, transaction.price,
-            transaction.date, transaction.fees, transaction.fxRate, transaction.id
+            transaction.date, transaction.fees, transaction.fxRate, transaction.fxRateSource?.name, transaction.id
         )
         return if (updated == 0) null else transaction
     }

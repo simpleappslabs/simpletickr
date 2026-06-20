@@ -1,6 +1,7 @@
 package com.simpletickr.portfolio
 
 import com.simpletickr.asset.Listing
+import com.simpletickr.shared.CurrencyCode
 import com.simpletickr.transaction.Transaction
 import com.simpletickr.transaction.TransactionType
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -13,7 +14,7 @@ class RealizedGainsCalculatorTest {
     private val from = LocalDate.of(2024, 1, 1)
     private val to = LocalDate.of(2024, 12, 31)
 
-    private val listing = Listing(id = 10L, assetId = 1L, exchange = null, ticker = "AAPL", currency = "USD")
+    private val listing = Listing(id = 10L, assetId = 1L, exchange = null, ticker = "AAPL", currency = CurrencyCode("USD"))
     private val listingMap = mapOf(10L to listing)
 
     private fun buy(id: Long, date: String, qty: String, price: String, fees: String? = null) = Transaction(
@@ -45,7 +46,7 @@ class RealizedGainsCalculatorTest {
         assertBd("750", report.entries[0].proceeds)
         assertBd("500", report.entries[0].costBasis)
         assertBd("250", report.entries[0].gain)
-        assertBd("250", report.byCurrency["USD"]!!.totalGain)
+        assertBd("250", report.byCurrency[CurrencyCode("USD")]!!.totalGain)
     }
 
     @Test
@@ -140,7 +141,7 @@ class RealizedGainsCalculatorTest {
         val report = RealizedGainsCalculator.compute(txs, listingMap, RealizationMethod.FIFO, from, to)
         assertEquals(2, report.entries.size)
         val expectedGain = report.entries.fold(BigDecimal.ZERO) { acc, e -> acc + e.gain }
-        assertEquals(0, expectedGain.compareTo(report.byCurrency["USD"]!!.totalGain))
+        assertEquals(0, expectedGain.compareTo(report.byCurrency[CurrencyCode("USD")]!!.totalGain))
     }
 
     private fun assertBd(expected: String, actual: BigDecimal, message: String = "") =

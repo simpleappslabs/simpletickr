@@ -1,5 +1,6 @@
 package com.simpletickr.asset
 
+import com.simpletickr.shared.CurrencyCode
 import org.springframework.dao.EmptyResultDataAccessException
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.jdbc.support.GeneratedKeyHolder
@@ -10,7 +11,7 @@ class AssetRepository(private val jdbcTemplate: JdbcTemplate) {
 
     private data class AssetRow(
         val assetId: Long, val isin: String?, val name: String, val type: AssetType,
-        val listingId: Long, val exchange: String?, val ticker: String, val currency: String,
+        val listingId: Long, val exchange: String?, val ticker: String, val currency: CurrencyCode,
     )
 
     private fun aggregateRows(rows: List<AssetRow>): List<Asset> =
@@ -33,7 +34,7 @@ class AssetRepository(private val jdbcTemplate: JdbcTemplate) {
         listingId = rs.getLong("listing_id"),
         exchange = rs.getString("exchange"),
         ticker = rs.getString("ticker"),
-        currency = rs.getString("currency"),
+        currency = CurrencyCode(rs.getString("currency")),
     )
 
     fun findAll(): List<Asset> {

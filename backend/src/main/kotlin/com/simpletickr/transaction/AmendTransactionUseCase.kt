@@ -1,12 +1,17 @@
 package com.simpletickr.transaction
 
 import com.simpletickr.asset.ListingRepository
+import com.simpletickr.fx.FxRateService
+import com.simpletickr.fx.FxRateSource
+import com.simpletickr.settings.UserSettingsRepository
 import org.springframework.stereotype.Service
 
 @Service
 class AmendTransactionUseCase(
     private val transactionRepository: TransactionRepository,
     private val listingRepository: ListingRepository,
+    private val fxRateService: FxRateService,
+    private val userSettingsRepository: UserSettingsRepository,
 ) {
 
     fun execute(portfolioId: Long, id: Long, command: AmendTransactionCommand): Transaction? {
@@ -14,7 +19,22 @@ class AmendTransactionUseCase(
         if (existing.portfolioId != portfolioId) return null
         val listing = listingRepository.findById(command.listingId)
             ?: throw IllegalArgumentException("Listing ${command.listingId} not found")
-        val amended = existing.copy(
+        val baseCurrency = userSettingsRepository.find().baseCurrency
+
+        val (fxRate, fxRateSource) = when {
+            listing.currency == baseCurrency -> null to null
+            command.fxRate != null -> command.fxRate to FxRateSource.USER
+            else -> {
+                val found = fxRateService.lookupOrFetch(baseCurrency, listing.currency, command.date)
+                    ?: throw IllegalArgumentException(
+                        "No FX rate available for ${baseCurrency}/${listing.currency} on ${command.date}. " +
+                        "Please provide the rate manually."
+                    )
+                found.rate to FxRateSource.AUTO
+            }
+        }
+
+        return transactionRepository.update(existing.copy(
             listingId = command.listingId,
             assetId = listing.assetId,
             type = command.type,
@@ -22,7 +42,8 @@ class AmendTransactionUseCase(
             price = command.price,
             date = command.date,
             fees = command.fees,
-        )
-        return transactionRepository.update(amended)
+            fxRate = fxRate,
+            fxRateSource = fxRateSource,
+        ))
     }
 }

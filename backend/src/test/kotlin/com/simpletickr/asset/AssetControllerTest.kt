@@ -2,6 +2,7 @@ package com.simpletickr.asset
 
 import com.simpletickr.price.PriceProviderMapping
 import com.simpletickr.price.PriceProviderMappingRepository
+import com.simpletickr.shared.CurrencyCode
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
 import org.mockito.kotlin.anyOrNull
@@ -34,7 +35,7 @@ class AssetControllerTest {
     private lateinit var mappingRepository: PriceProviderMappingRepository
 
     private fun listing(id: Long, assetId: Long, ticker: String, currency: String = "USD") =
-        Listing(id, assetId, null, ticker, currency)
+        Listing(id, assetId, null, ticker, CurrencyCode(currency))
 
     private fun asset(id: Long, name: String, type: AssetType, vararg listings: Listing) =
         Asset(id, null, name, type, listings.toList())

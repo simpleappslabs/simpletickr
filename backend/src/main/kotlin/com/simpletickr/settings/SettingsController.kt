@@ -2,6 +2,7 @@ package com.simpletickr.settings
 
 import com.simpletickr.generated.api.SettingsApi
 import com.simpletickr.generated.model.Settings
+import com.simpletickr.shared.CurrencyCode
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.RestController
 
@@ -14,9 +15,11 @@ class SettingsController(
         ResponseEntity.ok(userSettingsRepository.find().toModel())
 
     override fun updateSettings(settings: Settings): ResponseEntity<Settings> {
-        userSettingsRepository.update(UserSettings(baseCurrency = settings.baseCurrency))
+        val code = try { CurrencyCode(settings.baseCurrency) }
+                   catch (_: IllegalArgumentException) { return ResponseEntity.badRequest().build() }
+        userSettingsRepository.update(UserSettings(baseCurrency = code))
         return ResponseEntity.ok(settings)
     }
 
-    private fun UserSettings.toModel() = Settings(baseCurrency = baseCurrency)
+    private fun UserSettings.toModel() = Settings(baseCurrency = baseCurrency.value)
 }

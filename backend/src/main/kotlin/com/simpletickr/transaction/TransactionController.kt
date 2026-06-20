@@ -1,10 +1,12 @@
 package com.simpletickr.transaction
 
+import com.simpletickr.fx.FxRateSource
 import com.simpletickr.generated.api.TransactionsApi
 import com.simpletickr.generated.model.TransactionRequest
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.RestController
 import java.math.BigDecimal
+import com.simpletickr.generated.model.FxRateSource as GeneratedFxRateSource
 import com.simpletickr.generated.model.Transaction as TransactionModel
 import com.simpletickr.generated.model.TransactionType as GeneratedTransactionType
 
@@ -32,6 +34,7 @@ class TransactionController(
             price = BigDecimal.valueOf(transactionRequest.price),
             date = transactionRequest.date,
             fees = transactionRequest.fees?.let { BigDecimal.valueOf(it) },
+            fxRate = transactionRequest.fxRate?.let { BigDecimal.valueOf(it) },
         )
         val transaction = recordTransactionUseCase.execute(portfolioId, command)
         return ResponseEntity.status(201).body(transaction.toModel())
@@ -45,6 +48,7 @@ class TransactionController(
             price = BigDecimal.valueOf(transactionRequest.price),
             date = transactionRequest.date,
             fees = transactionRequest.fees?.let { BigDecimal.valueOf(it) },
+            fxRate = transactionRequest.fxRate?.let { BigDecimal.valueOf(it) },
         )
         val transaction = amendTransactionUseCase.execute(portfolioId, id, command)
             ?: return ResponseEntity.notFound().build()
@@ -66,5 +70,7 @@ class TransactionController(
         price = price.toDouble(),
         date = date,
         fees = fees?.toDouble(),
+        fxRate = fxRate?.toDouble(),
+        fxRateSource = fxRateSource?.let { GeneratedFxRateSource.valueOf(it.name) },
     )
 }

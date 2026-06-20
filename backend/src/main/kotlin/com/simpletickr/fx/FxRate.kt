@@ -1,11 +1,12 @@
 package com.simpletickr.fx
 
+import com.simpletickr.shared.CurrencyCode
 import java.math.BigDecimal
 import java.time.LocalDate
 
 data class FxRate(
-    val baseCurrency: String,
-    val quoteCurrency: String,
+    val baseCurrency: CurrencyCode,
+    val quoteCurrency: CurrencyCode,
     val date: LocalDate,
     val rate: BigDecimal,
     // Interpretation: 1 baseCurrency = rate quoteCurrency

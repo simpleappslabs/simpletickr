@@ -94,7 +94,7 @@ class PortfolioController(
                 HoldingModel(
                     assetId = first.assetId,
                     assetName = first.assetName,
-                    baseCurrency = baseCurrency,
+                    baseCurrency = baseCurrency.value,
                     totalQuantity = totalQty.toDouble(),
                     avgCostBasisBase = avgCostBasisBase?.toDouble(),
                     totalCostBase = totalCostBase?.toDouble(),
@@ -128,7 +128,7 @@ class PortfolioController(
         listingId = holding.listingId,
         exchange = holding.exchange,
         ticker = holding.ticker,
-        currency = holding.currency,
+        currency = holding.currency.value,
         quantity = holding.quantity.toDouble(),
         avgCostLocal = holding.avgCostLocal.toDouble(),
         totalCostLocal = holding.totalCostLocal.toDouble(),
@@ -142,9 +142,9 @@ class PortfolioController(
         from = from,
         to = to,
         propertyEntries = entries.map { it.toModel() },
-        byCurrency = byCurrency.mapValues { (_, ct) ->
-            GeneratedCurrencyTotal(
-                currency = ct.currency,
+        byCurrency = byCurrency.entries.associate { (k, ct) ->
+            k.value to GeneratedCurrencyTotal(
+                currency = ct.currency.value,
                 tradeCount = ct.tradeCount,
                 totalProceeds = ct.totalProceeds.toDouble(),
                 totalCostBasis = ct.totalCostBasis.toDouble(),
@@ -156,7 +156,7 @@ class PortfolioController(
     private fun RealizedGainEntry.toModel() = GeneratedRealizedGainEntry(
         assetId = assetId,
         ticker = ticker,
-        currency = currency,
+        currency = currency.value,
         date = date,
         quantity = quantity.toDouble(),
         proceeds = proceeds.toDouble(),

@@ -1,5 +1,6 @@
 package com.simpletickr.portfolio
 
+import com.simpletickr.shared.CurrencyCode
 import java.math.BigDecimal
 
 // Pure WAC aggregation — one row per (assetId, listingId).
@@ -10,7 +11,7 @@ data class Holding(
     val listingId: Long,
     val exchange: String?,
     val ticker: String,
-    val currency: String,
+    val currency: CurrencyCode,
     val quantity: BigDecimal,
     val avgCostLocal: BigDecimal,
     val totalCostLocal: BigDecimal,

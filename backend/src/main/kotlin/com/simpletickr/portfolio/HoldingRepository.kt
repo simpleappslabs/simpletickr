@@ -1,5 +1,6 @@
 package com.simpletickr.portfolio
 
+import com.simpletickr.shared.CurrencyCode
 import com.simpletickr.transaction.TransactionType
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.stereotype.Repository
@@ -16,7 +17,7 @@ class HoldingRepository(private val jdbcTemplate: JdbcTemplate) {
         val listingId: Long,
         val exchange: String?,
         val ticker: String,
-        val currency: String,
+        val currency: CurrencyCode,
         val type: TransactionType,
         val quantity: BigDecimal,
         val price: BigDecimal,
@@ -56,7 +57,7 @@ class HoldingRepository(private val jdbcTemplate: JdbcTemplate) {
                 listingId = rs.getLong("listing_id"),
                 exchange = rs.getString("exchange"),
                 ticker = rs.getString("ticker"),
-                currency = rs.getString("currency"),
+                currency = CurrencyCode(rs.getString("currency")),
                 type = TransactionType.valueOf(rs.getString("type")),
                 quantity = rs.getBigDecimal("quantity"),
                 price = rs.getBigDecimal("price"),

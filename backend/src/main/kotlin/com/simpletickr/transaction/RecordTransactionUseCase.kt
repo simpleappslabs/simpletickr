@@ -1,7 +1,8 @@
 package com.simpletickr.transaction
 
 import com.simpletickr.asset.ListingRepository
-import com.simpletickr.fx.FxRateRepository
+import com.simpletickr.fx.FxRateService
+import com.simpletickr.fx.FxRateSource
 import com.simpletickr.settings.UserSettingsRepository
 import org.springframework.stereotype.Service
 
@@ -9,7 +10,7 @@ import org.springframework.stereotype.Service
 class RecordTransactionUseCase(
     private val transactionRepository: TransactionRepository,
     private val listingRepository: ListingRepository,
-    private val fxRateRepository: FxRateRepository,
+    private val fxRateService: FxRateService,
     private val userSettingsRepository: UserSettingsRepository,
 ) {
 
@@ -17,11 +18,21 @@ class RecordTransactionUseCase(
         val listing = listingRepository.findById(command.listingId)
             ?: throw IllegalArgumentException("Listing ${command.listingId} not found")
         val baseCurrency = userSettingsRepository.find().baseCurrency
-        val fxRate = if (listing.currency != baseCurrency)
-            fxRateRepository.findOnDate(baseCurrency, listing.currency, command.date)
-        else null
 
-        val transaction = Transaction(
+        val (fxRate, fxRateSource) = when {
+            listing.currency == baseCurrency -> null to null
+            command.fxRate != null -> command.fxRate to FxRateSource.USER
+            else -> {
+                val found = fxRateService.lookupOrFetch(baseCurrency, listing.currency, command.date)
+                    ?: throw IllegalArgumentException(
+                        "No FX rate available for ${baseCurrency}/${listing.currency} on ${command.date}. " +
+                        "Please provide the rate manually."
+                    )
+                found.rate to FxRateSource.AUTO
+            }
+        }
+
+        return transactionRepository.save(Transaction(
             id = 0L,
             portfolioId = portfolioId,
             listingId = command.listingId,
@@ -32,7 +43,7 @@ class RecordTransactionUseCase(
             date = command.date,
             fees = command.fees,
             fxRate = fxRate,
-        )
-        return transactionRepository.save(transaction)
+            fxRateSource = fxRateSource,
+        ))
     }
 }

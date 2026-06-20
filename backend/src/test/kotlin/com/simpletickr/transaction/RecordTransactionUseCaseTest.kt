@@ -2,9 +2,11 @@ package com.simpletickr.transaction
 
 import com.simpletickr.asset.Listing
 import com.simpletickr.asset.ListingRepository
-import com.simpletickr.fx.FxRateRepository
+import com.simpletickr.fx.FxRate
+import com.simpletickr.fx.FxRateService
 import com.simpletickr.settings.UserSettings
 import com.simpletickr.settings.UserSettingsRepository
+import com.simpletickr.shared.CurrencyCode
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
 import org.mockito.kotlin.mock
@@ -17,16 +19,19 @@ class RecordTransactionUseCaseTest {
 
     private val transactionRepository = mock<TransactionRepository>()
     private val listingRepository = mock<ListingRepository>()
-    private val fxRateRepository = mock<FxRateRepository>()
+    private val fxRateService = mock<FxRateService>()
     private val userSettingsRepository = mock<UserSettingsRepository>()
-    private val useCase = RecordTransactionUseCase(transactionRepository, listingRepository, fxRateRepository, userSettingsRepository)
-
-    init {
-        whenever(userSettingsRepository.find()).thenReturn(UserSettings("EUR"))
-    }
+    private val useCase = RecordTransactionUseCase(transactionRepository, listingRepository, fxRateService, userSettingsRepository)
 
     private val date = LocalDate.of(2024, 1, 15)
-    private val listing = Listing(id = 5L, assetId = 2L, exchange = null, ticker = "AAPL", currency = "USD")
+
+    init {
+        whenever(userSettingsRepository.find()).thenReturn(UserSettings(CurrencyCode("EUR")))
+        whenever(fxRateService.lookupOrFetch(any(), any(), any())).thenReturn(
+            FxRate(CurrencyCode("EUR"), CurrencyCode("USD"), date, BigDecimal("1.08"))
+        )
+    }
+    private val listing = Listing(id = 5L, assetId = 2L, exchange = null, ticker = "AAPL", currency = CurrencyCode("USD"))
 
     @Test
     fun `execute saves transaction and returns it with assigned id`() {

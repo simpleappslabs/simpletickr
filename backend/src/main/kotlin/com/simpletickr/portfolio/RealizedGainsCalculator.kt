@@ -1,6 +1,7 @@
 package com.simpletickr.portfolio
 
 import com.simpletickr.asset.Listing
+import com.simpletickr.shared.CurrencyCode
 import com.simpletickr.transaction.Transaction
 import com.simpletickr.transaction.TransactionType
 import java.math.BigDecimal
@@ -68,12 +69,13 @@ object RealizedGainsCalculator {
                     }
 
                     if (tx.date in from..to) {
+                        val listing = listingMap[tx.listingId] ?: continue
                         val costBasis = totalPurchaseValue + totalBuyFees
                         val proceeds = tx.quantity * tx.price - fees
                         entries += RealizedGainEntry(
                             assetId = tx.assetId,
-                            ticker = listingMap[tx.listingId]?.ticker ?: "?",
-                            currency = listingMap[tx.listingId]?.currency ?: "?",
+                            ticker = listing.ticker,
+                            currency = listing.currency,
                             date = tx.date,
                             quantity = tx.quantity,
                             proceeds = proceeds,
@@ -128,11 +130,12 @@ object RealizedGainsCalculator {
                         s.totalBuyFees -= allocatedBuyFees
 
                         if (tx.date in from..to) {
+                            val listing = listingMap[tx.listingId] ?: continue
                             val proceeds = tx.quantity * tx.price - fees
                             entries += RealizedGainEntry(
                                 assetId = tx.assetId,
-                                ticker = listingMap[tx.listingId]?.ticker ?: "?",
-                                currency = listingMap[tx.listingId]?.currency ?: "?",
+                                ticker = listing.ticker,
+                                currency = listing.currency,
                                 date = tx.date,
                                 quantity = tx.quantity,
                                 proceeds = proceeds,

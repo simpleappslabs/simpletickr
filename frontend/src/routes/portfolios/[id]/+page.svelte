@@ -239,13 +239,13 @@
             <p class="text-base-content/40 italic text-sm">No holdings yet. Record a transaction to get started.</p>
         {:else}
             <!-- Chart + holdings table -->
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div class="lg:col-span-1 flex items-center justify-center bg-base-200 rounded-box p-4">
+            <div class="flex flex-col lg:flex-row gap-6 items-start">
+                <div class="shrink-0 flex items-center justify-center bg-base-200 rounded-box p-4">
                     <canvas bind:this={chartCanvas} width="260" height="260"></canvas>
                 </div>
 
-                <div class="lg:col-span-2 overflow-x-auto">
-                    <table class="table table-zebra w-full">
+                <div class="flex-1 min-w-0 overflow-x-auto">
+                    <table class="table table-zebra table-sm w-full">
                         <thead>
                         <tr>
                             <th></th>
@@ -387,13 +387,15 @@
         <h3 class="text-lg font-bold mb-6">{editingTransaction ? 'Edit transaction' : 'Record transaction'}</h3>
 
         {#if portfolio}
-            <TransactionForm
-                {assets}
-                portfolioId={portfolio.id}
-                transaction={editingTransaction}
-                onSuccess={onTransactionSuccess}
-                onCancel={() => { transactionModalOpen = false; editingTransaction = null; }}
-            />
+            {#key transactionModalOpen}
+                <TransactionForm
+                    {assets}
+                    portfolioId={portfolio.id}
+                    transaction={editingTransaction}
+                    onSuccess={onTransactionSuccess}
+                    onCancel={() => { transactionModalOpen = false; editingTransaction = null; }}
+                />
+            {/key}
         {/if}
     </div>
     <form method="dialog" class="modal-backdrop">

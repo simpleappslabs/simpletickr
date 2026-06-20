@@ -1,5 +1,6 @@
 package com.simpletickr.transaction
 
+import com.simpletickr.fx.FxRateSource
 import java.math.BigDecimal
 import java.time.LocalDate
 
@@ -18,6 +19,7 @@ data class Transaction(
     // FX rate at execution time: 1 baseCurrency = fxRate listingCurrency.
     // Null when listing currency == base currency, or for transactions recorded before FX tracking was added.
     val fxRate: BigDecimal? = null,
+    val fxRateSource: FxRateSource? = null,
 ) {
     init {
         require(quantity > BigDecimal.ZERO) { "Quantity must be positive" }

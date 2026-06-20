@@ -559,6 +559,66 @@ paths:
               schema:
                 $ref: "#/components/schemas/SyncResult"
 
+  /fx/rate:
+    get:
+      tags: [FX]
+      operationId: lookupFxRate
+      summary: Look up (or on-demand fetch) the FX rate for a currency pair on a given date
+      parameters:
+        - name: base
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: quote
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: date
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Rate found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FxRatePoint"
+        "404":
+          description: Rate not available for this pair and date
+
+  /fx/sync:
+    post:
+      tags: [FX]
+      operationId: syncFxRates
+      summary: Trigger a manual FX rate sync for all currency pairs derived from portfolio listings
+      parameters:
+        - name: from
+          in: query
+          required: false
+          description: Start of the history window (defaults to today minus configured lookback-days)
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          required: false
+          description: End of the history window (defaults to today)
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Sync result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SyncResult"
+
   /listings/{id}:
     parameters:
       - name: id
@@ -964,6 +1024,13 @@ components:
           type: number
           format: double
           nullable: true
+        fxRate:
+          type: number
+          format: double
+          nullable: true
+          description: "FX rate at execution time: 1 baseCurrency = fxRate listingCurrency"
+        fxRateSource:
+          $ref: "#/components/schemas/FxRateSource"
 
     TransactionRequest:
       type: object
@@ -992,12 +1059,37 @@ components:
           type: number
           format: double
           nullable: true
+        fxRate:
+          type: number
+          format: double
+          nullable: true
+          description: "Override the FX rate. If omitted, the server will look it up automatically."
 
     TransactionType:
       type: string
       enum:
         - BUY
         - SELL
+
+    FxRateSource:
+      type: string
+      nullable: true
+      enum:
+        - AUTO
+        - USER
+        - IMPORTED
+
+    FxRatePoint:
+      type: object
+      required: [rate, date]
+      properties:
+        rate:
+          type: number
+          format: double
+        date:
+          type: string
+          format: date
+          description: Actual date of the rate (may be earlier than requested due to weekends/holidays)
 
     PriceMapping:
       type: object
