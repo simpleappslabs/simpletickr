@@ -1,6 +1,10 @@
 package com.simpletickr.portfolio
 
 import com.simpletickr.asset.AssetRepository
+import com.simpletickr.gains.RealizedGainsCalculator
+import com.simpletickr.gains.RealizationMethod
+import com.simpletickr.gains.RealizedGainEntry
+import com.simpletickr.gains.RealizedGainsReport
 import com.simpletickr.generated.api.PortfoliosApi
 import com.simpletickr.generated.model.PortfolioRequest
 import com.simpletickr.settings.UserSettingsRepository

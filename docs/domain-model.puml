@@ -1,0 +1,198 @@
+@startuml simpletickr-domain
+left to right direction
+skinparam packageStyle rectangle
+skinparam class {
+  BackgroundColor White
+  BorderColor #555
+  ArrowColor #555
+}
+skinparam class<<aggregate root>> {
+  BackgroundColor #DDEEFF
+  BorderColor #3366AA
+}
+skinparam class<<read model>> {
+  BackgroundColor #EEFFEE
+  BorderColor #336633
+  FontStyle italic
+}
+skinparam class<<value object>> {
+  BackgroundColor #FFF8DD
+  BorderColor #996600
+}
+
+' ── shared ───────────────────────────────────────────────────────────────────
+package shared {
+  class CurrencyCode <<value object>> {
+    value: String
+  }
+}
+
+' ── asset ────────────────────────────────────────────────────────────────────
+package asset {
+  class Asset <<aggregate root>> {
+    id: Long
+    isin: String?
+    name: String
+    type: AssetType
+  }
+  class Listing <<entity>> {
+    id: Long
+    assetId: Long
+    exchange: String?
+    ticker: String
+    currency: CurrencyCode
+  }
+  enum AssetType {
+    STOCK
+    ETF
+    CRYPTO
+    OTHER
+  }
+
+  Asset "1" *-down- "0..*" Listing : contains
+  Asset --> AssetType
+  Listing --> CurrencyCode
+}
+
+' ── portfolio ────────────────────────────────────────────────────────────────
+package portfolio {
+  class Portfolio <<aggregate root>> {
+    id: Long
+    name: String
+  }
+  class Holding <<read model>> {
+    assetId: Long
+    listingId: Long
+    ticker: String
+    currency: CurrencyCode
+    quantity: BigDecimal
+    avgCostLocal: BigDecimal
+    totalCostLocal: BigDecimal
+  }
+  class HoldingWithValuation <<read model>> {
+    marketValueLocal: BigDecimal?
+    marketValueBase: BigDecimal?
+    unrealizedPnlBase: BigDecimal?
+    unrealizedPnlPct: BigDecimal?
+    fxUsed: BigDecimal?
+  }
+
+  HoldingWithValuation *-- Holding : wraps
+  Holding --> CurrencyCode
+}
+
+' ── transaction ──────────────────────────────────────────────────────────────
+package transaction {
+  class Transaction <<entity>> {
+    id: Long
+    portfolioId: Long
+    listingId: Long
+    assetId: Long
+    type: TransactionType
+    quantity: BigDecimal
+    price: BigDecimal
+    date: LocalDate
+    fees: BigDecimal?
+    fxRate: BigDecimal?
+    fxRateSource: FxRateSource?
+  }
+  enum TransactionType {
+    BUY
+    SELL
+  }
+
+  Transaction --> TransactionType
+}
+
+' ── price ────────────────────────────────────────────────────────────────────
+package price {
+  class PricePoint <<value object>> {
+    date: LocalDate
+    price: BigDecimal
+  }
+  class PriceProviderMapping <<entity>> {
+    id: Long
+    listingId: Long
+    provider: String
+    externalId: String
+  }
+}
+
+' ── fx ───────────────────────────────────────────────────────────────────────
+package fx {
+  class FxRate <<entity>> {
+    baseCurrency: CurrencyCode
+    quoteCurrency: CurrencyCode
+    date: LocalDate
+    rate: BigDecimal
+  }
+  enum FxRateSource {
+    YAHOO_FINANCE
+  }
+
+  FxRate --> CurrencyCode
+  FxRate --> FxRateSource
+}
+
+' ── settings ─────────────────────────────────────────────────────────────────
+package settings {
+  class UserSettings <<value object>> {
+    baseCurrency: CurrencyCode
+  }
+  UserSettings --> CurrencyCode
+}
+
+' ── gains ────────────────────────────────────────────────────────────────────
+package gains {
+  class RealizedGainsReport <<read model>> {
+    method: RealizationMethod
+    from: LocalDate
+    to: LocalDate
+  }
+  class RealizedGainEntry <<read model>> {
+    assetId: Long
+    ticker: String
+    currency: CurrencyCode
+    date: LocalDate
+    quantity: BigDecimal
+    proceeds: BigDecimal
+    buyFees: BigDecimal
+    sellFees: BigDecimal
+    costBasis: BigDecimal
+    gain: BigDecimal
+  }
+  class CurrencyTotal <<read model>> {
+    currency: CurrencyCode
+    tradeCount: Int
+    totalProceeds: BigDecimal
+    totalCostBasis: BigDecimal
+    totalGain: BigDecimal
+  }
+  enum RealizationMethod {
+    FIFO
+    AVERAGE_COST
+  }
+
+  RealizedGainsReport "1" *-- "0..*" RealizedGainEntry
+  RealizedGainsReport "1" *-- "0..*" CurrencyTotal : keyed by currency
+  RealizedGainsReport --> RealizationMethod
+  RealizedGainEntry --> CurrencyCode
+  CurrencyTotal --> CurrencyCode
+}
+
+' ── cross-package relationships ───────────────────────────────────────────────
+Portfolio "1" o-- "0..*" Transaction         : owns >
+Transaction "0..*" --> "1" Listing           : references >
+Listing "1" -- "0..*" PricePoint             : price history >
+Listing "1" -- "0..1" PriceProviderMapping   : provider mapping >
+Transaction --> FxRateSource
+
+Holding .up.> Transaction                    : derived from
+Holding --> Listing                          : (listingId)
+HoldingWithValuation .up.> PricePoint        : uses latest price
+HoldingWithValuation .up.> FxRate            : uses rate
+
+RealizedGainsReport .up.> Transaction        : computed from
+RealizedGainEntry --> Listing                : (ticker, currency)
+
+@enduml
