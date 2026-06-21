@@ -47,7 +47,7 @@ class PriceController(
     }
 
     override fun syncPrices(from: LocalDate?, to: LocalDate?): ResponseEntity<SyncResultModel> {
-        val result = priceService.syncAll(from, to)
+        val result = priceService.syncAll(from, to, com.simpletickr.sync.SyncTrigger.MANUAL)
         return ResponseEntity.ok(SyncResultModel(synced = result.synced, failed = result.failed))
     }
 

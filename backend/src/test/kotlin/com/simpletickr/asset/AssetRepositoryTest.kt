@@ -1,5 +1,7 @@
 package com.simpletickr.asset
 
+import com.simpletickr.price.AssetPriceHistoryRepository
+import com.simpletickr.price.PricePoint
 import com.simpletickr.shared.CurrencyCode
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -10,6 +12,8 @@ import org.springframework.context.annotation.Import
 import org.testcontainers.containers.PostgreSQLContainer
 import org.testcontainers.junit.jupiter.Container
 import org.testcontainers.junit.jupiter.Testcontainers
+import java.math.BigDecimal
+import java.time.LocalDate
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
@@ -18,7 +22,7 @@ import kotlin.test.assertTrue
 @JdbcTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Testcontainers
-@Import(AssetRepository::class, ListingRepository::class)
+@Import(AssetRepository::class, ListingRepository::class, AssetPriceHistoryRepository::class)
 class AssetRepositoryTest {
 
     companion object {
@@ -32,6 +36,9 @@ class AssetRepositoryTest {
 
     @Autowired
     private lateinit var listingRepository: ListingRepository
+
+    @Autowired
+    private lateinit var priceHistoryRepository: AssetPriceHistoryRepository
 
     private fun saveAssetWithListing(
         name: String = "Test Asset",
@@ -97,5 +104,60 @@ class AssetRepositoryTest {
         val asset = saveAssetWithListing(ticker = "TST_DEL")
         repository.delete(asset.id)
         assertNull(repository.findById(asset.id))
+    }
+
+    @Test
+    fun `findAllWithLatestPrice returns null price fields when no price history`() {
+        val asset = repository.save(null, "No Price Asset", AssetType.STOCK)
+        listingRepository.save(asset.id, null, "NPA", CurrencyCode("USD"))
+
+        val results = repository.findAllWithLatestPrice()
+        val found = results.find { it.id == asset.id }
+
+        assertNotNull(found)
+        assertEquals(1, found.listings.size)
+        assertNull(found.listings[0].lastPriceDate)
+        assertNull(found.listings[0].lastPrice)
+    }
+
+    @Test
+    fun `findAllWithLatestPrice returns latest price date and price`() {
+        val asset = repository.save(null, "Priced Asset", AssetType.STOCK)
+        val listing = listingRepository.save(asset.id, null, "PRC", CurrencyCode("USD"))
+        val older = LocalDate.of(2026, 1, 1)
+        val newer = LocalDate.of(2026, 6, 1)
+        priceHistoryRepository.upsert(listing.id, listOf(
+            PricePoint(older, BigDecimal("100.00")),
+            PricePoint(newer, BigDecimal("150.00")),
+        ))
+
+        val results = repository.findAllWithLatestPrice()
+        val found = results.find { it.id == asset.id }
+
+        assertNotNull(found)
+        val l = found.listings[0]
+        assertEquals(newer, l.lastPriceDate)
+        assertEquals(0, BigDecimal("150.00").compareTo(l.lastPrice))
+    }
+
+    @Test
+    fun `findAllWithLatestPrice returns correct prices per listing when asset has multiple listings`() {
+        val asset = repository.save(null, "Multi-listing Asset", AssetType.ETF)
+        val listing1 = listingRepository.save(asset.id, "NYSE", "ML1", CurrencyCode("USD"))
+        val listing2 = listingRepository.save(asset.id, "LSE", "ML2", CurrencyCode("GBP"))
+        val date = LocalDate.of(2026, 6, 15)
+        priceHistoryRepository.upsert(listing1.id, listOf(PricePoint(date, BigDecimal("200.00"))))
+
+        val results = repository.findAllWithLatestPrice()
+        val found = results.find { it.id == asset.id }
+
+        assertNotNull(found)
+        assertEquals(2, found.listings.size)
+        val l1 = found.listings.find { it.ticker == "ML1" }!!
+        val l2 = found.listings.find { it.ticker == "ML2" }!!
+        assertEquals(date, l1.lastPriceDate)
+        assertEquals(0, BigDecimal("200.00").compareTo(l1.lastPrice))
+        assertNull(l2.lastPriceDate)
+        assertNull(l2.lastPrice)
     }
 }

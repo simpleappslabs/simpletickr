@@ -19,7 +19,9 @@ tags:
   - name: Assets
   - name: Transactions
   - name: Prices
+  - name: FX
   - name: Settings
+  - name: Sync
 
 paths:
   /health:
@@ -619,6 +621,34 @@ paths:
               schema:
                 $ref: "#/components/schemas/SyncResult"
 
+  /sync/history:
+    get:
+      tags: [Sync]
+      operationId: getSyncHistory
+      summary: Get recent sync history entries for a given sync type
+      parameters:
+        - name: type
+          in: query
+          required: true
+          description: The sync type to filter by
+          schema:
+            $ref: "#/components/schemas/SyncType"
+      responses:
+        "200":
+          description: Recent sync history entries (up to 20, newest first)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SyncHistoryEntry"
+        "400":
+          description: Invalid sync type
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
   /listings/{id}:
     parameters:
       - name: id
@@ -833,7 +863,7 @@ components:
         listings:
           type: array
           items:
-            $ref: "#/components/schemas/Listing"
+            $ref: "#/components/schemas/ListingWithPrice"
 
     CreateAssetRequest:
       type: object
@@ -1342,3 +1372,90 @@ components:
           type: number
           format: double
           nullable: true
+    ListingWithPrice:
+      type: object
+      required:
+        - id
+        - assetId
+        - ticker
+        - currency
+      properties:
+        id:
+          type: integer
+          format: int64
+        assetId:
+          type: integer
+          format: int64
+        exchange:
+          type: string
+          nullable: true
+          example: Euronext Amsterdam
+        ticker:
+          type: string
+          example: VWCE
+        currency:
+          type: string
+          example: EUR
+        lastPriceDate:
+          type: string
+          format: date
+          nullable: true
+          description: Date of the most recent price in the price history
+        lastPrice:
+          type: number
+          format: double
+          nullable: true
+          description: Most recent closing price
+
+    SyncType:
+      type: string
+      enum:
+        - PRICE
+        - FX
+
+    SyncTrigger:
+      type: string
+      enum:
+        - MANUAL
+        - SCHEDULED
+
+    SyncStatus:
+      type: string
+      enum:
+        - SUCCESS
+        - FAILED
+        - PARTIAL
+
+    SyncHistoryEntry:
+      type: object
+      required:
+        - id
+        - type
+        - trigger
+        - status
+        - startedAt
+        - durationMs
+        - synced
+        - failed
+      properties:
+        id:
+          type: integer
+          format: int64
+        type:
+          $ref: "#/components/schemas/SyncType"
+        trigger:
+          $ref: "#/components/schemas/SyncTrigger"
+        status:
+          $ref: "#/components/schemas/SyncStatus"
+        startedAt:
+          type: string
+          format: date-time
+          description: ISO 8601 timestamp of when the sync started
+        durationMs:
+          type: integer
+          format: int64
+          description: Duration of the sync in milliseconds
+        synced:
+          type: integer
+        failed:
+          type: integer

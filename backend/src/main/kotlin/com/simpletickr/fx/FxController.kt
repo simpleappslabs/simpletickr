@@ -22,7 +22,7 @@ class FxController(
     }
 
     override fun syncFxRates(from: LocalDate?, to: LocalDate?): ResponseEntity<SyncResultModel> {
-        val result = fxRateService.syncAll(from, to)
+        val result = fxRateService.syncAll(from, to, com.simpletickr.sync.SyncTrigger.MANUAL)
         return ResponseEntity.ok(SyncResultModel(synced = result.synced, failed = result.failed))
     }
 }

@@ -15,6 +15,7 @@ import com.simpletickr.generated.model.AssetDetail as AssetDetailModel
 import com.simpletickr.generated.model.AssetType as GeneratedAssetType
 import com.simpletickr.generated.model.Listing as ListingModel
 import com.simpletickr.generated.model.ListingDetail as ListingDetailModel
+import com.simpletickr.generated.model.ListingWithPrice as ListingWithPriceModel
 import com.simpletickr.generated.model.PriceMapping as PriceMappingModel
 
 @RestController
@@ -25,7 +26,7 @@ class AssetController(
 ) : AssetsApi {
 
     override fun listAssets(): ResponseEntity<List<AssetModel>> =
-        ResponseEntity.ok(assetRepository.findAll().map { it.toModel() })
+        ResponseEntity.ok(assetRepository.findAllWithLatestPrice().map { it.toModel() })
 
     override fun getAsset(id: Long): ResponseEntity<AssetDetailModel> {
         val asset = assetRepository.findById(id) ?: return ResponseEntity.notFound().build()
@@ -89,7 +90,28 @@ class AssetController(
         isin = isin,
         name = name,
         type = GeneratedAssetType.valueOf(type.name),
-        listings = listings.map { it.toModel() },
+        listings = listings.map { l ->
+            ListingWithPriceModel(id = l.id, assetId = l.assetId, exchange = l.exchange,
+                ticker = l.ticker, currency = l.currency.value, lastPriceDate = null, lastPrice = null)
+        },
+    )
+
+    private fun AssetWithPrices.toModel() = AssetModel(
+        id = id,
+        isin = isin,
+        name = name,
+        type = GeneratedAssetType.valueOf(type.name),
+        listings = listings.map { l ->
+            ListingWithPriceModel(
+                id = l.id,
+                assetId = l.assetId,
+                exchange = l.exchange,
+                ticker = l.ticker,
+                currency = l.currency.value,
+                lastPriceDate = l.lastPriceDate,
+                lastPrice = l.lastPrice?.toDouble(),
+            )
+        },
     )
 
     private fun Asset.toDetailModel(mappings: Map<Long, List<PriceProviderMapping>>) = AssetDetailModel(

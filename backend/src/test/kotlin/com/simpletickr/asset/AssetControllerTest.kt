@@ -37,15 +37,21 @@ class AssetControllerTest {
     private fun listing(id: Long, assetId: Long, ticker: String, currency: String = "USD") =
         Listing(id, assetId, null, ticker, CurrencyCode(currency))
 
+    private fun listingWithPrice(id: Long, assetId: Long, ticker: String, currency: String = "USD") =
+        ListingWithPrice(id, assetId, null, ticker, CurrencyCode(currency), null, null)
+
     private fun asset(id: Long, name: String, type: AssetType, vararg listings: Listing) =
         Asset(id, null, name, type, listings.toList())
 
+    private fun assetWithPrices(id: Long, name: String, type: AssetType, vararg listings: ListingWithPrice) =
+        AssetWithPrices(id, null, name, type, listings.toList())
+
     @Test
     fun `GET assets returns list of assets with listings`() {
-        whenever(assetRepository.findAll()).thenReturn(
+        whenever(assetRepository.findAllWithLatestPrice()).thenReturn(
             listOf(
-                asset(1L, "Apple Inc.", AssetType.STOCK, listing(10L, 1L, "AAPL")),
-                asset(2L, "Bitcoin", AssetType.CRYPTO, listing(11L, 2L, "BTC")),
+                assetWithPrices(1L, "Apple Inc.", AssetType.STOCK, listingWithPrice(10L, 1L, "AAPL")),
+                assetWithPrices(2L, "Bitcoin", AssetType.CRYPTO, listingWithPrice(11L, 2L, "BTC")),
             )
         )
 

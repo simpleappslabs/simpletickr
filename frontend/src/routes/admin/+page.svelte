@@ -1,23 +1,50 @@
 <script lang="ts">
-    import { syncPrices, syncFxRates } from '$lib/api/sdk.gen';
-    import type { SyncResult } from '$lib/api/types.gen';
+    import { onMount } from 'svelte';
+    import { syncPrices, syncFxRates, getSyncHistory } from '$lib/api/sdk.gen';
+    import type { SyncResult, SyncHistoryEntry } from '$lib/api/types.gen';
+    import SyncHistoryTable from '$lib/SyncHistoryTable.svelte';
     import '$lib/client';
 
     let pricesSyncing = $state(false);
     let pricesResult = $state<SyncResult | null>(null);
     let pricesError = $state<string | null>(null);
+    let priceHistory = $state<SyncHistoryEntry[]>([]);
 
     let fxSyncing = $state(false);
     let fxResult = $state<SyncResult | null>(null);
     let fxError = $state<string | null>(null);
+    let fxHistory = $state<SyncHistoryEntry[]>([]);
+
+    onMount(async () => {
+        const [ph, fh] = await Promise.all([
+            getSyncHistory({ query: { type: 'PRICE' } }),
+            getSyncHistory({ query: { type: 'FX' } }),
+        ]);
+        priceHistory = ph.data ?? [];
+        fxHistory = fh.data ?? [];
+    });
+
+    async function refreshPriceHistory() {
+        const { data } = await getSyncHistory({ query: { type: 'PRICE' } });
+        priceHistory = data ?? [];
+    }
+
+    async function refreshFxHistory() {
+        const { data } = await getSyncHistory({ query: { type: 'FX' } });
+        fxHistory = data ?? [];
+    }
 
     async function triggerPriceSync() {
         pricesSyncing = true;
         pricesResult = null;
         pricesError = null;
         const res = await syncPrices();
-        if (res.error) pricesError = 'Price sync failed.';
-        else pricesResult = res.data ?? null;
+        if (res.error) {
+            pricesError = 'Price sync failed.';
+        } else {
+            pricesResult = res.data ?? null;
+            await refreshPriceHistory();
+        }
         pricesSyncing = false;
     }
 
@@ -26,8 +53,12 @@
         fxResult = null;
         fxError = null;
         const res = await syncFxRates();
-        if (res.error) fxError = 'FX sync failed.';
-        else fxResult = res.data ?? null;
+        if (res.error) {
+            fxError = 'FX sync failed.';
+        } else {
+            fxResult = res.data ?? null;
+            await refreshFxHistory();
+        }
         fxSyncing = false;
     }
 </script>
@@ -59,6 +90,7 @@
                     {/if}
                 </div>
             {/if}
+            <SyncHistoryTable entries={priceHistory} />
         </div>
 
         <!-- FX sync -->
@@ -84,6 +116,7 @@
                     {/if}
                 </div>
             {/if}
+            <SyncHistoryTable entries={fxHistory} />
         </div>
     </div>
 </div>

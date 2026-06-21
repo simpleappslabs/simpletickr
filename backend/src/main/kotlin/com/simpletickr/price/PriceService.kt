@@ -1,5 +1,9 @@
 package com.simpletickr.price
 
+import com.simpletickr.sync.SyncHistoryRepository
+import com.simpletickr.sync.SyncStatus
+import com.simpletickr.sync.SyncTrigger
+import com.simpletickr.sync.SyncType
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.scheduling.annotation.Scheduled
@@ -13,6 +17,7 @@ class PriceService(
     private val providers: List<PriceProvider>,
     private val mappingRepository: PriceProviderMappingRepository,
     private val historyRepository: AssetPriceHistoryRepository,
+    private val syncHistoryRepository: SyncHistoryRepository,
     @Value("\${price.sync.lookback-days:30}") private val lookbackDays: Long,
 ) {
 
@@ -20,11 +25,12 @@ class PriceService(
 
     @Scheduled(cron = "0 0 22 * * MON-FRI")
     fun scheduledSync() {
-        val result = syncAll()
+        val result = syncAll(trigger = SyncTrigger.SCHEDULED)
         log.info("Scheduled price sync: synced={}, failed={}", result.synced, result.failed)
     }
 
-    fun syncAll(from: LocalDate? = null, to: LocalDate? = null): SyncResult {
+    fun syncAll(from: LocalDate? = null, to: LocalDate? = null, trigger: SyncTrigger = SyncTrigger.MANUAL): SyncResult {
+        val startedAt = System.currentTimeMillis()
         val effectiveFrom = from ?: LocalDate.now().minusDays(lookbackDays)
         val effectiveTo = to ?: LocalDate.now()
         val mappings = mappingRepository.findAll()
@@ -48,6 +54,13 @@ class PriceService(
             }
         }
 
-        return SyncResult(synced, failed)
+        val result = SyncResult(synced, failed)
+        val status = when {
+            result.failed == 0 -> SyncStatus.SUCCESS
+            result.synced == 0 -> SyncStatus.FAILED
+            else -> SyncStatus.PARTIAL
+        }
+        syncHistoryRepository.record(SyncType.PRICE, trigger, status, System.currentTimeMillis() - startedAt, synced, failed)
+        return result
     }
 }
