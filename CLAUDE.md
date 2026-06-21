@@ -17,11 +17,11 @@ task frontend:dev        # start frontend dev server on localhost:5173
 
 # Tests
 task backend:test        # run all backend tests (Testcontainers, no running DB needed)
-task frontend:test:e2e   # run Playwright E2E tests (starts isolated test DB + backend automatically)
+task frontend:test:e2e   # run Playwright E2E tests (starts isolated test DB automatically; backend must already be running)
 task ci                  # api:lint + backend:build + frontend pipeline in parallel (no E2E)
 
 # Run a single backend test class:
-cd backend && ./gradlew test --tests "com.simpletickr.transaction.TransactionServiceTest"
+cd backend && ./gradlew test --tests "com.simpletickr.transaction.TransactionRepositoryTest"
 
 # Type-check frontend:
 cd frontend && npm run check
@@ -52,34 +52,73 @@ Key constraints that shape every decision:
 |---|---|
 | Domain class | Business rules and invariants — pure Kotlin, unit-testable with no framework |
 | Repository | SQL and row-mapping only; returns domain objects |
-| Service | Fetches data → calls domain method → persists result; does not own rules |
-| Controller | HTTP translation only: deserialize → call service → serialize |
+| Service / Use case | Fetches data → calls domain method → persists result; does not own rules |
+| Controller | HTTP translation only: deserialize → call service/use case → serialize |
 
-If a business rule lives in a service, it belongs in the domain class instead. If a method can't be unit-tested without Spring, it's in the wrong place.
+The transaction domain uses explicit use-case classes (`RecordTransactionUseCase`, `AmendTransactionUseCase`, `RemoveTransactionUseCase`) instead of a service. Other domains use services (e.g. `HoldingService`, `ValuationService`, `FxRateService`). Either form applies the same rule: no business logic, just orchestration.
+
+If a business rule lives in a service or use case, it belongs in the domain class instead. If a method can't be unit-tested without Spring, it's in the wrong place.
 
 ### Backend package structure
 
 ```
 backend/src/main/kotlin/com/simpletickr/
 ├── portfolio/
-│   ├── Portfolio.kt               # aggregate root — enforces cross-transaction invariants
-│   ├── Holding.kt                 # computed read-model (no DB table)
-│   ├── PortfolioController.kt     # implements generated OpenAPI interface
-│   ├── PortfolioRepository.kt     # raw SQL via JdbcTemplate
-│   └── HoldingRepository.kt      # SQL aggregation for the holdings read-model
+│   ├── Portfolio.kt                  # aggregate root — enforces cross-transaction invariants
+│   ├── Holding.kt                    # computed read-model (no DB table)
+│   ├── HoldingWithValuation.kt       # read-model with current price and FX-normalised value
+│   ├── CurrencyTotal.kt              # read-model: total portfolio value per currency
+│   ├── PortfolioController.kt        # implements generated OpenAPI interface
+│   ├── PortfolioRepository.kt        # raw SQL via JdbcTemplate
+│   ├── HoldingRepository.kt          # SQL aggregation for the holdings read-model
+│   ├── HoldingService.kt             # fetches holdings with valuation and FX normalisation
+│   ├── ValuationService.kt           # looks up latest prices and converts to portfolio currency
+│   ├── RealizedGainsCalculator.kt    # pure domain logic for FIFO/AVCO gain calculation
+│   ├── RealizedGainsReport.kt
+│   ├── RealizedGainEntry.kt
+│   └── RealizationMethod.kt          # enum: FIFO | AVCO
 ├── asset/
 │   ├── Asset.kt
+│   ├── Listing.kt                    # exchange listing (ticker + exchange) for an asset
 │   ├── AssetController.kt
-│   └── AssetRepository.kt
+│   ├── AssetRepository.kt
+│   └── ListingRepository.kt
 ├── transaction/
 │   ├── Transaction.kt
-│   ├── TransactionService.kt      # coordinates repositories; delegates rules to Portfolio
-│   ├── TransactionController.kt   # implements generated OpenAPI interface
-│   └── TransactionRepository.kt  # raw SQL; also owns net-quantity queries
+│   ├── TransactionCommands.kt        # command data classes (RecordCommand, AmendCommand, …)
+│   ├── RecordTransactionUseCase.kt   # validates + persists a new transaction
+│   ├── AmendTransactionUseCase.kt
+│   ├── RemoveTransactionUseCase.kt
+│   ├── TransactionController.kt      # implements generated OpenAPI interface
+│   └── TransactionRepository.kt      # raw SQL; also owns net-quantity queries
+├── price/
+│   ├── PricePoint.kt
+│   ├── PriceProvider.kt              # interface implemented by Yahoo Finance provider
+│   ├── PriceProviderMapping.kt       # maps an asset listing to a provider symbol
+│   ├── PriceProviderMappingRepository.kt
+│   ├── AssetPriceHistoryRepository.kt
+│   ├── PriceService.kt               # orchestrates price fetching and history writes
+│   ├── PriceController.kt
+│   └── YahooFinancePriceProvider.kt
+├── fx/
+│   ├── FxRate.kt
+│   ├── FxRateSource.kt               # enum: e.g. YAHOO_FINANCE
+│   ├── FxRateProvider.kt             # interface for FX rate sources
+│   ├── FxRateRepository.kt
+│   ├── FxRateService.kt              # fetches and caches FX rates
+│   ├── FxController.kt
+│   └── YahooFinanceFxRateProvider.kt
+├── settings/
+│   ├── UserSettings.kt               # e.g. base currency, price sync window
+│   ├── UserSettingsRepository.kt
+│   └── SettingsController.kt
 ├── health/
 │   └── HealthController.kt
 └── shared/
-    └── WebConfig.kt               # CORS — allows localhost:5173 and localhost:4173
+    ├── CurrencyCode.kt               # value type wrapping ISO 4217 currency codes
+    ├── GlobalExceptionHandler.kt
+    ├── E2eTestConfig.kt              # bean overrides active only under the e2e Spring profile
+    └── WebConfig.kt                  # CORS — allows localhost:5173 and localhost:4173
 ```
 
 ### Frontend route structure
@@ -147,4 +186,8 @@ gh project item-edit --project-id PVT_kwDOCTgvzs4BVhCw --id "$ITEM_ID" \
 - Kotlin: idiomatic, no nullable abuse, prefer data classes and sealed classes
 - SQL: explicit column names, no `SELECT *`
 - Svelte: Svelte 5 runes (`$state`, `$derived`), component-per-feature, no inline `<style>` blocks — use Tailwind/DaisyUI classes
+- Frontend components follow the **container/presentational** pattern:
+  - *Presentational* components (e.g. `TransactionsTable`, `HoldingsTable`) receive data as props and emit events via callbacks — no API calls, no modal state
+  - *Container* components (e.g. `TransactionsSection`) own state, call the API, and render presentational children alongside their modals — exposed to the page via a single `onchange` callback
+  - Pages are thin: they fetch initial data, own page-level state (portfolio, holdings), and compose containers
 - No comments that restate what the code does — only explain non-obvious intent
