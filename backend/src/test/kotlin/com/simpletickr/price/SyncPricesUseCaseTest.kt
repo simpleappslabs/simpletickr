@@ -15,13 +15,13 @@ import java.math.BigDecimal
 import java.time.LocalDate
 import kotlin.test.assertEquals
 
-class PriceServiceTest {
+class SyncPricesUseCaseTest {
 
     private val providers = listOf(mock<PriceProvider>())
     private val mappingRepository = mock<PriceProviderMappingRepository>()
     private val historyRepository = mock<AssetPriceHistoryRepository>()
     private val syncHistoryRepository = mock<SyncHistoryRepository>()
-    private val service = PriceService(providers, mappingRepository, historyRepository, syncHistoryRepository, 30L)
+    private val useCase = SyncPricesUseCase(providers, mappingRepository, historyRepository, syncHistoryRepository, 30L)
 
     private val provider = providers[0]
     private val mapping = PriceProviderMapping(1L, 10L, "YAHOO", "AAPL")
@@ -32,11 +32,11 @@ class PriceServiceTest {
     }
 
     @Test
-    fun `syncAll records SUCCESS when all listings sync`() {
+    fun `execute records SUCCESS when all listings sync`() {
         whenever(mappingRepository.findAll()).thenReturn(listOf(mapping))
         whenever(provider.fetchHistory(any(), any(), any())).thenReturn(listOf(pricePoint))
 
-        val result = service.syncAll(trigger = SyncTrigger.MANUAL)
+        val result = useCase.execute(trigger = SyncTrigger.MANUAL)
 
         assertEquals(1, result.synced)
         assertEquals(0, result.failed)
@@ -46,11 +46,11 @@ class PriceServiceTest {
     }
 
     @Test
-    fun `syncAll records FAILED when all listings fail`() {
+    fun `execute records FAILED when all listings fail`() {
         whenever(mappingRepository.findAll()).thenReturn(listOf(mapping))
         whenever(provider.fetchHistory(any(), any(), any())).thenReturn(emptyList())
 
-        val result = service.syncAll(trigger = SyncTrigger.SCHEDULED)
+        val result = useCase.execute(trigger = SyncTrigger.SCHEDULED)
 
         assertEquals(0, result.synced)
         assertEquals(1, result.failed)
@@ -60,13 +60,13 @@ class PriceServiceTest {
     }
 
     @Test
-    fun `syncAll records PARTIAL when some listings fail`() {
+    fun `execute records PARTIAL when some listings fail`() {
         val mapping2 = PriceProviderMapping(2L, 11L, "YAHOO", "MSFT")
         whenever(mappingRepository.findAll()).thenReturn(listOf(mapping, mapping2))
         whenever(provider.fetchHistory(eq("AAPL"), any(), any())).thenReturn(listOf(pricePoint))
         whenever(provider.fetchHistory(eq("MSFT"), any(), any())).thenReturn(emptyList())
 
-        val result = service.syncAll(trigger = SyncTrigger.MANUAL)
+        val result = useCase.execute(trigger = SyncTrigger.MANUAL)
 
         assertEquals(1, result.synced)
         assertEquals(1, result.failed)
@@ -76,10 +76,10 @@ class PriceServiceTest {
     }
 
     @Test
-    fun `syncAll records SUCCESS with zero counts when no mappings exist`() {
+    fun `execute records SUCCESS with zero counts when no mappings exist`() {
         whenever(mappingRepository.findAll()).thenReturn(emptyList())
 
-        service.syncAll(trigger = SyncTrigger.SCHEDULED)
+        useCase.execute(trigger = SyncTrigger.SCHEDULED)
 
         val statusCaptor = argumentCaptor<SyncStatus>()
         verify(syncHistoryRepository).record(

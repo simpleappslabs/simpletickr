@@ -1,18 +1,16 @@
 package com.simpletickr.asset
 
 import com.simpletickr.price.PriceProviderMapping
-import com.simpletickr.price.PriceProviderMappingRepository
 import com.simpletickr.shared.CurrencyCode
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
-import org.mockito.kotlin.anyOrNull
 import org.mockito.kotlin.whenever
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest
+import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.http.MediaType
 import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.web.servlet.MockMvc
-import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
@@ -25,14 +23,13 @@ class AssetControllerTest {
     @Autowired
     private lateinit var mockMvc: MockMvc
 
-    @MockitoBean
-    private lateinit var assetRepository: AssetRepository
-
-    @MockitoBean
-    private lateinit var listingRepository: ListingRepository
-
-    @MockitoBean
-    private lateinit var mappingRepository: PriceProviderMappingRepository
+    @MockitoBean private lateinit var assetService: AssetService
+    @MockitoBean private lateinit var createAssetUseCase: CreateAssetUseCase
+    @MockitoBean private lateinit var updateAssetUseCase: UpdateAssetUseCase
+    @MockitoBean private lateinit var deleteAssetUseCase: DeleteAssetUseCase
+    @MockitoBean private lateinit var createListingUseCase: CreateListingUseCase
+    @MockitoBean private lateinit var updateListingUseCase: UpdateListingUseCase
+    @MockitoBean private lateinit var deleteListingUseCase: DeleteListingUseCase
 
     private fun listing(id: Long, assetId: Long, ticker: String, currency: String = "USD") =
         Listing(id, assetId, null, ticker, CurrencyCode(currency))
@@ -48,7 +45,7 @@ class AssetControllerTest {
 
     @Test
     fun `GET assets returns list of assets with listings`() {
-        whenever(assetRepository.findAllWithLatestPrice()).thenReturn(
+        whenever(assetService.listAssets()).thenReturn(
             listOf(
                 assetWithPrices(1L, "Apple Inc.", AssetType.STOCK, listingWithPrice(10L, 1L, "AAPL")),
                 assetWithPrices(2L, "Bitcoin", AssetType.CRYPTO, listingWithPrice(11L, 2L, "BTC")),
@@ -65,12 +62,9 @@ class AssetControllerTest {
 
     @Test
     fun `GET asset by id returns 200 with listings and price mappings`() {
-        whenever(assetRepository.findById(1L)).thenReturn(
-            asset(1L, "Apple Inc.", AssetType.STOCK, listing(10L, 1L, "AAPL"))
-        )
-        whenever(mappingRepository.findByListingIds(listOf(10L))).thenReturn(
-            mapOf(10L to listOf(PriceProviderMapping(1L, 10L, "YAHOO", "AAPL")))
-        )
+        val asset = asset(1L, "Apple Inc.", AssetType.STOCK, listing(10L, 1L, "AAPL"))
+        val mappings = mapOf(10L to listOf(PriceProviderMapping(1L, 10L, "YAHOO", "AAPL")))
+        whenever(assetService.getAsset(1L)).thenReturn(AssetDetail(asset, mappings))
 
         mockMvc.perform(get("/assets/1"))
             .andExpect(status().isOk)
@@ -81,7 +75,7 @@ class AssetControllerTest {
 
     @Test
     fun `GET asset by id returns 404 when not found`() {
-        whenever(assetRepository.findById(99L)).thenReturn(null)
+        whenever(assetService.getAsset(99L)).thenReturn(null)
 
         mockMvc.perform(get("/assets/99"))
             .andExpect(status().isNotFound)
@@ -89,11 +83,8 @@ class AssetControllerTest {
 
     @Test
     fun `POST asset creates and returns 201`() {
-        val saved = Asset(5L, null, "NVIDIA Corporation", AssetType.STOCK)
-        val withListing = asset(5L, "NVIDIA Corporation", AssetType.STOCK, listing(20L, 5L, "NVDA"))
-        whenever(assetRepository.save(anyOrNull(), any(), any())).thenReturn(saved)
-        whenever(listingRepository.save(any(), anyOrNull(), any(), any())).thenReturn(listing(20L, 5L, "NVDA"))
-        whenever(assetRepository.findById(5L)).thenReturn(withListing)
+        val result = asset(5L, "NVIDIA Corporation", AssetType.STOCK, listing(20L, 5L, "NVDA"))
+        whenever(createAssetUseCase.execute(any())).thenReturn(result)
 
         mockMvc.perform(
             post("/assets")
@@ -107,10 +98,7 @@ class AssetControllerTest {
 
     @Test
     fun `DELETE asset returns 409 when asset has linked transactions`() {
-        whenever(assetRepository.findById(1L)).thenReturn(
-            asset(1L, "Apple Inc.", AssetType.STOCK, listing(10L, 1L, "AAPL"))
-        )
-        whenever(assetRepository.delete(1L)).thenThrow(
+        whenever(deleteAssetUseCase.execute(1L)).thenThrow(
             DataIntegrityViolationException("fk_transactions_listing")
         )
 

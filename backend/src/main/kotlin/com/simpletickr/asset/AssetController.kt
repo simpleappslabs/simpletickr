@@ -5,10 +5,7 @@ import com.simpletickr.generated.model.CreateAssetRequest
 import com.simpletickr.generated.model.ListingRequest
 import com.simpletickr.generated.model.UpdateAssetRequest
 import com.simpletickr.price.PriceProviderMapping
-import com.simpletickr.price.PriceProviderMappingRepository
-import com.simpletickr.shared.CurrencyCode
 import org.springframework.http.ResponseEntity
-import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.bind.annotation.RestController
 import com.simpletickr.generated.model.Asset as AssetModel
 import com.simpletickr.generated.model.AssetDetail as AssetDetailModel
@@ -20,68 +17,50 @@ import com.simpletickr.generated.model.PriceMapping as PriceMappingModel
 
 @RestController
 class AssetController(
-    private val assetRepository: AssetRepository,
-    private val listingRepository: ListingRepository,
-    private val mappingRepository: PriceProviderMappingRepository,
+    private val assetService: AssetService,
+    private val createAssetUseCase: CreateAssetUseCase,
+    private val updateAssetUseCase: UpdateAssetUseCase,
+    private val deleteAssetUseCase: DeleteAssetUseCase,
+    private val createListingUseCase: CreateListingUseCase,
+    private val updateListingUseCase: UpdateListingUseCase,
+    private val deleteListingUseCase: DeleteListingUseCase,
 ) : AssetsApi {
 
     override fun listAssets(): ResponseEntity<List<AssetModel>> =
-        ResponseEntity.ok(assetRepository.findAllWithLatestPrice().map { it.toModel() })
+        ResponseEntity.ok(assetService.listAssets().map { it.toModel() })
 
     override fun getAsset(id: Long): ResponseEntity<AssetDetailModel> {
-        val asset = assetRepository.findById(id) ?: return ResponseEntity.notFound().build()
-        val mappings = mappingRepository.findByListingIds(asset.listings.map { it.id })
-        return ResponseEntity.ok(asset.toDetailModel(mappings))
+        val detail = assetService.getAsset(id) ?: return ResponseEntity.notFound().build()
+        return ResponseEntity.ok(detail.asset.toDetailModel(detail.mappings))
     }
 
-    @Transactional
     override fun createAsset(createAssetRequest: CreateAssetRequest): ResponseEntity<AssetModel> {
         if (createAssetRequest.listings.isEmpty()) return ResponseEntity.badRequest().build()
-        val saved = assetRepository.save(
-            isin = createAssetRequest.isin,
-            name = createAssetRequest.name,
-            type = AssetType.valueOf(createAssetRequest.type.value),
-        )
-        for (listingReq in createAssetRequest.listings) {
-            val listing = listingRepository.save(saved.id, listingReq.exchange, listingReq.ticker, CurrencyCode(listingReq.currency))
-            listingReq.priceMappings?.forEach { m ->
-                mappingRepository.upsert(listing.id, m.provider, m.externalId)
-            }
-        }
-        return ResponseEntity.status(201).body(assetRepository.findById(saved.id)!!.toModel())
+        return ResponseEntity.status(201).body(createAssetUseCase.execute(createAssetRequest).toModel())
     }
 
     override fun updateAsset(id: Long, updateAssetRequest: UpdateAssetRequest): ResponseEntity<AssetModel> {
-        assetRepository.update(
-            id = id,
-            isin = updateAssetRequest.isin,
-            name = updateAssetRequest.name,
-            type = AssetType.valueOf(updateAssetRequest.type.value),
-        ) ?: return ResponseEntity.notFound().build()
-        return ResponseEntity.ok(assetRepository.findById(id)!!.toModel())
+        val asset = updateAssetUseCase.execute(id, updateAssetRequest) ?: return ResponseEntity.notFound().build()
+        return ResponseEntity.ok(asset.toModel())
     }
 
     override fun deleteAsset(id: Long): ResponseEntity<Unit> {
-        if (assetRepository.findById(id) == null) return ResponseEntity.notFound().build()
-        assetRepository.delete(id)
+        if (!deleteAssetUseCase.execute(id)) return ResponseEntity.notFound().build()
         return ResponseEntity.noContent().build()
     }
 
     override fun createListing(id: Long, listingRequest: ListingRequest): ResponseEntity<ListingModel> {
-        if (assetRepository.findById(id) == null) return ResponseEntity.notFound().build()
-        val listing = listingRepository.save(id, listingRequest.exchange, listingRequest.ticker, CurrencyCode(listingRequest.currency))
+        val listing = createListingUseCase.execute(id, listingRequest) ?: return ResponseEntity.notFound().build()
         return ResponseEntity.status(201).body(listing.toModel())
     }
 
     override fun updateListing(id: Long, listingRequest: ListingRequest): ResponseEntity<ListingModel> {
-        val updated = listingRepository.update(id, listingRequest.exchange, listingRequest.ticker, CurrencyCode(listingRequest.currency))
-            ?: return ResponseEntity.notFound().build()
-        return ResponseEntity.ok(updated.toModel())
+        val listing = updateListingUseCase.execute(id, listingRequest) ?: return ResponseEntity.notFound().build()
+        return ResponseEntity.ok(listing.toModel())
     }
 
     override fun deleteListing(id: Long): ResponseEntity<Unit> {
-        if (listingRepository.findById(id) == null) return ResponseEntity.notFound().build()
-        listingRepository.delete(id)
+        if (!deleteListingUseCase.execute(id)) return ResponseEntity.notFound().build()
         return ResponseEntity.noContent().build()
     }
 

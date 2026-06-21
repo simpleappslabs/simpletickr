@@ -10,10 +10,10 @@ import java.time.LocalDate
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-class RemoveTransactionUseCaseTest {
+class DeleteTransactionUseCaseTest {
 
     private val transactionRepository = mock<TransactionRepository>()
-    private val useCase = RemoveTransactionUseCase(transactionRepository)
+    private val useCase = DeleteTransactionUseCase(transactionRepository)
 
     private val existing = Transaction(1L, 10L, 5L, 2L, TransactionType.BUY, BigDecimal("5"), BigDecimal("100"), LocalDate.of(2024, 1, 15), null)
 

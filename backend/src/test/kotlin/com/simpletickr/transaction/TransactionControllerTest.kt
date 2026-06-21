@@ -27,7 +27,7 @@ class TransactionControllerTest {
     @MockitoBean private lateinit var transactionRepository: TransactionRepository
     @MockitoBean private lateinit var recordTransactionUseCase: RecordTransactionUseCase
     @MockitoBean private lateinit var amendTransactionUseCase: AmendTransactionUseCase
-    @MockitoBean private lateinit var removeTransactionUseCase: RemoveTransactionUseCase
+    @MockitoBean private lateinit var deleteTransactionUseCase: DeleteTransactionUseCase
 
     private val sample = Transaction(
         id = 1L, portfolioId = 10L, listingId = 5L, assetId = 2L,
@@ -108,7 +108,7 @@ class TransactionControllerTest {
 
     @Test
     fun `DELETE portfolio transaction returns 204`() {
-        whenever(removeTransactionUseCase.execute(10L, 1L)).thenReturn(true)
+        whenever(deleteTransactionUseCase.execute(10L, 1L)).thenReturn(true)
 
         mockMvc.perform(delete("/portfolios/10/transactions/1"))
             .andExpect(status().isNoContent)
@@ -116,7 +116,7 @@ class TransactionControllerTest {
 
     @Test
     fun `DELETE portfolio transaction returns 404 when not found`() {
-        whenever(removeTransactionUseCase.execute(10L, 99L)).thenReturn(false)
+        whenever(deleteTransactionUseCase.execute(10L, 99L)).thenReturn(false)
 
         mockMvc.perform(delete("/portfolios/10/transactions/99"))
             .andExpect(status().isNotFound)

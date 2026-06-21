@@ -15,7 +15,7 @@ class TransactionController(
     private val transactionRepository: TransactionRepository,
     private val recordTransactionUseCase: RecordTransactionUseCase,
     private val amendTransactionUseCase: AmendTransactionUseCase,
-    private val removeTransactionUseCase: RemoveTransactionUseCase,
+    private val deleteTransactionUseCase: DeleteTransactionUseCase,
 ) : TransactionsApi {
 
     override fun listTransactions(portfolioId: Long?): ResponseEntity<List<TransactionModel>> =
@@ -56,7 +56,7 @@ class TransactionController(
     }
 
     override fun removeTransaction(portfolioId: Long, id: Long): ResponseEntity<Unit> {
-        if (!removeTransactionUseCase.execute(portfolioId, id)) return ResponseEntity.notFound().build()
+        if (!deleteTransactionUseCase.execute(portfolioId, id)) return ResponseEntity.notFound().build()
         return ResponseEntity.noContent().build()
     }
 

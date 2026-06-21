@@ -6,14 +6,13 @@ import com.simpletickr.sync.SyncTrigger
 import com.simpletickr.sync.SyncType
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
-import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
 import java.time.LocalDate
 
 data class SyncResult(val synced: Int, val failed: Int)
 
 @Service
-class PriceService(
+class SyncPricesUseCase(
     private val providers: List<PriceProvider>,
     private val mappingRepository: PriceProviderMappingRepository,
     private val historyRepository: AssetPriceHistoryRepository,
@@ -23,13 +22,7 @@ class PriceService(
 
     private val log = LoggerFactory.getLogger(javaClass)
 
-    @Scheduled(cron = "0 0 22 * * MON-FRI")
-    fun scheduledSync() {
-        val result = syncAll(trigger = SyncTrigger.SCHEDULED)
-        log.info("Scheduled price sync: synced={}, failed={}", result.synced, result.failed)
-    }
-
-    fun syncAll(from: LocalDate? = null, to: LocalDate? = null, trigger: SyncTrigger = SyncTrigger.MANUAL): SyncResult {
+    fun execute(from: LocalDate? = null, to: LocalDate? = null, trigger: SyncTrigger = SyncTrigger.MANUAL): SyncResult {
         val startedAt = System.currentTimeMillis()
         val effectiveFrom = from ?: LocalDate.now().minusDays(lookbackDays)
         val effectiveTo = to ?: LocalDate.now()
