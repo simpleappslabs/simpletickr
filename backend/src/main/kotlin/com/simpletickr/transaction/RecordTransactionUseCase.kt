@@ -4,6 +4,7 @@ import com.simpletickr.asset.ListingRepository
 import com.simpletickr.fx.FxRateService
 import com.simpletickr.fx.FxRateSource
 import com.simpletickr.settings.UserSettingsRepository
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 
 @Service
@@ -14,7 +15,10 @@ class RecordTransactionUseCase(
     private val userSettingsRepository: UserSettingsRepository,
 ) {
 
+    private val log = LoggerFactory.getLogger(javaClass)
+
     fun execute(portfolioId: Long, command: RecordTransactionCommand): Transaction {
+        log.info("Recording {} transaction: portfolioId={}, listingId={}, date={}", command.type, portfolioId, command.listingId, command.date)
         val listing = listingRepository.findById(command.listingId)
             ?: throw IllegalArgumentException("Listing ${command.listingId} not found")
         val baseCurrency = userSettingsRepository.find().baseCurrency

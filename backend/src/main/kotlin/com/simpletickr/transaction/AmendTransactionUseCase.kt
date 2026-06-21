@@ -4,6 +4,7 @@ import com.simpletickr.asset.ListingRepository
 import com.simpletickr.fx.FxRateService
 import com.simpletickr.fx.FxRateSource
 import com.simpletickr.settings.UserSettingsRepository
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 
 @Service
@@ -14,7 +15,10 @@ class AmendTransactionUseCase(
     private val userSettingsRepository: UserSettingsRepository,
 ) {
 
+    private val log = LoggerFactory.getLogger(javaClass)
+
     fun execute(portfolioId: Long, id: Long, command: AmendTransactionCommand): Transaction? {
+        log.info("Amending transaction id={} in portfolio {}", id, portfolioId)
         val existing = transactionRepository.findById(id) ?: return null
         if (existing.portfolioId != portfolioId) return null
         val listing = listingRepository.findById(command.listingId)

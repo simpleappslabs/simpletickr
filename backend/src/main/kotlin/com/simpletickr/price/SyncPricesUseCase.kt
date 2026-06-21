@@ -23,6 +23,7 @@ class SyncPricesUseCase(
     private val log = LoggerFactory.getLogger(javaClass)
 
     fun execute(from: LocalDate? = null, to: LocalDate? = null, trigger: SyncTrigger = SyncTrigger.MANUAL): SyncResult {
+        log.info("Syncing prices: trigger={}", trigger)
         val startedAt = System.currentTimeMillis()
         val effectiveFrom = from ?: LocalDate.now().minusDays(lookbackDays)
         val effectiveTo = to ?: LocalDate.now()

@@ -52,10 +52,16 @@ Key constraints that shape every decision:
 |---|---|
 | Domain class | Business rules and invariants — pure Kotlin, unit-testable with no framework |
 | Repository | SQL and row-mapping only; returns domain objects |
-| Service / Use case | Fetches data → calls domain method → persists result; does not own rules |
-| Controller | HTTP translation only: deserialize → call service/use case → serialize |
+| Use case | **Write side (commands)**: validate → orchestrate → persist. One class per named operation. |
+| Service | **Read side (queries)**: compute, assemble, and return projections. No side effects. |
+| Scheduled job | Thin `@Component` with a single `@Scheduled` method; delegates immediately to a use case |
+| Controller | HTTP translation only: deserialize → call service or use case → serialize |
 
-The transaction domain uses explicit use-case classes (`RecordTransactionUseCase`, `AmendTransactionUseCase`, `RemoveTransactionUseCase`) instead of a service. Other domains use services (e.g. `HoldingService`, `ValuationService`, `FxRateService`). Either form applies the same rule: no business logic, just orchestration.
+**Controllers talk only to services and use cases — never directly to repositories.**
+
+Use cases exist even when the logic is simple today, because they provide a single place to add validation, duplicate checks, audit logging, and authorization later.
+
+`FxRateService.lookupOrFetch()` is the one exception: it may write to the DB as a lazy cache-fill, but callers treat it as a query. The write is an implementation detail, not a command.
 
 If a business rule lives in a service or use case, it belongs in the domain class instead. If a method can't be unit-tested without Spring, it's in the wrong place.
 
@@ -80,6 +86,13 @@ backend/src/main/kotlin/com/simpletickr/
 ├── asset/
 │   ├── Asset.kt
 │   ├── Listing.kt                    # exchange listing (ticker + exchange) for an asset
+│   ├── AssetService.kt               # read: listAssets, getAsset (with price mappings)
+│   ├── CreateAssetUseCase.kt         # write: create asset + listings + price mappings (transactional)
+│   ├── UpdateAssetUseCase.kt
+│   ├── DeleteAssetUseCase.kt
+│   ├── CreateListingUseCase.kt
+│   ├── UpdateListingUseCase.kt
+│   ├── DeleteListingUseCase.kt
 │   ├── AssetController.kt
 │   ├── AssetRepository.kt
 │   └── ListingRepository.kt
@@ -88,7 +101,7 @@ backend/src/main/kotlin/com/simpletickr/
 │   ├── TransactionCommands.kt        # command data classes (RecordCommand, AmendCommand, …)
 │   ├── RecordTransactionUseCase.kt   # validates + persists a new transaction
 │   ├── AmendTransactionUseCase.kt
-│   ├── RemoveTransactionUseCase.kt
+│   ├── DeleteTransactionUseCase.kt
 │   ├── TransactionController.kt      # implements generated OpenAPI interface
 │   └── TransactionRepository.kt      # raw SQL; also owns net-quantity queries
 ├── price/
@@ -97,7 +110,11 @@ backend/src/main/kotlin/com/simpletickr/
 │   ├── PriceProviderMapping.kt       # maps an asset listing to a provider symbol
 │   ├── PriceProviderMappingRepository.kt
 │   ├── AssetPriceHistoryRepository.kt
-│   ├── PriceService.kt               # orchestrates price fetching and history writes
+│   ├── PriceQueryService.kt          # read: listMappings, getMapping, getPriceHistory
+│   ├── SyncPricesUseCase.kt          # write: fetch + upsert price history for all mappings
+│   ├── SetPriceMappingUseCase.kt
+│   ├── DeletePriceMappingUseCase.kt
+│   ├── PriceSyncJob.kt               # @Scheduled — delegates to SyncPricesUseCase
 │   ├── PriceController.kt
 │   └── YahooFinancePriceProvider.kt
 ├── fx/
@@ -105,7 +122,9 @@ backend/src/main/kotlin/com/simpletickr/
 │   ├── FxRateSource.kt               # enum: e.g. YAHOO_FINANCE
 │   ├── FxRateProvider.kt             # interface for FX rate sources
 │   ├── FxRateRepository.kt
-│   ├── FxRateService.kt              # fetches and caches FX rates
+│   ├── FxRateService.kt              # read: lookupOrFetch (lazy cache — may write as side effect)
+│   ├── SyncFxRatesUseCase.kt         # write: fetch + upsert FX rates for all currency pairs
+│   ├── FxRateSyncJob.kt              # @Scheduled — delegates to SyncFxRatesUseCase
 │   ├── FxController.kt
 │   └── YahooFinanceFxRateProvider.kt
 ├── settings/

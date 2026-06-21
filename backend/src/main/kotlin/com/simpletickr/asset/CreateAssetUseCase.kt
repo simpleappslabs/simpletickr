@@ -3,6 +3,7 @@ package com.simpletickr.asset
 import com.simpletickr.generated.model.CreateAssetRequest
 import com.simpletickr.price.PriceProviderMappingRepository
 import com.simpletickr.shared.CurrencyCode
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -13,8 +14,11 @@ class CreateAssetUseCase(
     private val mappingRepository: PriceProviderMappingRepository,
 ) {
 
+    private val log = LoggerFactory.getLogger(javaClass)
+
     @Transactional
     fun execute(request: CreateAssetRequest): Asset {
+        log.info("Creating asset: name={}, type={}, listings={}", request.name, request.type, request.listings.size)
         val saved = assetRepository.save(
             isin = request.isin,
             name = request.name,

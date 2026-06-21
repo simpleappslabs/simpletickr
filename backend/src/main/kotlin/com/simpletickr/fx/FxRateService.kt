@@ -15,7 +15,7 @@ class FxRateService(
     fun lookupOrFetch(baseCurrency: CurrencyCode, quoteCurrency: CurrencyCode, date: LocalDate): FxRate? {
         fxRateRepository.findOnDate(baseCurrency, quoteCurrency, date)?.let { return it }
 
-        val provider = providers.find { it.name == "YAHOO" } ?: return null
+        val provider = providers.firstOrNull() ?: return null
         val rates = provider.fetchHistory(baseCurrency, quoteCurrency, date.minusDays(7), date)
         if (rates.isEmpty()) return null
         fxRateRepository.upsert(rates)
