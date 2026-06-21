@@ -5,6 +5,7 @@ import com.simpletickr.generated.model.CreateAssetRequest
 import com.simpletickr.generated.model.ListingRequest
 import com.simpletickr.generated.model.UpdateAssetRequest
 import com.simpletickr.price.PriceProviderMapping
+import com.simpletickr.shared.CurrencyCode
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.RestController
 import com.simpletickr.generated.model.Asset as AssetModel
@@ -36,11 +37,29 @@ class AssetController(
 
     override fun createAsset(createAssetRequest: CreateAssetRequest): ResponseEntity<AssetModel> {
         if (createAssetRequest.listings.isEmpty()) return ResponseEntity.badRequest().build()
-        return ResponseEntity.status(201).body(createAssetUseCase.execute(createAssetRequest).toModel())
+        val command = CreateAssetCommand(
+            name = createAssetRequest.name,
+            type = AssetType.valueOf(createAssetRequest.type.value),
+            isin = createAssetRequest.isin,
+            listings = createAssetRequest.listings.map { l ->
+                CreateListingCommand(
+                    exchange = l.exchange,
+                    ticker = l.ticker,
+                    currency = CurrencyCode(l.currency),
+                    priceMappings = l.priceMappings?.map { m -> PriceMappingCommand(m.provider, m.externalId) },
+                )
+            },
+        )
+        return ResponseEntity.status(201).body(createAssetUseCase.execute(command).toModel())
     }
 
     override fun updateAsset(id: Long, updateAssetRequest: UpdateAssetRequest): ResponseEntity<AssetModel> {
-        val asset = updateAssetUseCase.execute(id, updateAssetRequest) ?: return ResponseEntity.notFound().build()
+        val command = UpdateAssetCommand(
+            name = updateAssetRequest.name,
+            type = AssetType.valueOf(updateAssetRequest.type.value),
+            isin = updateAssetRequest.isin,
+        )
+        val asset = updateAssetUseCase.execute(id, command) ?: return ResponseEntity.notFound().build()
         return ResponseEntity.ok(asset.toModel())
     }
 
@@ -50,12 +69,23 @@ class AssetController(
     }
 
     override fun createListing(id: Long, listingRequest: ListingRequest): ResponseEntity<ListingModel> {
-        val listing = createListingUseCase.execute(id, listingRequest) ?: return ResponseEntity.notFound().build()
+        val command = CreateListingCommand(
+            exchange = listingRequest.exchange,
+            ticker = listingRequest.ticker,
+            currency = CurrencyCode(listingRequest.currency),
+            priceMappings = listingRequest.priceMappings?.map { m -> PriceMappingCommand(m.provider, m.externalId) },
+        )
+        val listing = createListingUseCase.execute(id, command) ?: return ResponseEntity.notFound().build()
         return ResponseEntity.status(201).body(listing.toModel())
     }
 
     override fun updateListing(id: Long, listingRequest: ListingRequest): ResponseEntity<ListingModel> {
-        val listing = updateListingUseCase.execute(id, listingRequest) ?: return ResponseEntity.notFound().build()
+        val command = UpdateListingCommand(
+            exchange = listingRequest.exchange,
+            ticker = listingRequest.ticker,
+            currency = CurrencyCode(listingRequest.currency),
+        )
+        val listing = updateListingUseCase.execute(id, command) ?: return ResponseEntity.notFound().build()
         return ResponseEntity.ok(listing.toModel())
     }
 

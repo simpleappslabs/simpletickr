@@ -55,7 +55,7 @@ Key constraints that shape every decision:
 | Use case | **Write side (commands)**: validate → orchestrate → persist. One class per named operation. |
 | Service | **Read side (queries)**: compute, assemble, and return projections. No side effects. |
 | Scheduled job | Thin `@Component` with a single `@Scheduled` method; delegates immediately to a use case |
-| Controller | HTTP translation only: deserialize → call service or use case → serialize |
+| Controller | HTTP translation only: deserialize → map request to command → call service or use case → serialize |
 
 **Controllers talk only to services and use cases — never directly to repositories.**
 
@@ -86,6 +86,7 @@ backend/src/main/kotlin/com/simpletickr/
 ├── asset/
 │   ├── Asset.kt
 │   ├── Listing.kt                    # exchange listing (ticker + exchange) for an asset
+│   ├── AssetCommands.kt              # command data classes (CreateAssetCommand, UpdateAssetCommand, …)
 │   ├── AssetService.kt               # read: listAssets, getAsset (with price mappings)
 │   ├── CreateAssetUseCase.kt         # write: create asset + listings + price mappings (transactional)
 │   ├── UpdateAssetUseCase.kt
@@ -110,6 +111,7 @@ backend/src/main/kotlin/com/simpletickr/
 │   ├── PriceProviderMapping.kt       # maps an asset listing to a provider symbol
 │   ├── PriceProviderMappingRepository.kt
 │   ├── AssetPriceHistoryRepository.kt
+│   ├── PriceCommands.kt              # command data classes (SetPriceMappingCommand)
 │   ├── PriceQueryService.kt          # read: listMappings, getMapping, getPriceHistory
 │   ├── SyncPricesUseCase.kt          # write: fetch + upsert price history for all mappings
 │   ├── SetPriceMappingUseCase.kt

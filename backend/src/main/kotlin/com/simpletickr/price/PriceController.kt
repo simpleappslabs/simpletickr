@@ -29,8 +29,8 @@ class PriceController(
     }
 
     override fun setPriceMapping(id: Long, provider: String, priceMappingRequest: PriceMappingRequest): ResponseEntity<PriceMappingModel> {
-        val mapping = setPriceMappingUseCase.execute(id, provider, priceMappingRequest.externalId)
-            ?: return ResponseEntity.notFound().build()
+        val command = SetPriceMappingCommand(listingId = id, provider = provider, externalId = priceMappingRequest.externalId)
+        val mapping = setPriceMappingUseCase.execute(command) ?: return ResponseEntity.notFound().build()
         return ResponseEntity.ok(mapping.toModel())
     }
 

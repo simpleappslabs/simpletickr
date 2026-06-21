@@ -1,7 +1,5 @@
 package com.simpletickr.asset
 
-import com.simpletickr.generated.model.ListingRequest
-import com.simpletickr.shared.CurrencyCode
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 
@@ -13,9 +11,9 @@ class CreateListingUseCase(
 
     private val log = LoggerFactory.getLogger(javaClass)
 
-    fun execute(assetId: Long, request: ListingRequest): Listing? {
-        log.info("Creating listing for asset id={}: {}:{}", assetId, request.exchange, request.ticker)
+    fun execute(assetId: Long, command: CreateListingCommand): Listing? {
+        log.info("Creating listing for asset id={}: {}:{}", assetId, command.exchange, command.ticker)
         if (assetRepository.findById(assetId) == null) return null
-        return listingRepository.save(assetId, request.exchange, request.ticker, CurrencyCode(request.currency))
+        return listingRepository.save(assetId, command.exchange, command.ticker, command.currency)
     }
 }

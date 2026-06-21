@@ -4,9 +4,9 @@ test.describe('Asset browser', () => {
 	test('shows seeded assets in the table', async ({ page }) => {
 		await page.goto('/assets');
 
-		await expect(page.locator('text=AAPL')).toBeVisible();
-		await expect(page.locator('text=BTC')).toBeVisible();
-		await expect(page.locator('text=VWCE')).toBeVisible();
+		await expect(page.locator('text=AAPL').first()).toBeVisible();
+		await expect(page.locator('text=BTC').first()).toBeVisible();
+		await expect(page.locator('text=VWCE').first()).toBeVisible();
 	});
 
 	test('adds a new asset and shows it in the table', async ({ page }) => {

@@ -1,7 +1,5 @@
 package com.simpletickr.asset
 
-import com.simpletickr.generated.model.ListingRequest
-import com.simpletickr.shared.CurrencyCode
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 
@@ -10,8 +8,8 @@ class UpdateListingUseCase(private val listingRepository: ListingRepository) {
 
     private val log = LoggerFactory.getLogger(javaClass)
 
-    fun execute(id: Long, request: ListingRequest): Listing? {
+    fun execute(id: Long, command: UpdateListingCommand): Listing? {
         log.info("Updating listing id={}", id)
-        return listingRepository.update(id, request.exchange, request.ticker, CurrencyCode(request.currency))
+        return listingRepository.update(id, command.exchange, command.ticker, command.currency)
     }
 }

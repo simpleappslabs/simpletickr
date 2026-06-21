@@ -1,8 +1,6 @@
 package com.simpletickr.asset
 
-import com.simpletickr.generated.model.CreateAssetRequest
 import com.simpletickr.price.PriceProviderMappingRepository
-import com.simpletickr.shared.CurrencyCode
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -17,16 +15,16 @@ class CreateAssetUseCase(
     private val log = LoggerFactory.getLogger(javaClass)
 
     @Transactional
-    fun execute(request: CreateAssetRequest): Asset {
-        log.info("Creating asset: name={}, type={}, listings={}", request.name, request.type, request.listings.size)
+    fun execute(command: CreateAssetCommand): Asset {
+        log.info("Creating asset: name={}, type={}, listings={}", command.name, command.type, command.listings.size)
         val saved = assetRepository.save(
-            isin = request.isin,
-            name = request.name,
-            type = AssetType.valueOf(request.type.value),
+            isin = command.isin,
+            name = command.name,
+            type = command.type,
         )
-        for (listingReq in request.listings) {
-            val listing = listingRepository.save(saved.id, listingReq.exchange, listingReq.ticker, CurrencyCode(listingReq.currency))
-            listingReq.priceMappings?.forEach { m ->
+        for (listingCmd in command.listings) {
+            val listing = listingRepository.save(saved.id, listingCmd.exchange, listingCmd.ticker, listingCmd.currency)
+            listingCmd.priceMappings?.forEach { m ->
                 mappingRepository.upsert(listing.id, m.provider, m.externalId)
             }
         }
