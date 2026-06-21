@@ -42,6 +42,7 @@
 				<li><a href="/">Portfolios</a></li>
 				<li><a href="/assets">Assets</a></li>
 				<li><a href="/admin">Admin</a></li>
+				<li><a href="/settings">Settings</a></li>
 				<li>
 					<select
 							class="select select-ghost select-sm text-sm"

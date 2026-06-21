@@ -241,7 +241,7 @@
             <!-- Chart + holdings table -->
             <div class="flex flex-col lg:flex-row gap-6 items-start">
                 <div class="shrink-0 flex items-center justify-center bg-base-200 rounded-box p-4">
-                    <canvas bind:this={chartCanvas} width="260" height="260"></canvas>
+                    <canvas bind:this={chartCanvas} width="200" height="200"></canvas>
                 </div>
 
                 <div class="flex-1 min-w-0 overflow-x-auto">
