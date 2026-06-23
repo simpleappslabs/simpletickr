@@ -18,6 +18,7 @@ import org.testcontainers.junit.jupiter.Testcontainers
 import java.math.BigDecimal
 import java.time.LocalDate
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -114,5 +115,32 @@ class TransactionRepositoryTest {
         val saved = saveTransaction()
         repository.delete(saved.id)
         assertNull(repository.findById(saved.id))
+    }
+
+    @Test
+    fun `existsByExternalId returns false when not present`() {
+        assertFalse(repository.existsByExternalId(portfolioId, "bolero:somehash"))
+    }
+
+    @Test
+    fun `existsByExternalId returns true after saving with that externalId`() {
+        val tx = Transaction(0L, portfolioId, listingId, assetId, TransactionType.BUY,
+            BigDecimal("5"), BigDecimal("100"), LocalDate.of(2024, 1, 1), null,
+            externalId = "bolero:abc123")
+        repository.save(tx)
+
+        assertTrue(repository.existsByExternalId(portfolioId, "bolero:abc123"))
+    }
+
+    @Test
+    fun `existsByExternalId is scoped to portfolioId`() {
+        val otherPortfolioId = portfolioRepository.save("Other").id
+        val tx = Transaction(0L, portfolioId, listingId, assetId, TransactionType.BUY,
+            BigDecimal("5"), BigDecimal("100"), LocalDate.of(2024, 1, 1), null,
+            externalId = "bolero:xyz")
+        repository.save(tx)
+
+        assertFalse(repository.existsByExternalId(otherPortfolioId, "bolero:xyz"))
+        assertTrue(repository.existsByExternalId(portfolioId, "bolero:xyz"))
     }
 }

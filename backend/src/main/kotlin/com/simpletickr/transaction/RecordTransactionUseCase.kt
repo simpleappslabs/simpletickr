@@ -48,6 +48,7 @@ class RecordTransactionUseCase(
             fees = command.fees,
             fxRate = fxRate,
             fxRateSource = fxRateSource,
+            externalId = command.externalId,
         ))
     }
 }

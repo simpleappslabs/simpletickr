@@ -20,6 +20,7 @@ data class Transaction(
     // Null when listing currency == base currency, or for transactions recorded before FX tracking was added.
     val fxRate: BigDecimal? = null,
     val fxRateSource: FxRateSource? = null,
+    val externalId: String? = null,
 ) {
     init {
         require(quantity > BigDecimal.ZERO) { "Quantity must be positive" }

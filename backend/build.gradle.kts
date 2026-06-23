@@ -38,6 +38,7 @@ dependencies {
 	testImplementation("org.mockito.kotlin:mockito-kotlin:5.4.0")
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 	implementation("org.springframework.boot:spring-boot-starter-validation")
+	implementation("org.apache.poi:poi-ooxml:5.4.1")
 }
 
 openApiGenerate {

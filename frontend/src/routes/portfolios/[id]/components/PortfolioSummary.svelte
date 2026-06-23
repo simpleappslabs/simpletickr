@@ -4,6 +4,11 @@
     let { holdings }: { holdings: Holding[] } = $props();
 
     const totalCost = $derived(holdings.reduce((sum, h) => sum + (h.totalCostBase ?? 0), 0));
+    const totalMarketValue = $derived(
+        holdings.length > 0 && holdings.every((h) => h.marketValueBase != null)
+            ? holdings.reduce((sum, h) => sum + (h.marketValueBase ?? 0), 0)
+            : null
+    );
     const totalGain = $derived(
         holdings.length > 0 && holdings.every((h) => h.unrealizedPnlBase != null)
             ? holdings.reduce((sum, h) => sum + (h.unrealizedPnlBase ?? 0), 0)
@@ -19,6 +24,12 @@
     <div class="stat">
         <div class="stat-title">Total cost</div>
         <div class="stat-value text-xl">{fmt(totalCost)} {holdings[0]?.baseCurrency ?? ''}</div>
+    </div>
+    <div class="stat">
+        <div class="stat-title">Market value</div>
+        <div class="stat-value text-xl">
+            {totalMarketValue == null ? '—' : `${fmt(totalMarketValue)} ${holdings[0]?.baseCurrency ?? ''}`}
+        </div>
     </div>
     <div class="stat">
         <div class="stat-title">Unrealized gain</div>

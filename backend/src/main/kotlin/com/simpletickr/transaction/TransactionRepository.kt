@@ -25,12 +25,13 @@ class TransactionRepository(private val jdbcTemplate: JdbcTemplate) {
             fees = rs.getBigDecimal("fees"),
             fxRate = rs.getBigDecimal("fx_rate"),
             fxRateSource = rs.getString("fx_rate_source")?.let { FxRateSource.valueOf(it) },
+            externalId = rs.getString("external_id"),
         )
     }
 
     private val baseSelect = """
         SELECT t.id, t.portfolio_id, t.listing_id, l.asset_id,
-               t.type, t.quantity, t.price, t.date, t.fees, t.fx_rate, t.fx_rate_source
+               t.type, t.quantity, t.price, t.date, t.fees, t.fx_rate, t.fx_rate_source, t.external_id
         FROM transactions t
         JOIN listings l ON l.id = t.listing_id
     """.trimIndent()
@@ -49,7 +50,7 @@ class TransactionRepository(private val jdbcTemplate: JdbcTemplate) {
         val keyHolder = GeneratedKeyHolder()
         jdbcTemplate.update({ con ->
             con.prepareStatement(
-                "INSERT INTO transactions (portfolio_id, listing_id, type, quantity, price, date, fees, fx_rate, fx_rate_source) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "INSERT INTO transactions (portfolio_id, listing_id, type, quantity, price, date, fees, fx_rate, fx_rate_source, external_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 arrayOf("id")
             ).apply {
                 setLong(1, transaction.portfolioId)
@@ -61,10 +62,17 @@ class TransactionRepository(private val jdbcTemplate: JdbcTemplate) {
                 setBigDecimal(7, transaction.fees)
                 setBigDecimal(8, transaction.fxRate)
                 setString(9, transaction.fxRateSource?.name)
+                setString(10, transaction.externalId)
             }
         }, keyHolder)
         return transaction.copy(id = keyHolder.key!!.toLong())
     }
+
+    fun existsByExternalId(portfolioId: Long, externalId: String): Boolean =
+        jdbcTemplate.queryForObject(
+            "SELECT COUNT(*) FROM transactions WHERE portfolio_id = ? AND external_id = ?",
+            Int::class.java, portfolioId, externalId
+        )!! > 0
 
     fun update(transaction: Transaction): Transaction? {
         val updated = jdbcTemplate.update(

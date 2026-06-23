@@ -8,6 +8,8 @@
     import PortfolioChart from './components/PortfolioChart.svelte';
     import HoldingsTable from './components/HoldingsTable.svelte';
     import TransactionsContainer from './components/TransactionsContainer.svelte';
+    import BrokerSelectDialog from './components/BrokerSelectDialog.svelte';
+    import BoleroImportDialog from './components/BoleroImportDialog.svelte';
     import PortfolioModal from '$lib/PortfolioModal.svelte';
     import ConfirmModal from '$lib/ConfirmModal.svelte';
     import '$lib/client';
@@ -21,6 +23,13 @@
     let error = $state<string | null>(null);
 
     let createTransactionOpen = $state(false);
+    let brokerSelectOpen = $state(false);
+    let boleroImportOpen = $state(false);
+
+    function handleBrokerSelect(broker: string) {
+        brokerSelectOpen = false;
+        if (broker === 'bolero') boleroImportOpen = true;
+    }
 
     let renameModalOpen = $state(false);
     let renamePortfolio = $state<Portfolio | null>(null);
@@ -96,6 +105,7 @@
                 </svg>
             </button>
             <a href="/portfolios/{portfolio.id}/realized-gains" class="btn btn-ghost btn-sm">Realized gains</a>
+            <button class="btn btn-outline btn-sm" onclick={() => brokerSelectOpen = true}>Import</button>
             <button class="btn btn-primary btn-sm" onclick={() => createTransactionOpen = true}>+ Record transaction</button>
         {/if}
     </div>
@@ -127,6 +137,22 @@
         />
     {/if}
 </div>
+
+{#if portfolio}
+    <BrokerSelectDialog
+        open={brokerSelectOpen}
+        onclose={() => brokerSelectOpen = false}
+        onselect={handleBrokerSelect}
+    />
+
+    <BoleroImportDialog
+        portfolioId={portfolio.id}
+        {assets}
+        open={boleroImportOpen}
+        onclose={() => boleroImportOpen = false}
+        onimported={refreshData}
+    />
+{/if}
 
 <PortfolioModal
     open={renameModalOpen}
