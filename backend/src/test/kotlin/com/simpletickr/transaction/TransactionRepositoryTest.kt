@@ -177,4 +177,38 @@ class TransactionRepositoryTest {
         assertFalse(repository.existsByExternalId(otherPortfolioId, "bolero:xyz"))
         assertTrue(repository.existsByExternalId(portfolioId, "bolero:xyz"))
     }
+
+    @Test
+    fun `findOldestTransactionDate returns null when no transactions exist`() {
+        assertNull(repository.findOldestTransactionDate(portfolioId))
+    }
+
+    @Test
+    fun `findOldestTransactionDate returns the earliest transaction date`() {
+        repository.save(Transaction(0L, portfolioId, listingId, assetId, TransactionType.BUY, BigDecimal("1"), BigDecimal("100"), LocalDate.of(2022, 6, 1), null))
+        repository.save(Transaction(0L, portfolioId, listingId, assetId, TransactionType.BUY, BigDecimal("1"), BigDecimal("100"), LocalDate.of(2020, 1, 15), null))
+        repository.save(Transaction(0L, portfolioId, listingId, assetId, TransactionType.BUY, BigDecimal("1"), BigDecimal("100"), LocalDate.of(2024, 3, 10), null))
+
+        assertEquals(LocalDate.of(2020, 1, 15), repository.findOldestTransactionDate(portfolioId))
+    }
+
+    @Test
+    fun `findDistinctListingIds returns empty list when no transactions exist`() {
+        assertTrue(repository.findDistinctListingIds(portfolioId).isEmpty())
+    }
+
+    @Test
+    fun `findDistinctListingIds returns deduplicated listing ids including sold positions`() {
+        val otherAsset = assetRepository.save(null, "Other Asset", AssetType.STOCK)
+        val otherListingId = listingRepository.save(otherAsset.id, null, "OTHER", CurrencyCode("EUR")).id
+
+        repository.save(Transaction(0L, portfolioId, listingId, assetId, TransactionType.BUY, BigDecimal("5"), BigDecimal("100"), LocalDate.now(), null))
+        repository.save(Transaction(0L, portfolioId, listingId, assetId, TransactionType.SELL, BigDecimal("5"), BigDecimal("110"), LocalDate.now(), null))
+        repository.save(Transaction(0L, portfolioId, otherListingId, otherAsset.id, TransactionType.BUY, BigDecimal("3"), BigDecimal("50"), LocalDate.now(), null))
+
+        val ids = repository.findDistinctListingIds(portfolioId)
+        assertEquals(2, ids.size)
+        assertTrue(ids.contains(listingId))
+        assertTrue(ids.contains(otherListingId))
+    }
 }

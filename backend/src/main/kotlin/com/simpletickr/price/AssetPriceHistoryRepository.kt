@@ -31,6 +31,12 @@ class AssetPriceHistoryRepository(private val jdbcTemplate: JdbcTemplate) {
             rowMapper, listingId
         ).firstOrNull()
 
+    fun findEarliestByListingId(listingId: Long): PricePoint? =
+        jdbcTemplate.query(
+            "SELECT date, close_price FROM asset_price_history WHERE listing_id = ? ORDER BY date ASC LIMIT 1",
+            rowMapper, listingId
+        ).firstOrNull()
+
     fun findByListingId(listingId: Long, from: LocalDate, to: LocalDate): List<PricePoint> =
         jdbcTemplate.query(
             "SELECT date, close_price FROM asset_price_history WHERE listing_id = ? AND date BETWEEN ? AND ? ORDER BY date",

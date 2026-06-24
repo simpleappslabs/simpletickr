@@ -1,6 +1,8 @@
 package com.simpletickr.portfolio
 
 import com.simpletickr.asset.AssetRepository
+import com.simpletickr.price.BackfillPortfolioPricesUseCase
+import com.simpletickr.price.SyncResult
 import com.simpletickr.settings.UserSettingsRepository
 import com.simpletickr.transaction.TransactionRepository
 import org.junit.jupiter.api.Test
@@ -37,6 +39,9 @@ class PortfolioControllerTest {
 
     @MockitoBean
     private lateinit var userSettingsRepository: UserSettingsRepository
+
+    @MockitoBean
+    private lateinit var backfillPortfolioPricesUseCase: BackfillPortfolioPricesUseCase
 
     @Test
     fun `GET portfolios returns empty list`() {
@@ -141,6 +146,24 @@ class PortfolioControllerTest {
         whenever(portfolioRepository.findById(99L)).thenReturn(null)
 
         mockMvc.perform(get("/portfolios/99/holdings"))
+            .andExpect(status().isNotFound)
+    }
+
+    @Test
+    fun `POST sync-prices returns 200 with sync result`() {
+        whenever(backfillPortfolioPricesUseCase.execute(1L)).thenReturn(SyncResult(3, 0))
+
+        mockMvc.perform(post("/portfolios/1/sync-prices"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.synced").value(3))
+            .andExpect(jsonPath("$.failed").value(0))
+    }
+
+    @Test
+    fun `POST sync-prices returns 404 when portfolio not found`() {
+        whenever(backfillPortfolioPricesUseCase.execute(99L)).thenReturn(null)
+
+        mockMvc.perform(post("/portfolios/99/sync-prices"))
             .andExpect(status().isNotFound)
     }
 }

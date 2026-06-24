@@ -7,10 +7,12 @@ import com.simpletickr.gains.RealizedGainEntry
 import com.simpletickr.gains.RealizedGainsReport
 import com.simpletickr.generated.api.PortfoliosApi
 import com.simpletickr.generated.model.PortfolioRequest
+import com.simpletickr.price.BackfillPortfolioPricesUseCase
 import com.simpletickr.settings.UserSettingsRepository
 import com.simpletickr.transaction.TransactionRepository
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.RestController
+import com.simpletickr.generated.model.SyncResult as SyncResultModel
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.LocalDate
@@ -29,6 +31,7 @@ class PortfolioController(
     private val transactionRepository: TransactionRepository,
     private val assetRepository: AssetRepository,
     private val userSettingsRepository: UserSettingsRepository,
+    private val backfillPortfolioPricesUseCase: BackfillPortfolioPricesUseCase,
 ) : PortfoliosApi {
 
     override fun listPortfolios(): ResponseEntity<List<PortfolioModel>> =
@@ -54,6 +57,12 @@ class PortfolioController(
         if (portfolioRepository.findById(id) == null) return ResponseEntity.notFound().build()
         portfolioRepository.delete(id)
         return ResponseEntity.noContent().build()
+    }
+
+    override fun syncPortfolioPrices(id: Long): ResponseEntity<SyncResultModel> {
+        val result = backfillPortfolioPricesUseCase.execute(id)
+            ?: return ResponseEntity.notFound().build()
+        return ResponseEntity.ok(SyncResultModel(synced = result.synced, failed = result.failed))
     }
 
     override fun getHoldings(id: Long): ResponseEntity<List<HoldingModel>> {

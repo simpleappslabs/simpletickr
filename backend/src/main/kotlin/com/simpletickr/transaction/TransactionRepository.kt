@@ -50,6 +50,20 @@ class TransactionRepository(private val jdbcTemplate: JdbcTemplate) {
         else
             jdbcTemplate.queryForObject("SELECT COUNT(*) FROM transactions", Long::class.java)!!
 
+    fun findOldestTransactionDate(portfolioId: Long): LocalDate? =
+        jdbcTemplate.query(
+            "SELECT MIN(date) AS oldest FROM transactions WHERE portfolio_id = ?",
+            { rs, _ -> rs.getDate("oldest")?.toLocalDate() },
+            portfolioId
+        ).firstOrNull()
+
+    fun findDistinctListingIds(portfolioId: Long): List<Long> =
+        jdbcTemplate.queryForList(
+            "SELECT DISTINCT listing_id FROM transactions WHERE portfolio_id = ? ORDER BY listing_id",
+            Long::class.java,
+            portfolioId
+        )
+
     fun findById(id: Long): Transaction? = try {
         jdbcTemplate.queryForObject("$baseSelect WHERE t.id = ?", rowMapper, id)
     } catch (_: EmptyResultDataAccessException) { null }

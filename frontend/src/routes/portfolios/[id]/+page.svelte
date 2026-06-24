@@ -2,7 +2,7 @@
     import {onMount} from 'svelte';
     import {page} from '$app/state';
     import {goto} from '$app/navigation';
-    import {getPortfolio, getHoldings, listAssets, listTransactions, deletePortfolio} from '$lib/api/sdk.gen';
+    import {getPortfolio, getHoldings, listAssets, listTransactions, deletePortfolio, syncPortfolioPrices} from '$lib/api/sdk.gen';
     import type {Asset, Holding, Portfolio, Transaction, TransactionPage} from '$lib/api/types.gen';
     import PortfolioSummary from './components/PortfolioSummary.svelte';
     import PortfolioChart from './components/PortfolioChart.svelte';
@@ -27,10 +27,25 @@
     let createTransactionOpen = $state(false);
     let brokerSelectOpen = $state(false);
     let boleroImportOpen = $state(false);
+    let syncingPrices = $state(false);
+    let syncPricesError = $state<string | null>(null);
 
     function handleBrokerSelect(broker: string) {
         brokerSelectOpen = false;
         if (broker === 'bolero') boleroImportOpen = true;
+    }
+
+    async function handleSyncPrices() {
+        if (!portfolio) return;
+        syncingPrices = true;
+        syncPricesError = null;
+        const { error } = await syncPortfolioPrices({ path: { id: portfolio.id } });
+        if (error) {
+            syncPricesError = 'Price sync failed.';
+        } else {
+            await refreshData();
+        }
+        syncingPrices = false;
     }
 
     let renameModalOpen = $state(false);
@@ -118,9 +133,20 @@
             </button>
             <a href="/portfolios/{portfolio.id}/realized-gains" class="btn btn-ghost btn-sm">Realized gains</a>
             <button class="btn btn-outline btn-sm" onclick={() => brokerSelectOpen = true}>Import</button>
+            <button class="btn btn-outline btn-sm" onclick={handleSyncPrices} disabled={syncingPrices}>
+                {#if syncingPrices}
+                    <span class="loading loading-spinner loading-xs"></span> Syncing…
+                {:else}
+                    Sync prices
+                {/if}
+            </button>
             <button class="btn btn-primary btn-sm" onclick={() => createTransactionOpen = true}>+ Record transaction</button>
         {/if}
     </div>
+
+    {#if syncPricesError}
+        <div class="alert alert-error py-2"><span>{syncPricesError}</span></div>
+    {/if}
 
     {#if loading}
         <span class="loading loading-spinner loading-sm"></span>

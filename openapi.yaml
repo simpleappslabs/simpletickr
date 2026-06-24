@@ -298,6 +298,32 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
 
+  /portfolios/{id}/sync-prices:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+    post:
+      tags: [Portfolios]
+      operationId: syncPortfolioPrices
+      summary: Backfill price history for all listings in a portfolio from the oldest transaction date
+      responses:
+        "200":
+          description: Sync result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SyncResult"
+        "404":
+          description: Portfolio not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
   /assets:
     get:
       tags: [Assets]
