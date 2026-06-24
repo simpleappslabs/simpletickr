@@ -5,11 +5,14 @@
     import TransactionsTable from './TransactionsTable.svelte';
     import ConfirmModal from '$lib/ConfirmModal.svelte';
 
-    let { portfolioId, assets, transactions, onchange, createOpen = $bindable(false) }: {
+    let { portfolioId, assets, transactions, currentPage, totalPages, onchange, onpagechange, createOpen = $bindable(false) }: {
         portfolioId: number;
         assets: Asset[];
         transactions: Transaction[];
+        currentPage: number;
+        totalPages: number;
         onchange: () => void;
+        onpagechange: (page: number) => void;
         createOpen?: boolean;
     } = $props();
 
@@ -56,6 +59,21 @@
         onedit={openEdit}
         ondelete={(t) => { deleteError = null; deletingTransaction = t; }}
     />
+    {#if totalPages > 1}
+        <div class="flex justify-center items-center gap-2 pt-2">
+            <button
+                class="btn btn-ghost btn-sm"
+                disabled={currentPage === 0}
+                onclick={() => onpagechange(currentPage - 1)}
+            >«</button>
+            <span class="text-sm text-base-content/60">Page {currentPage + 1} of {totalPages}</span>
+            <button
+                class="btn btn-ghost btn-sm"
+                disabled={currentPage >= totalPages - 1}
+                onclick={() => onpagechange(currentPage + 1)}
+            >»</button>
+        </div>
+    {/if}
 {/if}
 
 <TransactionDialog

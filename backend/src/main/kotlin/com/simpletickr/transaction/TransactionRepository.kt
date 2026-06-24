@@ -36,11 +36,19 @@ class TransactionRepository(private val jdbcTemplate: JdbcTemplate) {
         JOIN listings l ON l.id = t.listing_id
     """.trimIndent()
 
-    fun findAll(portfolioId: Long?): List<Transaction> =
-        if (portfolioId != null)
-            jdbcTemplate.query("$baseSelect WHERE t.portfolio_id = ? ORDER BY t.date DESC", rowMapper, portfolioId)
+    fun findAll(portfolioId: Long?, page: Int = 0, size: Int = 25): List<Transaction> {
+        val offset = page * size
+        return if (portfolioId != null)
+            jdbcTemplate.query("$baseSelect WHERE t.portfolio_id = ? ORDER BY t.date DESC, t.id DESC LIMIT ? OFFSET ?", rowMapper, portfolioId, size, offset)
         else
-            jdbcTemplate.query("$baseSelect ORDER BY t.date DESC", rowMapper)
+            jdbcTemplate.query("$baseSelect ORDER BY t.date DESC, t.id DESC LIMIT ? OFFSET ?", rowMapper, size, offset)
+    }
+
+    fun count(portfolioId: Long?): Long =
+        if (portfolioId != null)
+            jdbcTemplate.queryForObject("SELECT COUNT(*) FROM transactions WHERE portfolio_id = ?", Long::class.java, portfolioId)!!
+        else
+            jdbcTemplate.queryForObject("SELECT COUNT(*) FROM transactions", Long::class.java)!!
 
     fun findById(id: Long): Transaction? = try {
         jdbcTemplate.queryForObject("$baseSelect WHERE t.id = ?", rowMapper, id)

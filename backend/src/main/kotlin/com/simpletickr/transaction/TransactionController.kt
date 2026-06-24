@@ -2,6 +2,7 @@ package com.simpletickr.transaction
 
 import com.simpletickr.fx.FxRateSource
 import com.simpletickr.generated.api.TransactionsApi
+import com.simpletickr.generated.model.TransactionPage
 import com.simpletickr.generated.model.TransactionRequest
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.RestController
@@ -18,8 +19,18 @@ class TransactionController(
     private val deleteTransactionUseCase: DeleteTransactionUseCase,
 ) : TransactionsApi {
 
-    override fun listTransactions(portfolioId: Long?): ResponseEntity<List<TransactionModel>> =
-        ResponseEntity.ok(transactionRepository.findAll(portfolioId).map { it.toModel() })
+    override fun listTransactions(portfolioId: Long?, page: Int, size: Int): ResponseEntity<TransactionPage> {
+        val items = transactionRepository.findAll(portfolioId, page, size)
+        val total = transactionRepository.count(portfolioId)
+        val totalPages = if (size == 0) 0 else ((total + size - 1) / size).toInt()
+        return ResponseEntity.ok(TransactionPage(
+            items = items.map { it.toModel() },
+            page = page,
+            propertySize = size,
+            totalElements = total,
+            totalPages = totalPages,
+        ))
+    }
 
     override fun getTransaction(id: Long): ResponseEntity<TransactionModel> {
         val transaction = transactionRepository.findById(id) ?: return ResponseEntity.notFound().build()

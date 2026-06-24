@@ -37,15 +37,33 @@ class TransactionControllerTest {
     )
 
     @Test
-    fun `GET transactions returns list filtered by portfolioId`() {
-        whenever(transactionRepository.findAll(10L)).thenReturn(listOf(sample))
+    fun `GET transactions returns paginated response filtered by portfolioId`() {
+        whenever(transactionRepository.findAll(10L, 0, 25)).thenReturn(listOf(sample))
+        whenever(transactionRepository.count(10L)).thenReturn(1L)
 
         mockMvc.perform(get("/transactions?portfolioId=10"))
             .andExpect(status().isOk)
-            .andExpect(jsonPath("$.length()").value(1))
-            .andExpect(jsonPath("$[0].portfolioId").value(10))
-            .andExpect(jsonPath("$[0].listingId").value(5))
-            .andExpect(jsonPath("$[0].assetId").value(2))
+            .andExpect(jsonPath("$.items.length()").value(1))
+            .andExpect(jsonPath("$.items[0].portfolioId").value(10))
+            .andExpect(jsonPath("$.items[0].listingId").value(5))
+            .andExpect(jsonPath("$.items[0].assetId").value(2))
+            .andExpect(jsonPath("$.page").value(0))
+            .andExpect(jsonPath("$.size").value(25))
+            .andExpect(jsonPath("$.totalElements").value(1))
+            .andExpect(jsonPath("$.totalPages").value(1))
+    }
+
+    @Test
+    fun `GET transactions respects page and size params`() {
+        whenever(transactionRepository.findAll(10L, 1, 10)).thenReturn(emptyList())
+        whenever(transactionRepository.count(10L)).thenReturn(15L)
+
+        mockMvc.perform(get("/transactions?portfolioId=10&page=1&size=10"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.page").value(1))
+            .andExpect(jsonPath("$.size").value(10))
+            .andExpect(jsonPath("$.totalElements").value(15))
+            .andExpect(jsonPath("$.totalPages").value(2))
     }
 
     @Test

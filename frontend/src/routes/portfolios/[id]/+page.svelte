@@ -3,7 +3,7 @@
     import {page} from '$app/state';
     import {goto} from '$app/navigation';
     import {getPortfolio, getHoldings, listAssets, listTransactions, deletePortfolio} from '$lib/api/sdk.gen';
-    import type {Asset, Holding, Portfolio, Transaction} from '$lib/api/types.gen';
+    import type {Asset, Holding, Portfolio, Transaction, TransactionPage} from '$lib/api/types.gen';
     import PortfolioSummary from './components/PortfolioSummary.svelte';
     import PortfolioChart from './components/PortfolioChart.svelte';
     import HoldingsTable from './components/HoldingsTable.svelte';
@@ -17,6 +17,8 @@
     let portfolio = $state<Portfolio | null>(null);
     let holdings = $state<Holding[]>([]);
     let transactions = $state<Transaction[]>([]);
+    let transactionPage = $state(0);
+    let transactionTotalPages = $state(0);
     let assets = $state<Asset[]>([]);
     let loading = $state(true);
     let notFound = $state(false);
@@ -38,14 +40,21 @@
     let deletePortfolioSubmitting = $state(false);
     let deletePortfolioError = $state<string | null>(null);
 
-    async function refreshData() {
+    async function refreshData(page = transactionPage) {
         if (!portfolio) return;
         const [holdingsRes, transactionsRes] = await Promise.all([
             getHoldings({path: {id: portfolio.id}}),
-            listTransactions({query: {portfolioId: portfolio.id}}),
+            listTransactions({query: {portfolioId: portfolio.id, page, size: 25}}),
         ]);
         holdings = holdingsRes.data ?? [];
-        transactions = transactionsRes.data ?? [];
+        const txPage = transactionsRes.data;
+        transactions = txPage?.items ?? [];
+        transactionPage = txPage?.page ?? 0;
+        transactionTotalPages = txPage?.totalPages ?? 0;
+    }
+
+    async function handlePageChange(page: number) {
+        await refreshData(page);
     }
 
     async function handleDeletePortfolio() {
@@ -68,7 +77,7 @@
             getPortfolio({path: {id}}),
             getHoldings({path: {id}}),
             listAssets(),
-            listTransactions({query: {portfolioId: id}}),
+            listTransactions({query: {portfolioId: id, page: 0, size: 25}}),
         ]);
 
         if (portfolioRes.error) {
@@ -80,7 +89,10 @@
         portfolio = portfolioRes.data ?? null;
         holdings = holdingsRes.data ?? [];
         assets = assetsRes.data ?? [];
-        transactions = transactionsRes.data ?? [];
+        const txPage = transactionsRes.data;
+        transactions = txPage?.items ?? [];
+        transactionPage = txPage?.page ?? 0;
+        transactionTotalPages = txPage?.totalPages ?? 0;
         loading = false;
     });
 </script>
@@ -132,7 +144,10 @@
             portfolioId={portfolio!.id}
             {assets}
             {transactions}
+            currentPage={transactionPage}
+            totalPages={transactionTotalPages}
             onchange={refreshData}
+            onpagechange={handlePageChange}
             bind:createOpen={createTransactionOpen}
         />
     {/if}

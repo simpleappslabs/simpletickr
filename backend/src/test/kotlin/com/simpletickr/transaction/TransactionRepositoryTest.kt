@@ -64,6 +64,12 @@ class TransactionRepositoryTest {
     }
 
     @Test
+    fun `count returns 0 when no transactions exist`() {
+        assertEquals(0L, repository.count(null))
+        assertEquals(0L, repository.count(portfolioId))
+    }
+
+    @Test
     fun `save creates a transaction and returns it with a generated id`() {
         val tx = saveTransaction()
         assertTrue(tx.id > 0)
@@ -95,6 +101,34 @@ class TransactionRepositoryTest {
         val results = repository.findAll(portfolioId)
         assertEquals(1, results.size)
         assertEquals(portfolioId, results[0].portfolioId)
+    }
+
+    @Test
+    fun `count with portfolioId counts only that portfolio`() {
+        val otherPortfolioId = portfolioRepository.save("Other Portfolio").id
+        val otherAsset = assetRepository.save(null, "Test Asset 3", AssetType.STOCK)
+        val otherListingId = listingRepository.save(otherAsset.id, null, "TST_CNT", CurrencyCode("USD")).id
+
+        saveTransaction()
+        saveTransaction()
+        repository.save(Transaction(0L, otherPortfolioId, otherListingId, otherAsset.id, TransactionType.BUY, BigDecimal("1"), BigDecimal("100"), LocalDate.now(), null))
+
+        assertEquals(2L, repository.count(portfolioId))
+        assertEquals(1L, repository.count(otherPortfolioId))
+        assertEquals(3L, repository.count(null))
+    }
+
+    @Test
+    fun `findAll paginates correctly`() {
+        for (i in 1..5) saveTransaction()
+
+        val page0 = repository.findAll(portfolioId, page = 0, size = 2)
+        val page1 = repository.findAll(portfolioId, page = 1, size = 2)
+        val page2 = repository.findAll(portfolioId, page = 2, size = 2)
+
+        assertEquals(2, page0.size)
+        assertEquals(2, page1.size)
+        assertEquals(1, page2.size)
     }
 
     @Test
