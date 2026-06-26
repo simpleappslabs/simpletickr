@@ -298,6 +298,46 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
 
+  /portfolios/{id}/value-history:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+    get:
+      tags: [Portfolios]
+      operationId: getPortfolioValueHistory
+      summary: Get daily total portfolio value over a date range
+      parameters:
+        - name: from
+          in: query
+          required: false
+          description: "Start date (inclusive). Defaults to the portfolio's oldest transaction date."
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Time series of daily portfolio value and invested amount in base currency
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PortfolioValueHistory"
+        "404":
+          description: Portfolio not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
   /portfolios/{id}/sync-prices:
     parameters:
       - name: id
@@ -1727,3 +1767,37 @@ components:
         assetId:
           type: integer
           format: int64
+
+    PortfolioValuePoint:
+      type: object
+      required: [date]
+      properties:
+        date:
+          type: string
+          format: date
+        value:
+          type: number
+          format: double
+          nullable: true
+          description: >
+            Market value in base currency on this date. Null when any open holding lacks a
+            price or FX rate (partial sums are not returned to avoid understating the portfolio).
+        invested:
+          type: number
+          format: double
+          nullable: true
+          description: >
+            Net cumulative cash invested in base currency (BUY costs minus SELL proceeds),
+            using the FX rate recorded on each transaction.
+
+    PortfolioValueHistory:
+      type: object
+      required: [baseCurrency, points]
+      properties:
+        baseCurrency:
+          type: string
+          example: EUR
+        points:
+          type: array
+          items:
+            $ref: "#/components/schemas/PortfolioValuePoint"

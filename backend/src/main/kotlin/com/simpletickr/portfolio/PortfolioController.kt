@@ -23,6 +23,8 @@ import com.simpletickr.generated.model.Portfolio as PortfolioModel
 import com.simpletickr.generated.model.RealizationMethod as GeneratedRealizationMethod
 import com.simpletickr.generated.model.RealizedGainEntry as GeneratedRealizedGainEntry
 import com.simpletickr.generated.model.RealizedGainsReport as GeneratedRealizedGainsReport
+import com.simpletickr.generated.model.PortfolioValueHistory as PortfolioValueHistoryModel
+import com.simpletickr.generated.model.PortfolioValuePoint as PortfolioValuePointModel
 
 @RestController
 class PortfolioController(
@@ -32,6 +34,7 @@ class PortfolioController(
     private val assetRepository: AssetRepository,
     private val userSettingsRepository: UserSettingsRepository,
     private val backfillPortfolioPricesUseCase: BackfillPortfolioPricesUseCase,
+    private val portfolioValueHistoryService: PortfolioValueHistoryService,
 ) : PortfoliosApi {
 
     override fun listPortfolios(): ResponseEntity<List<PortfolioModel>> =
@@ -119,6 +122,19 @@ class PortfolioController(
             }
 
         return ResponseEntity.ok(assetHoldings)
+    }
+
+    override fun getPortfolioValueHistory(to: LocalDate, id: Long, from: LocalDate?): ResponseEntity<PortfolioValueHistoryModel> {
+        if (portfolioRepository.findById(id) == null) return ResponseEntity.notFound().build()
+        val (baseCurrency, points) = portfolioValueHistoryService.getValueHistory(id, from, to)
+        return ResponseEntity.ok(
+            PortfolioValueHistoryModel(
+                baseCurrency = baseCurrency.value,
+                points = points.map { pt ->
+                    PortfolioValuePointModel(date = pt.date, `value` = pt.value?.toDouble(), invested = pt.invested?.toDouble())
+                },
+            )
+        )
     }
 
     override fun getRealizedGains(

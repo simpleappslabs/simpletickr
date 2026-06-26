@@ -4,6 +4,7 @@ import com.simpletickr.asset.AssetRepository
 import com.simpletickr.price.BackfillPortfolioPricesUseCase
 import com.simpletickr.price.SyncResult
 import com.simpletickr.settings.UserSettingsRepository
+import com.simpletickr.shared.CurrencyCode
 import com.simpletickr.transaction.TransactionRepository
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.whenever
@@ -18,6 +19,8 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
+import java.math.BigDecimal
+import java.time.LocalDate
 
 @WebMvcTest(PortfolioController::class)
 class PortfolioControllerTest {
@@ -42,6 +45,9 @@ class PortfolioControllerTest {
 
     @MockitoBean
     private lateinit var backfillPortfolioPricesUseCase: BackfillPortfolioPricesUseCase
+
+    @MockitoBean
+    private lateinit var portfolioValueHistoryService: PortfolioValueHistoryService
 
     @Test
     fun `GET portfolios returns empty list`() {
@@ -164,6 +170,38 @@ class PortfolioControllerTest {
         whenever(backfillPortfolioPricesUseCase.execute(99L)).thenReturn(null)
 
         mockMvc.perform(post("/portfolios/99/sync-prices"))
+            .andExpect(status().isNotFound)
+    }
+
+    @Test
+    fun `GET value-history returns 200 with value and invested points`() {
+        whenever(portfolioRepository.findById(1L)).thenReturn(Portfolio(1L, "My Portfolio"))
+        whenever(
+            portfolioValueHistoryService.getValueHistory(1L, LocalDate.of(2024, 1, 1), LocalDate.of(2024, 1, 3))
+        ).thenReturn(
+            CurrencyCode("EUR") to listOf(
+                PortfolioValuePoint(LocalDate.of(2024, 1, 1), BigDecimal("1000.00"), BigDecimal("900.00")),
+                PortfolioValuePoint(LocalDate.of(2024, 1, 2), null, BigDecimal("900.00")),
+                PortfolioValuePoint(LocalDate.of(2024, 1, 3), BigDecimal("1050.00"), BigDecimal("950.00")),
+            )
+        )
+
+        mockMvc.perform(get("/portfolios/1/value-history?from=2024-01-01&to=2024-01-03"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.baseCurrency").value("EUR"))
+            .andExpect(jsonPath("$.points.length()").value(3))
+            .andExpect(jsonPath("$.points[0].value").value(1000.0))
+            .andExpect(jsonPath("$.points[0].invested").value(900.0))
+            .andExpect(jsonPath("$.points[1].value").doesNotExist())
+            .andExpect(jsonPath("$.points[1].invested").value(900.0))
+            .andExpect(jsonPath("$.points[2].value").value(1050.0))
+    }
+
+    @Test
+    fun `GET value-history returns 404 when portfolio not found`() {
+        whenever(portfolioRepository.findById(99L)).thenReturn(null)
+
+        mockMvc.perform(get("/portfolios/99/value-history?from=2024-01-01&to=2024-01-03"))
             .andExpect(status().isNotFound)
     }
 }

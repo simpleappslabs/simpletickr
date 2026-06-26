@@ -8,6 +8,7 @@
     import PortfolioChart from './components/PortfolioChart.svelte';
     import HoldingsTable from './components/HoldingsTable.svelte';
     import TransactionsContainer from './components/TransactionsContainer.svelte';
+    import ValueHistoryContainer from './components/ValueHistoryContainer.svelte';
     import BrokerSelectDialog from './components/BrokerSelectDialog.svelte';
     import BoleroImportDialog from './components/BoleroImportDialog.svelte';
     import PortfolioModal from '$lib/PortfolioModal.svelte';
@@ -156,6 +157,8 @@
         <div class="alert alert-error"><span>{error}</span></div>
     {:else}
         <PortfolioSummary {holdings} />
+
+        <ValueHistoryContainer portfolioId={portfolio!.id} />
 
         {#if holdings.length === 0}
             <p class="text-base-content/40 italic text-sm">No holdings yet. Record a transaction to get started.</p>
