@@ -73,4 +73,25 @@ class RecordTransactionUseCaseTest {
 
         assertEquals(99L, result.portfolioId)
     }
+
+    @Test
+    fun `SPLIT skips FX rate lookup even for foreign-currency listing`() {
+        val foreignListing = listing.copy(currency = CurrencyCode("USD")) // base is EUR in init
+        val command = RecordTransactionCommand(
+            listingId = 5L,
+            type = TransactionType.SPLIT,
+            quantity = BigDecimal("2"),
+            price = BigDecimal.ZERO,
+            date = date,
+            fees = null,
+        )
+        val saved = Transaction(1L, 10L, 5L, 2L, TransactionType.SPLIT, BigDecimal("2"), BigDecimal.ZERO, date, null)
+        whenever(listingRepository.findById(5L)).thenReturn(foreignListing)
+        whenever(transactionRepository.save(any())).thenReturn(saved)
+
+        val result = useCase.execute(10L, command)
+
+        assertEquals(TransactionType.SPLIT, result.type)
+        org.mockito.kotlin.verify(fxRateService, org.mockito.kotlin.never()).lookupOrFetch(any(), any(), any())
+    }
 }

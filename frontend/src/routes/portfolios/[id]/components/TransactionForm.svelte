@@ -28,6 +28,8 @@
     let formSubmitting = $state(false);
     let formError = $state<string | null>(null);
 
+    const isSplit = $derived(formType === 'SPLIT');
+
     let baseCurrency = $state<string | null>(null);
 
     $effect(() => {
@@ -61,7 +63,7 @@
         fxFetchVersion; // tracked so the refresh button can force a re-run
         const listing = selectedListing;
         const date = formDate;
-        if (!needsFx || !date || formFxRateUserEdited) return;
+        if (isSplit || !needsFx || !date || formFxRateUserEdited) return;
 
         formFxRateAutoDate = null;
         formFxRateFetching = true;
@@ -107,9 +109,9 @@
     const canSubmit = $derived(
         formListingId > 0 &&
         formQuantity !== '' &&
-        formPrice !== '' &&
+        (isSplit || formPrice !== '') &&
         formDate !== '' &&
-        (!needsFx || formFxRate !== '') &&
+        (isSplit || !needsFx || formFxRate !== '') &&
         !formFxRateFetching &&
         !formSubmitting
     );
@@ -123,10 +125,10 @@
             listingId: formListingId,
             type: formType,
             quantity: Number(formQuantity),
-            price: Number(formPrice),
+            price: isSplit ? 0 : Number(formPrice),
             date: formDate,
-            fees: formFees ? Number(formFees) : undefined,
-            fxRate: needsFx && formFxRate ? Number(formFxRate) : undefined,
+            fees: !isSplit && formFees ? Number(formFees) : undefined,
+            fxRate: !isSplit && needsFx && formFxRate ? Number(formFxRate) : undefined,
         };
 
         const res = transaction
@@ -155,21 +157,24 @@
         <select class="select w-full" bind:value={formType}>
             <option value="BUY">Buy</option>
             <option value="SELL">Sell</option>
+            <option value="SPLIT">Split</option>
         </select>
     </fieldset>
 
     <div class="grid grid-cols-2 gap-4">
         <fieldset class="fieldset">
-            <legend class="fieldset-legend">Quantity</legend>
+            <legend class="fieldset-legend">{isSplit ? 'Ratio (new / old shares)' : 'Quantity'}</legend>
             <input class="input w-full" type="number" min="0" step="any"
-                   placeholder="0.00" bind:value={formQuantity} required />
+                   placeholder={isSplit ? '2' : '0.00'} bind:value={formQuantity} required />
         </fieldset>
 
+        {#if !isSplit}
         <fieldset class="fieldset">
             <legend class="fieldset-legend">Price per unit</legend>
             <input class="input w-full" type="number" min="0" step="any"
                    placeholder="0.00" bind:value={formPrice} required />
         </fieldset>
+        {/if}
     </div>
 
     {#if oversellWarning}
@@ -184,14 +189,16 @@
             <input class="input w-full" type="date" bind:value={formDate} required />
         </fieldset>
 
+        {#if !isSplit}
         <fieldset class="fieldset">
             <legend class="fieldset-legend">Fees <span class="text-base-content/40 font-normal">(optional)</span></legend>
             <input class="input w-full" type="number" min="0" step="any"
                    placeholder="0.00" bind:value={formFees} />
         </fieldset>
+        {/if}
     </div>
 
-    {#if needsFx}
+    {#if !isSplit && needsFx}
         <fieldset class="fieldset">
             <legend class="fieldset-legend">
                 FX rate

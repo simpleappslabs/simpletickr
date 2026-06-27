@@ -42,12 +42,12 @@
                     <td class="tabular-nums">{t.date}</td>
                     <td class="font-mono font-semibold">{listingTicker(t.listingId)}</td>
                     <td>
-                        <span class="badge badge-ghost badge-sm {t.type === 'BUY' ? 'text-success' : 'text-error'}">
+                        <span class="badge badge-ghost badge-sm {t.type === 'BUY' ? 'text-success' : t.type === 'SELL' ? 'text-error' : 'text-info'}">
                             {t.type}
                         </span>
                     </td>
-                    <td class="text-right tabular-nums">{fmt(t.quantity)}</td>
-                    <td class="text-right tabular-nums">{fmt(t.price)}</td>
+                    <td class="text-right tabular-nums">{t.type === 'SPLIT' ? `${t.quantity}×` : fmt(t.quantity)}</td>
+                    <td class="text-right tabular-nums">{t.type === 'SPLIT' ? '—' : fmt(t.price)}</td>
                     <td class="text-right tabular-nums">{t.fees != null ? fmt(t.fees) : '—'}</td>
                     <td class="text-right">
                         <button

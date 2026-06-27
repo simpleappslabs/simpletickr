@@ -152,4 +152,18 @@ class TransactionControllerTest {
         )
             .andExpect(status().isBadRequest)
     }
+
+    @Test
+    fun `POST split transaction returns 201`() {
+        val splitTx = sample.copy(type = TransactionType.SPLIT, quantity = BigDecimal("2"), price = BigDecimal.ZERO)
+        whenever(recordTransactionUseCase.execute(eq(10L), any())).thenReturn(splitTx)
+
+        mockMvc.perform(
+            post("/portfolios/10/transactions")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"listingId":5,"type":"SPLIT","quantity":2.0,"price":0.0,"date":"2024-06-01"}""")
+        )
+            .andExpect(status().isCreated)
+            .andExpect(jsonPath("$.type").value("SPLIT"))
+    }
 }

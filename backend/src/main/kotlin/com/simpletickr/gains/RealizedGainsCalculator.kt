@@ -2,6 +2,7 @@ package com.simpletickr.gains
 
 import com.simpletickr.asset.Listing
 import com.simpletickr.shared.CurrencyCode
+import com.simpletickr.transaction.SplitAdjuster
 import com.simpletickr.transaction.Transaction
 import com.simpletickr.transaction.TransactionType
 import java.math.BigDecimal
@@ -33,6 +34,12 @@ object RealizedGainsCalculator {
         return RealizedGainsReport(method = method, from = from, to = to, entries = entries, byCurrency = byCurrency)
     }
 
+    private fun buildSplitIndex(transactions: List<Transaction>): Map<Long, List<Pair<LocalDate, BigDecimal>>> =
+        transactions
+            .filter { it.type == TransactionType.SPLIT }
+            .groupBy { it.assetId }
+            .mapValues { (_, splits) -> splits.map { it.date to it.quantity } }
+
     private fun computeFifo(
         transactions: List<Transaction>,
         listingMap: Map<Long, Listing>,
@@ -41,6 +48,7 @@ object RealizedGainsCalculator {
     ): List<RealizedGainEntry> {
         data class Lot(var remaining: BigDecimal, val pricePerUnit: BigDecimal, val feePerUnit: BigDecimal)
 
+        val splitIndex = buildSplitIndex(transactions)
         val lots = mutableMapOf<Long, ArrayDeque<Lot>>()
         val entries = mutableListOf<RealizedGainEntry>()
 
@@ -50,8 +58,12 @@ object RealizedGainsCalculator {
 
             when (tx.type) {
                 TransactionType.BUY -> {
-                    val feePerUnit = fees.divide(tx.quantity, 10, RoundingMode.HALF_UP)
-                    assetLots.addLast(Lot(tx.quantity, tx.price, feePerUnit))
+                    val adj = SplitAdjuster.adjustmentFor(tx.assetId, tx.date, splitIndex)
+                    val adjQty = tx.quantity * adj.multiplier
+                    val adjPrice = if (adj.multiplier == BigDecimal.ONE) tx.price
+                                   else tx.price.divide(adj.multiplier, 10, RoundingMode.HALF_UP)
+                    val feePerUnit = fees.divide(adjQty, 10, RoundingMode.HALF_UP)
+                    assetLots.addLast(Lot(adjQty, adjPrice, feePerUnit))
                 }
                 TransactionType.SELL -> {
                     var remaining = tx.quantity
@@ -86,6 +98,7 @@ object RealizedGainsCalculator {
                         )
                     }
                 }
+                TransactionType.SPLIT -> { /* no-op: consumed by splitIndex */ }
             }
         }
 
@@ -104,6 +117,7 @@ object RealizedGainsCalculator {
             var totalBuyFees: BigDecimal = BigDecimal.ZERO,
         )
 
+        val splitIndex = buildSplitIndex(transactions)
         val state = mutableMapOf<Long, AssetState>()
         val entries = mutableListOf<RealizedGainEntry>()
 
@@ -113,8 +127,12 @@ object RealizedGainsCalculator {
 
             when (tx.type) {
                 TransactionType.BUY -> {
-                    s.totalQty += tx.quantity
-                    s.totalPurchaseValue += tx.quantity * tx.price
+                    val adj = SplitAdjuster.adjustmentFor(tx.assetId, tx.date, splitIndex)
+                    val adjQty = tx.quantity * adj.multiplier
+                    val adjPrice = if (adj.multiplier == BigDecimal.ONE) tx.price
+                                   else tx.price.divide(adj.multiplier, 10, RoundingMode.HALF_UP)
+                    s.totalQty += adjQty
+                    s.totalPurchaseValue += adjQty * adjPrice
                     s.totalBuyFees += fees
                 }
                 TransactionType.SELL -> {
@@ -147,6 +165,7 @@ object RealizedGainsCalculator {
                         }
                     }
                 }
+                TransactionType.SPLIT -> { /* no-op: consumed by splitIndex */ }
             }
         }
 

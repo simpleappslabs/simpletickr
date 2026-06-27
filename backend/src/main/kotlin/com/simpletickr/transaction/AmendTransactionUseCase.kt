@@ -26,6 +26,7 @@ class AmendTransactionUseCase(
         val baseCurrency = userSettingsRepository.find().baseCurrency
 
         val (fxRate, fxRateSource) = when {
+            command.type == TransactionType.SPLIT -> null to null
             listing.currency == baseCurrency -> null to null
             command.fxRate != null -> command.fxRate to FxRateSource.USER
             else -> {

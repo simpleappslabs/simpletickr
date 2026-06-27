@@ -31,6 +31,7 @@ class PortfolioValueHistoryRepository(private val jdbcTemplate: JdbcTemplate) {
         },
         from, to,
         portfolioId,
+        portfolioId,
         baseCurrency.value, baseCurrency.value, baseCurrency.value,
         baseCurrency.value, portfolioId, baseCurrency.value,
     )
@@ -42,6 +43,7 @@ class PortfolioValueHistoryRepository(private val jdbcTemplate: JdbcTemplate) {
                 SELECT generate_series(?::date, ?::date, '1 day'::interval)::date AS d
             ),
             -- Step 1: collapse multiple transactions on the same (listing, date) into a single net delta.
+            -- SPLIT transactions are excluded — they don't change the cash position.
             -- Separating this from the window function below makes the two-step intent explicit.
             daily_changes AS (
                 SELECT
@@ -49,8 +51,14 @@ class PortfolioValueHistoryRepository(private val jdbcTemplate: JdbcTemplate) {
                     date,
                     SUM(CASE type WHEN 'BUY' THEN quantity ELSE -quantity END) AS delta
                 FROM transactions
-                WHERE portfolio_id = ?
+                WHERE portfolio_id = ? AND type IN ('BUY', 'SELL')
                 GROUP BY listing_id, date
+            ),
+            -- Collect split events for this portfolio so we can adjust historical quantities.
+            splits_raw AS (
+                SELECT listing_id, date, quantity AS ratio
+                FROM transactions
+                WHERE portfolio_id = ? AND type = 'SPLIT'
             ),
             -- Step 2: running net quantity per listing at each transaction date.
             -- Computing this once with a window function avoids the O(dates × transactions) cost
@@ -59,11 +67,28 @@ class PortfolioValueHistoryRepository(private val jdbcTemplate: JdbcTemplate) {
                 SELECT
                     listing_id,
                     date,
-                    SUM(delta) OVER (PARTITION BY listing_id ORDER BY date) AS net_qty
+                    SUM(delta) OVER (PARTITION BY listing_id ORDER BY date) AS net_qty_raw
                 FROM daily_changes
             ),
+            -- Apply the forward-looking split multiplier: for a snapshot at date D, multiply net_qty
+            -- by the product of all split ratios occurring AFTER D for the same listing.
+            -- Yahoo Finance retroactively adjusts historical prices for splits, so using the
+            -- split-adjusted quantity keeps value = net_qty × close_price correct at all dates.
+            split_adjusted_snapshots AS (
+                SELECT
+                    listing_id,
+                    date,
+                    net_qty_raw * COALESCE(
+                        (SELECT EXP(SUM(LN(ratio::float8)))
+                         FROM splits_raw sr
+                         WHERE sr.listing_id = position_snapshots.listing_id
+                           AND sr.date > position_snapshots.date),
+                        1.0
+                    ) AS net_qty
+                FROM position_snapshots
+            ),
             portfolio_listings AS (
-                SELECT DISTINCT listing_id FROM position_snapshots
+                SELECT DISTINCT listing_id FROM split_adjusted_snapshots
             ),
             -- Forward-fill net quantity from transaction dates to every calendar date.
             -- DISTINCT ON + ORDER BY date DESC picks the most recent snapshot on or before each day.
@@ -75,7 +100,7 @@ class PortfolioValueHistoryRepository(private val jdbcTemplate: JdbcTemplate) {
                     ps.net_qty
                 FROM date_series ds
                 CROSS JOIN portfolio_listings pl
-                LEFT JOIN position_snapshots ps
+                LEFT JOIN split_adjusted_snapshots ps
                     ON ps.listing_id = pl.listing_id AND ps.date <= ds.d
                 ORDER BY ds.d, pl.listing_id, ps.date DESC NULLS LAST
             ),
@@ -131,6 +156,7 @@ class PortfolioValueHistoryRepository(private val jdbcTemplate: JdbcTemplate) {
                 FROM transactions t
                 JOIN listings l ON l.id = t.listing_id
                 WHERE t.portfolio_id = ?
+                  AND t.type IN ('BUY', 'SELL')
                   AND (l.currency = ? OR t.fx_rate IS NOT NULL)
                 GROUP BY t.date
             ),

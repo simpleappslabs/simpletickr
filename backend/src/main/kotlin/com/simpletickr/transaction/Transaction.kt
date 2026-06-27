@@ -4,7 +4,7 @@ import com.simpletickr.fx.FxRateSource
 import java.math.BigDecimal
 import java.time.LocalDate
 
-enum class TransactionType { BUY, SELL }
+enum class TransactionType { BUY, SELL, SPLIT }
 
 data class Transaction(
     val id: Long,

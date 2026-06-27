@@ -144,6 +144,75 @@ class RealizedGainsCalculatorTest {
         assertEquals(0, expectedGain.compareTo(report.byCurrency[CurrencyCode("USD")]!!.totalGain))
     }
 
+    private fun split(id: Long, date: String, ratio: String) = Transaction(
+        id = id, portfolioId = 1L, listingId = 10L, assetId = 1L,
+        type = TransactionType.SPLIT,
+        quantity = BigDecimal(ratio), price = BigDecimal.ZERO,
+        date = LocalDate.parse(date),
+        fees = null,
+    )
+
+    // ── SPLIT ────────────────────────────────────────────────────────────────
+
+    @Test
+    fun `SPLIT alone creates no gain entries`() {
+        val txs = listOf(
+            buy(1, "2024-01-01", "100", "10"),
+            split(2, "2024-06-01", "2"),
+        )
+        val report = RealizedGainsCalculator.compute(txs, listingMap, RealizationMethod.FIFO, from, to)
+        assertEquals(0, report.entries.size)
+    }
+
+    @Test
+    fun `FIFO - sell after 2-for-1 split uses split-adjusted cost basis`() {
+        // BUY 100 @ $20 → 2:1 split → 200 lots @ $10 each
+        // SELL 100 @ $12 → proceeds = 1200, cost basis = 100 * $10 = $1000, gain = $200
+        val txs = listOf(
+            buy(1, "2024-01-01", "100", "20"),
+            split(2, "2024-06-01", "2"),
+            sell(3, "2024-09-01", "100", "12"),
+        )
+        val report = RealizedGainsCalculator.compute(txs, listingMap, RealizationMethod.FIFO, from, to)
+        assertEquals(1, report.entries.size)
+        assertBd("1200", report.entries[0].proceeds)
+        assertBd("1000", report.entries[0].costBasis)
+        assertBd("200", report.entries[0].gain)
+    }
+
+    @Test
+    fun `AVCO - sell after 2-for-1 split uses split-adjusted cost basis`() {
+        val txs = listOf(
+            buy(1, "2024-01-01", "100", "20"),
+            split(2, "2024-06-01", "2"),
+            sell(3, "2024-09-01", "100", "12"),
+        )
+        val report = RealizedGainsCalculator.compute(txs, listingMap, RealizationMethod.AVERAGE_COST, from, to)
+        assertEquals(1, report.entries.size)
+        assertBd("1200", report.entries[0].proceeds)
+        assertBd("1000", report.entries[0].costBasis)
+        assertBd("200", report.entries[0].gain)
+    }
+
+    @Test
+    fun `FIFO - pre-split buy and post-split buy, sell uses correct lots`() {
+        // BUY 100 @ $20 → 2:1 split → adjusted to 200 @ $10
+        // BUY 50 @ $12 (after split, already post-split price) → 50 @ $12
+        // SELL 150: first 150 from pre-split lot (all 150 @ $10), wait no: we have 200 @ $10 then 50 @ $12
+        // SELL 150 → 150 × $10 = $1500 cost, proceeds = 150 × $15 = $2250, gain = $750
+        val txs = listOf(
+            buy(1, "2024-01-01", "100", "20"),
+            split(2, "2024-06-01", "2"),
+            buy(3, "2024-07-01", "50", "12"),
+            sell(4, "2024-10-01", "150", "15"),
+        )
+        val report = RealizedGainsCalculator.compute(txs, listingMap, RealizationMethod.FIFO, from, to)
+        assertEquals(1, report.entries.size)
+        assertBd("2250", report.entries[0].proceeds)
+        assertBd("1500", report.entries[0].costBasis)
+        assertBd("750", report.entries[0].gain)
+    }
+
     private fun assertBd(expected: String, actual: BigDecimal, message: String = "") =
         assertEquals(0, BigDecimal(expected).compareTo(actual), "$message expected $expected but was $actual")
 }

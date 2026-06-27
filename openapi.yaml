@@ -1316,6 +1316,7 @@ components:
       enum:
         - BUY
         - SELL
+        - SPLIT
 
     FxRateSource:
       type: string
