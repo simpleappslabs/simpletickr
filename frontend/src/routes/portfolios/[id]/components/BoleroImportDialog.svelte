@@ -203,7 +203,7 @@
                 <p class="text-sm text-success mb-4">All instruments mapped.</p>
             {/if}
 
-            <div class="overflow-x-auto">
+            <div>
                 <table class="table table-sm">
                     <thead>
                         <tr>

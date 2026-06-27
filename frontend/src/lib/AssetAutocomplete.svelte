@@ -15,6 +15,24 @@
     let highlighted = $state(-1);
     let selectedId = $state(-1);
     let containerEl: HTMLDivElement | undefined = $state();
+    let inputEl: HTMLInputElement | undefined = $state();
+    let dropdownLeft = $state(0);
+    let dropdownTop = $state(0);
+    let dropdownWidth = $state(0);
+
+    // Moves node to document.body so it escapes any overflow/stacking context
+    function portal(node: HTMLElement) {
+        document.body.appendChild(node);
+        return { destroy() { node.remove(); } };
+    }
+
+    function syncDropdownPos() {
+        if (!inputEl) return;
+        const r = inputEl.getBoundingClientRect();
+        dropdownLeft = r.left;
+        dropdownTop = r.bottom;
+        dropdownWidth = r.width;
+    }
 
     $effect.pre(() => {
         if (value !== selectedId) {
@@ -46,7 +64,6 @@
     const matchingAssets = $derived(allMatching.slice(0, 8));
     const hasMore = $derived(allMatching.length > 8);
 
-    // Flat list of visible listings for keyboard nav
     const visibleListings = $derived<ListingItem[]>(
         matchingAssets.flatMap(a => a.listings.map(l => ({ listing: l, asset: a })))
     );
@@ -61,6 +78,7 @@
         value = 0;
         open = true;
         highlighted = -1;
+        syncDropdownPos();
     }
 
     function select(listing: Listing, asset: Asset) {
@@ -74,7 +92,7 @@
     function handleKeydown(e: KeyboardEvent) {
         if (e.key === 'ArrowDown') {
             e.preventDefault();
-            if (!open) { open = true; return; }
+            if (!open) { open = true; syncDropdownPos(); return; }
             highlighted = Math.min(highlighted + 1, visibleListings.length - 1);
         } else if (e.key === 'ArrowUp') {
             e.preventDefault();
@@ -99,6 +117,7 @@
 
 <div class="relative" bind:this={containerEl}>
     <input
+        bind:this={inputEl}
         class="input w-full"
         type="text"
         placeholder="Search by ticker or name..."
@@ -106,14 +125,17 @@
         oninput={handleInput}
         onkeydown={handleKeydown}
         onblur={handleBlur}
-        onfocus={() => { open = true; }}
+        onfocus={() => { syncDropdownPos(); open = true; }}
         autocomplete="off"
     />
 
     {#if open && value === 0 && matchingAssets.length > 0}
-        <ul class="absolute z-50 mt-1 w-full bg-base-100 border border-base-300 rounded-box shadow-lg max-h-72 overflow-y-auto">
+        <ul
+            use:portal
+            style="position: fixed; top: {dropdownTop}px; left: {dropdownLeft}px; width: {dropdownWidth}px;"
+            class="z-[9999] bg-base-100 border border-base-300 rounded-box shadow-lg max-h-72 overflow-y-auto"
+        >
             {#each matchingAssets as asset}
-                <!-- Asset header -->
                 <li class="px-4 pt-2 pb-0.5">
                     <span class="text-xs font-semibold text-base-content/50 uppercase tracking-wide">{asset.name}</span>
                 </li>
@@ -142,7 +164,11 @@
             {/if}
         </ul>
     {:else if open && value === 0 && q.length > 0}
-        <div class="absolute z-50 mt-1 w-full bg-base-100 border border-base-300 rounded-box shadow-lg px-4 py-3 text-sm text-base-content/60">
+        <div
+            use:portal
+            style="position: fixed; top: {dropdownTop}px; left: {dropdownLeft}px; width: {dropdownWidth}px;"
+            class="z-[9999] bg-base-100 border border-base-300 rounded-box shadow-lg px-4 py-3 text-sm text-base-content/60"
+        >
             No assets found.
         </div>
     {/if}
