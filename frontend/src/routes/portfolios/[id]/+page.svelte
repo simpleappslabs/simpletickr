@@ -186,6 +186,7 @@
         <TransactionsContainer
             portfolioId={portfolio!.id}
             {assets}
+            {holdings}
             {transactions}
             currentPage={transactionPage}
             totalPages={transactionTotalPages}

@@ -1,17 +1,18 @@
 <script lang="ts">
     import { recordTransaction, amendTransaction, lookupFxRate, getSettings } from '$lib/api/sdk.gen';
-    import type { Asset, Transaction, TransactionType } from '$lib/api/types.gen';
+    import type { Asset, Holding, Transaction, TransactionType } from '$lib/api/types.gen';
     import AssetAutocomplete from '$lib/AssetAutocomplete.svelte';
 
     interface Props {
         assets: Asset[];
+        holdings: Holding[];
         portfolioId: number;
         transaction?: Transaction | null;
         onSuccess: () => void;
         onCancel: () => void;
     }
 
-    const { assets, portfolioId, transaction = null, onSuccess, onCancel }: Props = $props();
+    const { assets, holdings, portfolioId, transaction = null, onSuccess, onCancel }: Props = $props();
 
     let formListingId = $state(0);
     let formType = $state<TransactionType>('BUY');
@@ -41,6 +42,18 @@
 
     const needsFx = $derived(
         selectedListing != null && baseCurrency != null && selectedListing.currency !== baseCurrency
+    );
+
+    const currentListingQuantity = $derived(
+        formListingId > 0
+            ? holdings.flatMap(h => h.listings).find(l => l.listingId === formListingId)?.quantity ?? 0
+            : 0
+    );
+
+    const oversellWarning = $derived(
+        formType === 'SELL' &&
+        formQuantity !== '' &&
+        Number(formQuantity) > currentListingQuantity
     );
 
     // Re-fetch FX rate whenever listing, date, or fetch trigger changes (and user hasn't manually edited it)
@@ -158,6 +171,12 @@
                    placeholder="0.00" bind:value={formPrice} required />
         </fieldset>
     </div>
+
+    {#if oversellWarning}
+        <div class="alert alert-warning text-sm">
+            <span>Quantity exceeds your current holding of {currentListingQuantity}. The transaction will still be recorded.</span>
+        </div>
+    {/if}
 
     <div class="grid grid-cols-2 gap-4">
         <fieldset class="fieldset">

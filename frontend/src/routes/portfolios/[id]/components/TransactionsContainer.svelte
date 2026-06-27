@@ -1,13 +1,14 @@
 <script lang="ts">
-    import type { Asset, Transaction } from '$lib/api/types.gen';
+    import type { Asset, Holding, Transaction } from '$lib/api/types.gen';
     import { removeTransaction } from '$lib/api/sdk.gen';
     import TransactionDialog from './TransactionDialog.svelte';
     import TransactionsTable from './TransactionsTable.svelte';
     import ConfirmModal from '$lib/ConfirmModal.svelte';
 
-    let { portfolioId, assets, transactions, currentPage, totalPages, onchange, onpagechange, createOpen = $bindable(false) }: {
+    let { portfolioId, assets, holdings, transactions, currentPage, totalPages, onchange, onpagechange, createOpen = $bindable(false) }: {
         portfolioId: number;
         assets: Asset[];
+        holdings: Holding[];
         transactions: Transaction[];
         currentPage: number;
         totalPages: number;
@@ -80,6 +81,7 @@
     open={modalOpen}
     {portfolioId}
     {assets}
+    {holdings}
     transaction={editingTransaction}
     onsuccess={handleTransactionSuccess}
     oncancel={closeModal}
