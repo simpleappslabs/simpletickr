@@ -1,13 +1,9 @@
 <script lang="ts">
     import type { Holding } from '$lib/api/types.gen';
     import { Chart, ArcElement, Tooltip, Legend, DoughnutController } from 'chart.js';
+    import { CHART_COLORS } from './chartColors';
 
     Chart.register(ArcElement, Tooltip, Legend, DoughnutController);
-
-    const CHART_COLORS = [
-        '#7c6ff7', '#22d3ee', '#4ade80', '#f87171', '#fbbf24',
-        '#a78bfa', '#34d399', '#fb923c', '#60a5fa', '#f472b6',
-    ];
 
     let { holdings }: { holdings: Holding[] } = $props();
 
@@ -17,6 +13,8 @@
 
     $effect(() => {
         if (!chartCanvas || holdings.length === 0) return;
+
+        const textColor = getComputedStyle(chartCanvas).color;
 
         const chart = new Chart(chartCanvas, {
             type: 'doughnut',
@@ -29,8 +27,30 @@
                 }],
             },
             options: {
+                responsive: false,
+                maintainAspectRatio: true,
                 plugins: {
-                    legend: { position: 'right', labels: { color: '#e2e8f0', boxWidth: 12 } },
+                    legend: {
+                        position: 'right',
+                        labels: {
+                            color: textColor,
+                            boxWidth: 12,
+                            generateLabels: (chart) => {
+                                const dataset = chart.data.datasets[0];
+                                const values = dataset.data as number[];
+                                const total = values.reduce((s, v) => s + v, 0);
+                                return (chart.data.labels as string[]).map((label, i) => ({
+                                    text: `${label}  ${total > 0 ? Math.round((values[i] / total) * 100) : 0}%`,
+                                    fillStyle: (dataset.backgroundColor as string[])[i],
+                                    fontColor: textColor,
+                                    strokeStyle: 'transparent',
+                                    lineWidth: 0,
+                                    hidden: false,
+                                    index: i,
+                                }));
+                            },
+                        },
+                    },
                     tooltip: {
                         callbacks: {
                             label: (ctx) => {
@@ -47,6 +67,6 @@
     });
 </script>
 
-<div class="shrink-0 flex items-center justify-center bg-base-200 rounded-box p-4">
-    <canvas bind:this={chartCanvas} width="200" height="200"></canvas>
+<div class="bg-base-200 rounded-box p-4 flex items-center justify-center h-full">
+    <canvas bind:this={chartCanvas} width="220" height="220"></canvas>
 </div>

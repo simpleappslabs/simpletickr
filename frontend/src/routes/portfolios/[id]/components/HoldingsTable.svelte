@@ -25,14 +25,15 @@
     }
 </script>
 
-<div class="flex-1 min-w-0 overflow-x-auto">
-    <table class="table table-zebra table-sm w-full">
+<div class="overflow-x-auto">
+    <table class="table table-zebra table-sm min-w-full">
         <thead>
         <tr>
             <th></th>
             <th>Asset</th>
             <th class="text-right">Qty</th>
             <th class="text-right">Avg cost</th>
+            <th class="text-right">Price</th>
             <th class="text-right">Total cost</th>
             <th class="text-right">Market value</th>
             <th class="text-right">Gain</th>
@@ -47,21 +48,24 @@
                         {expandedAssets.has(h.assetId) ? '▾' : '▸'}
                     {/if}
                 </td>
-                <td>
-                    <div class="font-semibold">{h.assetName}</div>
+                <td class="max-w-[160px]">
+                    <div class="font-semibold truncate" title={h.assetName}>{h.assetName}</div>
                     <div class="text-xs text-base-content/50 font-mono">{h.listings.map(l => l.ticker).join(' · ')}</div>
                 </td>
-                <td class="text-right tabular-nums">{fmt(h.totalQuantity)}</td>
-                <td class="text-right tabular-nums">
+                <td class="text-right tabular-nums whitespace-nowrap">{fmt(h.totalQuantity)}</td>
+                <td class="text-right tabular-nums whitespace-nowrap">
                     {h.avgCostBasisBase != null ? fmtCcy(h.avgCostBasisBase, h.baseCurrency) : '—'}
                 </td>
-                <td class="text-right tabular-nums">
+                <td class="text-right tabular-nums whitespace-nowrap">
+                    {h.marketValueBase != null ? fmtCcy(h.marketValueBase / h.totalQuantity, h.baseCurrency) : '—'}
+                </td>
+                <td class="text-right tabular-nums whitespace-nowrap">
                     {fmtCcy(h.totalCostBase, h.baseCurrency)}
                 </td>
-                <td class="text-right tabular-nums">
+                <td class="text-right tabular-nums whitespace-nowrap">
                     {fmtCcy(h.marketValueBase, h.baseCurrency)}
                 </td>
-                <td class="text-right tabular-nums">
+                <td class="text-right tabular-nums whitespace-nowrap">
                     {#if h.unrealizedPnlBase == null}
                         <span class="text-base-content/30">—</span>
                     {:else}
@@ -99,6 +103,9 @@
                         </td>
                         <td class="text-right tabular-nums">{fmt(l.quantity)}</td>
                         <td class="text-right tabular-nums">{fmtCcy(l.avgCostLocal, l.currency)}</td>
+                        <td class="text-right tabular-nums">
+                            {l.marketValueLocal != null ? fmtCcy(l.marketValueLocal / l.quantity, l.currency) : '—'}
+                        </td>
                         <td class="text-right tabular-nums">{fmtCcy(l.totalCostLocal, l.currency)}</td>
                         <td class="text-right tabular-nums">{fmtCcy(l.marketValueBase, h.baseCurrency)}</td>
                         <td>

@@ -32,6 +32,7 @@
     let boleroImportOpen = $state(false);
     let syncingPrices = $state(false);
     let syncPricesError = $state<string | null>(null);
+    let lastSyncAt = $state<Date | null>(null);
     let valueHistoryKey = $state(0);
 
     function handleBrokerSelect(broker: string) {
@@ -49,6 +50,7 @@
         } else {
             await refreshData();
             valueHistoryKey++;
+            lastSyncAt = new Date();
         }
         syncingPrices = false;
     }
@@ -136,15 +138,16 @@
                     <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
                 </svg>
             </button>
-            <a href="/portfolios/{portfolio.id}/realized-gains" class="btn btn-ghost btn-sm hidden sm:inline-flex">Realized gains</a>
-            <button class="btn btn-outline btn-sm hidden sm:inline-flex" onclick={() => brokerSelectOpen = true}>Import</button>
-            <button class="btn btn-outline btn-sm hidden sm:inline-flex" onclick={handleSyncPrices} disabled={syncingPrices}>
+            <button class="btn btn-primary btn-sm shrink-0" onclick={() => createTransactionOpen = true}>+ Record transaction</button>
+            <button class="btn btn-ghost btn-sm hidden sm:inline-flex" onclick={handleSyncPrices} disabled={syncingPrices}>
                 {#if syncingPrices}
                     <span class="loading loading-spinner loading-xs"></span> Syncing…
                 {:else}
                     Sync prices
                 {/if}
             </button>
+            <button class="btn btn-ghost btn-sm hidden sm:inline-flex" onclick={() => brokerSelectOpen = true}>Import</button>
+            <a href="/portfolios/{portfolio.id}/realized-gains" class="btn btn-ghost btn-sm hidden sm:inline-flex">Realized gains</a>
             <details class="sm:hidden dropdown dropdown-end">
                 <summary class="btn btn-ghost btn-sm list-none" aria-label="More actions">
                     <svg xmlns="http://www.w3.org/2000/svg" class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -152,12 +155,11 @@
                     </svg>
                 </summary>
                 <ul class="dropdown-content menu bg-base-200 rounded-box shadow-lg z-[1] w-48 p-2 mt-1">
-                    <li><a href="/portfolios/{portfolio.id}/realized-gains">Realized gains</a></li>
-                    <li><button onclick={() => brokerSelectOpen = true}>Import</button></li>
                     <li><button onclick={handleSyncPrices} disabled={syncingPrices}>{syncingPrices ? 'Syncing…' : 'Sync prices'}</button></li>
+                    <li><button onclick={() => brokerSelectOpen = true}>Import</button></li>
+                    <li><a href="/portfolios/{portfolio.id}/realized-gains">Realized gains</a></li>
                 </ul>
             </details>
-            <button class="btn btn-primary btn-sm shrink-0" onclick={() => createTransactionOpen = true}>+ Record transaction</button>
         {/if}
     </div>
 
@@ -172,17 +174,16 @@
     {:else if error}
         <div class="alert alert-error"><span>{error}</span></div>
     {:else}
-        <PortfolioSummary {holdings} />
+        <PortfolioSummary {holdings} {lastSyncAt} />
 
         <ValueHistoryContainer portfolioId={portfolio!.id} refreshKey={valueHistoryKey} />
 
         {#if holdings.length === 0}
             <p class="text-base-content/40 italic text-sm">No holdings yet. Record a transaction to get started.</p>
         {:else}
-            <div class="flex flex-col lg:flex-row gap-6 items-start">
-                <PortfolioChart {holdings} />
-                <HoldingsTable {holdings} onchartclick={(l) => chartListing = l} />
-            </div>
+            <HoldingsTable {holdings} onchartclick={(l) => chartListing = l} />
+
+            <PortfolioChart {holdings} />
         {/if}
 
         <TransactionsContainer
