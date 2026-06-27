@@ -17,6 +17,7 @@ security: []
 tags:
   - name: Portfolios
   - name: Assets
+  - name: ListingSearch
   - name: Transactions
   - name: Prices
   - name: FX
@@ -829,6 +830,27 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
 
+  /listing-search:
+    get:
+      tags: [ListingSearch]
+      operationId: searchListings
+      summary: Search for listings via a search provider
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of matching listing results
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ListingSearchResult"
+
   /transactions:
     get:
       tags: [Transactions]
@@ -1198,6 +1220,32 @@ components:
         externalId:
           type: string
           example: VWCE.AS
+
+    ListingSearchResult:
+      type: object
+      required:
+        - symbol
+        - name
+        - type
+        - currency
+      properties:
+        symbol:
+          type: string
+          description: Symbol (used as externalId for price mapping)
+          example: VWCE.DE
+        name:
+          type: string
+          example: Vanguard FTSE All-World UCITS ETF
+        type:
+          $ref: "#/components/schemas/AssetType"
+        exchange:
+          type: string
+          nullable: true
+          example: XETRA
+        currency:
+          type: string
+          nullable: true
+          example: EUR
 
     AssetType:
       type: string

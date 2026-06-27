@@ -3,8 +3,9 @@
         createAsset, updateAsset, getAsset,
         createListing, updateListing, deleteListing,
         setPriceMapping, deletePriceMapping,
+        searchListings,
     } from '$lib/api/sdk.gen';
-    import type { AssetDetail, AssetType } from '$lib/api/types.gen';
+    import type { AssetDetail, AssetType, ListingSearchResult } from '$lib/api/types.gen';
     import ListingForm, { type ListingData } from '$lib/asset/ListingForm.svelte';
     import type { Mapping } from '$lib/asset/PriceMappingForm.svelte';
 
@@ -27,6 +28,37 @@
 
     let removedIds: number[] = [];
     let nextTempId = -1;
+
+    let searchQuery = $state('');
+    let searchResults = $state<ListingSearchResult[]>([]);
+    let searchDebounce: ReturnType<typeof setTimeout> | null = null;
+    let searchOpen = $state(false);
+
+    function onSearchInput() {
+        if (searchDebounce) clearTimeout(searchDebounce);
+        if (!searchQuery.trim()) { searchResults = []; searchOpen = false; return; }
+        searchDebounce = setTimeout(async () => {
+            const { data } = await searchListings({ query: { q: searchQuery } });
+            searchResults = data ?? [];
+            searchOpen = searchResults.length > 0;
+        }, 300);
+    }
+
+    function applySearchResult(result: ListingSearchResult) {
+        name = result.name;
+        type = result.type;
+        listings = [{
+            tempId: nextTempId--,
+            ticker: result.symbol,
+            exchange: result.exchange ?? '',
+            currency: result.currency ?? '',
+            mappings: [{ provider: 'YAHOO', externalId: result.symbol }],
+            originalMappings: [],
+        }];
+        searchQuery = '';
+        searchResults = [];
+        searchOpen = false;
+    }
 
     $effect(() => {
         name = asset?.name ?? '';
@@ -147,6 +179,49 @@
 <h3 class="text-lg font-bold mb-6">{asset ? 'Edit asset' : 'Add asset'}</h3>
 
 <form onsubmit={handleSubmit} class="space-y-4">
+    {#if !asset}
+        <div class="relative">
+            <fieldset class="fieldset">
+                <legend class="fieldset-legend">
+                    Search Yahoo Finance
+                    <span class="text-base-content/40 font-normal">(optional — or fill in the form below)</span>
+                </legend>
+                <input
+                    class="input w-full"
+                    type="text"
+                    placeholder="e.g. VWCE or Vanguard..."
+                    bind:value={searchQuery}
+                    oninput={onSearchInput}
+                    onblur={() => setTimeout(() => { searchOpen = false; }, 150)}
+                    autocomplete="off"
+                />
+            </fieldset>
+            {#if searchOpen}
+                <ul class="absolute z-50 w-full bg-base-100 border border-base-300 rounded-box shadow-lg mt-1 max-h-64 overflow-y-auto">
+                    {#each searchResults as result}
+                        <li>
+                            <button
+                                type="button"
+                                class="w-full text-left px-4 py-2.5 hover:bg-base-200 flex items-center justify-between gap-2"
+                                onmousedown={() => applySearchResult(result)}
+                            >
+                                <span>
+                                    <span class="font-mono font-semibold text-sm">{result.symbol}</span>
+                                    <span class="text-base-content/60 text-sm ml-2">{result.name}</span>
+                                </span>
+                                <span class="badge badge-ghost badge-sm shrink-0">{result.type}</span>
+                            </button>
+                        </li>
+                    {/each}
+                </ul>
+            {/if}
+        </div>
+    {/if}
+
+    {#if !asset}
+        <div class="divider text-xs text-base-content/40">or fill in manually</div>
+    {/if}
+
     <fieldset class="fieldset">
         <legend class="fieldset-legend">Name</legend>
         <input class="input w-full" type="text" placeholder="e.g. Apple Inc." bind:value={name} disabled={submitting} required />
