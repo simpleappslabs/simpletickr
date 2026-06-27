@@ -3,6 +3,7 @@
     import {deleteAsset, getAsset, listAssets} from '$lib/api/sdk.gen';
     import type {Asset, AssetDetail} from '$lib/api/types.gen';
     import AssetModal from '$lib/asset/AssetModal.svelte';
+    import PriceHistoryModal from '$lib/asset/PriceHistoryModal.svelte';
     import '$lib/client';
 
     let assets = $state<Asset[]>([]);
@@ -11,6 +12,7 @@
 
     let modalOpen = $state(false);
     let editingAsset = $state<AssetDetail | null>(null);
+    let chartListing = $state<{ id: number; ticker: string; currency: string } | null>(null);
     let deletingAsset = $state<Asset | null>(null);
     let deleteSubmitting = $state(false);
     let deleteError = $state<string | null>(null);
@@ -144,7 +146,17 @@
                                 <td class="text-sm">{listing.currency}</td>
                                 <td class="text-right tabular-nums text-sm">{formatPrice(listing.lastPrice)}</td>
                                 <td class="tabular-nums text-sm text-base-content/70">{formatDate(listing.lastPriceDate)}</td>
-                                <td></td>
+                                <td class="text-right">
+                                    <button
+                                        class="btn btn-ghost btn-xs"
+                                        title="Price history"
+                                        onclick={() => chartListing = { id: listing.id, ticker: listing.ticker, currency: listing.currency }}
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+                                        </svg>
+                                    </button>
+                                </td>
                             </tr>
                         {/each}
                         </tbody>
@@ -154,6 +166,12 @@
         {/if}
     </section>
 </div>
+
+<PriceHistoryModal
+        open={chartListing !== null}
+        listing={chartListing}
+        onclose={() => chartListing = null}
+/>
 
 <AssetModal
         open={modalOpen}

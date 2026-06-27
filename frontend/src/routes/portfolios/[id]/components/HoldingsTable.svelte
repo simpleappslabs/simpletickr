@@ -1,7 +1,10 @@
 <script lang="ts">
     import type { Holding } from '$lib/api/types.gen';
 
-    let { holdings }: { holdings: Holding[] } = $props();
+    let { holdings, onchartclick }: {
+        holdings: Holding[];
+        onchartclick?: (listing: { id: number; ticker: string; currency: string }) => void;
+    } = $props();
 
     let expandedAssets = $state<Set<number>>(new Set());
 
@@ -33,6 +36,7 @@
             <th class="text-right">Total cost</th>
             <th class="text-right">Market value</th>
             <th class="text-right">Gain</th>
+            <th></th>
         </tr>
         </thead>
         <tbody>
@@ -69,6 +73,19 @@
                         </span>
                     {/if}
                 </td>
+                <td>
+                    {#if onchartclick && h.listings.length === 1}
+                        <button
+                            class="btn btn-ghost btn-xs"
+                            title="Price history"
+                            onclick={(e) => { e.stopPropagation(); onchartclick({ id: h.listings[0].listingId, ticker: h.listings[0].ticker, currency: h.listings[0].currency }); }}
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+                            </svg>
+                        </button>
+                    {/if}
+                </td>
             </tr>
             {#if expandedAssets.has(h.assetId) && h.listings.length > 1}
                 {#each h.listings as l}
@@ -84,7 +101,19 @@
                         <td class="text-right tabular-nums">{fmtCcy(l.avgCostLocal, l.currency)}</td>
                         <td class="text-right tabular-nums">{fmtCcy(l.totalCostLocal, l.currency)}</td>
                         <td class="text-right tabular-nums">{fmtCcy(l.marketValueBase, h.baseCurrency)}</td>
-                        <td></td>
+                        <td>
+                            {#if onchartclick}
+                                <button
+                                    class="btn btn-ghost btn-xs"
+                                    title="Price history"
+                                    onclick={(e) => { e.stopPropagation(); onchartclick({ id: l.listingId, ticker: l.ticker, currency: l.currency }); }}
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+                                    </svg>
+                                </button>
+                            {/if}
+                        </td>
                     </tr>
                 {/each}
             {/if}

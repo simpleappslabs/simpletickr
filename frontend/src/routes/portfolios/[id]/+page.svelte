@@ -13,6 +13,7 @@
     import BoleroImportDialog from './components/BoleroImportDialog.svelte';
     import PortfolioModal from '$lib/PortfolioModal.svelte';
     import ConfirmModal from '$lib/ConfirmModal.svelte';
+    import PriceHistoryModal from '$lib/asset/PriceHistoryModal.svelte';
     import '$lib/client';
 
     let portfolio = $state<Portfolio | null>(null);
@@ -23,6 +24,7 @@
     let assets = $state<Asset[]>([]);
     let loading = $state(true);
     let notFound = $state(false);
+    let chartListing = $state<{ id: number; ticker: string; currency: string } | null>(null);
     let error = $state<string | null>(null);
 
     let createTransactionOpen = $state(false);
@@ -179,7 +181,7 @@
         {:else}
             <div class="flex flex-col lg:flex-row gap-6 items-start">
                 <PortfolioChart {holdings} />
-                <HoldingsTable {holdings} />
+                <HoldingsTable {holdings} onchartclick={(l) => chartListing = l} />
             </div>
         {/if}
 
@@ -212,6 +214,12 @@
         onimported={refreshData}
     />
 {/if}
+
+<PriceHistoryModal
+    open={chartListing !== null}
+    listing={chartListing}
+    onclose={() => chartListing = null}
+/>
 
 <PortfolioModal
     open={renameModalOpen}
