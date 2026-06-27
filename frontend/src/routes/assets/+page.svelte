@@ -63,7 +63,7 @@
     onMount(load);
 </script>
 
-<div class="max-w-4xl mx-auto p-6 space-y-8">
+<div class="max-w-4xl mx-auto p-4 sm:p-6 space-y-8">
     <div class="flex items-center gap-3">
         <h1 class="text-2xl font-bold flex-1">Assets</h1>
         <button class="btn btn-primary btn-sm" onclick={() => { editingAsset = null; modalOpen = true; }}>+ Add asset

@@ -10,7 +10,7 @@
     ];
 </script>
 
-<dialog class="modal modal-bottom sm:modal-middle" class:modal-open={open}>
+<dialog class="modal modal-middle" class:modal-open={open}>
     <div class="modal-box">
         <h3 class="text-lg font-bold mb-4">Import transactions</h3>
         <p class="text-sm text-base-content/70 mb-4">Select your broker to continue.</p>

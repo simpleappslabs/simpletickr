@@ -49,7 +49,7 @@
     );
 </script>
 
-<div class="max-w-4xl mx-auto p-6 space-y-8">
+<div class="max-w-4xl mx-auto p-4 sm:p-6 space-y-8">
     <div class="flex items-center gap-3">
         <a href="/portfolios/{portfolioId}" class="btn btn-ghost btn-sm">← {portfolio?.name ?? 'Portfolio'}</a>
         <h1 class="text-2xl font-bold flex-1">Realized gains</h1>
@@ -99,7 +99,7 @@
             {:else}
                 <!-- Per-currency summary stats -->
                 {#each currencyTotals as ct}
-                    <div class="stats bg-base-200 w-full">
+                    <div class="stats stats-vertical sm:stats-horizontal bg-base-200 w-full">
                         <div class="stat">
                             <div class="stat-title">Proceeds <span class="badge badge-ghost badge-sm ml-1">{ct.currency}</span></div>
                             <div class="stat-value text-xl">{fmt(ct.totalProceeds)} {ct.currency}</div>

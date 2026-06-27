@@ -45,7 +45,7 @@
   onMount(load);
 </script>
 
-<div class="max-w-2xl mx-auto p-6 space-y-8">
+<div class="max-w-2xl mx-auto p-4 sm:p-6 space-y-8">
   <div class="flex items-center gap-3">
     <h1 class="text-2xl font-bold flex-1">Portfolios</h1>
     <button class="btn btn-primary btn-sm" onclick={() => { editingPortfolio = null; modalOpen = true; }}>+ New portfolio</button>

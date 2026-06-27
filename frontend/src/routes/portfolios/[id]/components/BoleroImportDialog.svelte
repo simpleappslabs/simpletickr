@@ -151,8 +151,8 @@
     );
 </script>
 
-<dialog class="modal modal-bottom sm:modal-middle" class:modal-open={open}>
-    <div class="modal-box w-11/12 max-w-3xl">
+<dialog class="modal modal-middle" class:modal-open={open}>
+    <div class="modal-box w-11/12 max-w-lg overflow-x-hidden">
         <!-- Step indicator -->
         <div class="flex items-center gap-2 mb-6">
             <span class="text-lg font-bold">Import from Bolero</span>
@@ -203,56 +203,45 @@
                 <p class="text-sm text-success mb-4">All instruments mapped.</p>
             {/if}
 
-            <div>
-                <table class="table table-sm">
-                    <thead>
-                        <tr>
-                            <th>Bolero instrument</th>
-                            <th class="text-right">Rows</th>
-                            <th>simpletickr asset</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {#each analysisResult.instruments as inst}
-                            {@const state = instrumentStates[inst.externalName]}
-                            <tr>
-                                <td class="font-mono text-xs max-w-xs break-words">{inst.externalName}</td>
-                                <td class="text-right text-base-content/60">{inst.rowCount}</td>
-                                <td>
-                                    {#if state?.mappedAssetId}
-                                        <div class="flex items-center gap-2">
-                                            <span class="text-success text-xs">✓</span>
-                                            <span class="text-sm">{assetNameFor(state.mappedAssetId)}</span>
-                                            <button
-                                                class="btn btn-xs btn-ghost text-error"
-                                                disabled={state.removing}
-                                                onclick={() => removeMapping(inst.externalName)}
-                                            >
-                                                {state.removing ? '…' : 'Remove'}
-                                            </button>
-                                        </div>
-                                    {:else}
-                                        <div class="flex items-center gap-2">
-                                            <div class="flex-1 min-w-0">
-                                                <AssetAutocomplete {assets} bind:value={state.pickerListingId} />
-                                            </div>
-                                            <button
-                                                class="btn btn-xs btn-primary shrink-0"
-                                                disabled={state.pickerListingId === 0 || state.saving}
-                                                onclick={() => saveMapping(inst.externalName)}
-                                            >
-                                                {state.saving ? '…' : 'Save'}
-                                            </button>
-                                        </div>
-                                        {#if state?.saveError}
-                                            <p class="text-error text-xs mt-1">{state.saveError}</p>
-                                        {/if}
-                                    {/if}
-                                </td>
-                            </tr>
-                        {/each}
-                    </tbody>
-                </table>
+            <div class="space-y-2">
+                {#each analysisResult.instruments as inst}
+                    {@const state = instrumentStates[inst.externalName]}
+                    <div class="bg-base-200 rounded-box p-3">
+                        <div class="flex items-start justify-between gap-2 mb-2">
+                            <span class="font-mono text-xs break-all min-w-0">{inst.externalName}</span>
+                            <span class="text-xs text-base-content/50 shrink-0">{inst.rowCount} rows</span>
+                        </div>
+                        {#if state?.mappedAssetId}
+                            <div class="flex items-center gap-2">
+                                <span class="text-success text-xs">✓</span>
+                                <span class="text-sm flex-1">{assetNameFor(state.mappedAssetId)}</span>
+                                <button
+                                    class="btn btn-xs btn-ghost text-error shrink-0"
+                                    disabled={state.removing}
+                                    onclick={() => removeMapping(inst.externalName)}
+                                >
+                                    {state.removing ? '…' : 'Remove'}
+                                </button>
+                            </div>
+                        {:else}
+                            <div class="flex items-center gap-2">
+                                <div class="flex-1 min-w-0">
+                                    <AssetAutocomplete {assets} bind:value={state.pickerListingId} />
+                                </div>
+                                <button
+                                    class="btn btn-xs btn-primary shrink-0"
+                                    disabled={state.pickerListingId === 0 || state.saving}
+                                    onclick={() => saveMapping(inst.externalName)}
+                                >
+                                    {state.saving ? '…' : 'Save'}
+                                </button>
+                            </div>
+                            {#if state?.saveError}
+                                <p class="text-error text-xs mt-1">{state.saveError}</p>
+                            {/if}
+                        {/if}
+                    </div>
+                {/each}
             </div>
 
             <div class="modal-action">

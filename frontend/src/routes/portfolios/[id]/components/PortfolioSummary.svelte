@@ -20,7 +20,7 @@
     }
 </script>
 
-<div class="stats bg-base-200 w-full">
+<div class="stats stats-vertical sm:stats-horizontal bg-base-200 w-full">
     <div class="stat">
         <div class="stat-title">Total cost</div>
         <div class="stat-value text-xl">{fmt(totalCost)} {holdings[0]?.baseCurrency ?? ''}</div>
