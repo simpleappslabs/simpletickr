@@ -30,6 +30,7 @@
     let boleroImportOpen = $state(false);
     let syncingPrices = $state(false);
     let syncPricesError = $state<string | null>(null);
+    let valueHistoryKey = $state(0);
 
     function handleBrokerSelect(broker: string) {
         brokerSelectOpen = false;
@@ -45,6 +46,7 @@
             syncPricesError = 'Price sync failed.';
         } else {
             await refreshData();
+            valueHistoryKey++;
         }
         syncingPrices = false;
     }
@@ -158,7 +160,7 @@
     {:else}
         <PortfolioSummary {holdings} />
 
-        <ValueHistoryContainer portfolioId={portfolio!.id} />
+        <ValueHistoryContainer portfolioId={portfolio!.id} refreshKey={valueHistoryKey} />
 
         {#if holdings.length === 0}
             <p class="text-base-content/40 italic text-sm">No holdings yet. Record a transaction to get started.</p>

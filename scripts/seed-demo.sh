@@ -3,13 +3,12 @@ set -euo pipefail
 
 API="${API:-http://localhost:8080}"
 
+# d N  →  date N days before today
+d() { date -d "$1 days ago" +%Y-%m-%d; }
+
 post() {
     curl -sf -X POST "$API$1" -H "Content-Type: application/json" -d "$2"
 }
-
-echo "Creating demo portfolio..."
-PORTFOLIO_ID=$(post /portfolios '{"name":"Demo Portfolio"}' | jq -r '.id')
-echo "  id=$PORTFOLIO_ID"
 
 echo "Fetching assets..."
 ASSETS=$(curl -sf "$API/assets")
@@ -19,27 +18,238 @@ listing_id() {
 }
 
 AAPL=$(listing_id AAPL)
+MSFT=$(listing_id MSFT)
+GOOGL=$(listing_id GOOGL)
+AMZN=$(listing_id AMZN)
+NVDA=$(listing_id NVDA)
+META=$(listing_id META)
+SPY=$(listing_id SPY)
+QQQ=$(listing_id QQQ)
+VTI=$(listing_id VTI)
 VWCE=$(listing_id VWCE)
 BTC=$(listing_id BTC)
-NVDA=$(listing_id NVDA)
+ETH=$(listing_id ETH)
 
 txn() {
-    local listing_id=$1 type=$2 qty=$3 price=$4 date=$5 fx_rate=${6:-}
+    local portfolio_id=$1 listing_id=$2 type=$3 qty=$4 price=$5 date=$6 fx_rate=${7:-}
     local body="{\"listingId\":$listing_id,\"type\":\"$type\",\"quantity\":$qty,\"price\":$price,\"date\":\"$date\""
     [[ -n "$fx_rate" ]] && body="$body,\"fxRate\":$fx_rate"
     body="$body}"
-    post "/portfolios/$PORTFOLIO_ID/transactions" "$body" > /dev/null
-    echo "  $type $qty @ $price on $date${fx_rate:+ (fx=$fx_rate)}"
+    post "/portfolios/$portfolio_id/transactions" "$body" > /dev/null
+    echo "    $type $qty @ $price on $date${fx_rate:+ (fx=$fx_rate)}"
 }
 
-echo "Recording transactions..."
-#                                                         EUR/USD rate
-txn "$AAPL" BUY  10    150.00 2025-01-15  1.0298
-txn "$VWCE" BUY  20     90.00 2025-02-20
-txn "$BTC"  BUY   0.5 25000   2025-03-01  1.0812
-txn "$AAPL" BUY   5    175.00 2025-06-10  1.1287
-txn "$VWCE" BUY  10     95.00 2025-09-05
-txn "$AAPL" SELL  3    190.00 2026-01-10  1.0241
-txn "$NVDA" BUY   8    480.00 2026-01-20  1.0412
+# ─── Portfolio 1: Bogleheads Three-Fund ──────────────────────────────────────
+echo ""
+echo "Creating Bogleheads Three-Fund portfolio..."
+P_BH=$(post /portfolios '{"name":"Bogleheads Three-Fund (demo)"}' | jq -r '.id')
+echo "  id=$P_BH"
 
-echo "Done — demo portfolio seeded."
+echo "  VTI — quarterly DCA"
+#                                                                    EUR/USD
+txn "$P_BH" "$VTI" BUY 10 180.00 "$(d 1259)"  # ~3.5yr ago         1.0762
+txn "$P_BH" "$VTI" BUY 10 192.00 "$(d 1169)"  # ~3yr 2mo           1.0986
+txn "$P_BH" "$VTI" BUY 10 198.00 "$(d 1078)"  # ~3yr               1.1241
+txn "$P_BH" "$VTI" BUY 10 205.00 "$(d  986)"  # ~2yr 9mo           1.0593
+txn "$P_BH" "$VTI" BUY 10 215.00 "$(d  894)"  # ~2yr 6mo           1.0949
+txn "$P_BH" "$VTI" BUY 10 222.00 "$(d  803)"  # ~2yr 2mo           1.0642
+txn "$P_BH" "$VTI" BUY 10 230.00 "$(d  712)"  # ~2yr               1.0821
+txn "$P_BH" "$VTI" BUY 10 238.00 "$(d  620)"  # ~20mo              1.0934
+txn "$P_BH" "$VTI" BUY 10 245.00 "$(d  528)"  # ~17mo              1.0298
+txn "$P_BH" "$VTI" BUY 10 252.00 "$(d  438)"  # ~14mo              1.0567
+txn "$P_BH" "$VTI" BUY 10 258.00 "$(d  347)"  # ~11mo              1.0721
+txn "$P_BH" "$VTI" BUY 10 262.00 "$(d  255)"  # ~8mo               1.0831
+
+echo "  VWCE — semi-annual DCA"
+txn "$P_BH" "$VWCE" BUY 25  82.00 "$(d 1259)"  # ~3.5yr ago
+txn "$P_BH" "$VWCE" BUY 25  90.00 "$(d 1078)"  # ~3yr
+txn "$P_BH" "$VWCE" BUY 25  94.00 "$(d  894)"  # ~2yr 6mo
+txn "$P_BH" "$VWCE" BUY 25  98.00 "$(d  712)"  # ~2yr
+txn "$P_BH" "$VWCE" BUY 25 102.00 "$(d  528)"  # ~17mo
+txn "$P_BH" "$VWCE" BUY 25 108.00 "$(d  347)"  # ~11mo
+
+echo "  SPY — annual top-ups"
+txn "$P_BH" "$SPY" BUY 5 395.00 "$(d 1259)"  # ~3.5yr ago          1.0762
+txn "$P_BH" "$SPY" BUY 5 440.00 "$(d  894)"  # ~2yr 6mo            1.0949
+txn "$P_BH" "$SPY" BUY 5 480.00 "$(d  528)"  # ~17mo               1.0298
+
+echo "  Done."
+
+# ─── Portfolio 2: Active Trader ───────────────────────────────────────────────
+echo ""
+echo "Creating Active Trader portfolio..."
+P_AT=$(post /portfolios '{"name":"Active Trader (demo)"}' | jq -r '.id')
+echo "  id=$P_AT"
+
+echo "  NVDA — post-split prices from ~2yr ago onwards"
+#                                                                    EUR/USD
+txn "$P_AT" "$NVDA" BUY  10  150.00 "$(d 1264)"  # ~3.5yr           1.0762
+txn "$P_AT" "$NVDA" BUY  10  265.00 "$(d 1124)"  # ~3yr 1mo         1.0741
+txn "$P_AT" "$NVDA" SELL  5  435.00 "$(d 1037)"  # ~2yr 10mo        1.0823
+txn "$P_AT" "$NVDA" BUY   5  450.00 "$(d  989)"  # ~2yr 9mo         1.0593
+txn "$P_AT" "$NVDA" SELL  5  615.00 "$(d  850)"  # ~2yr 4mo         1.0823
+txn "$P_AT" "$NVDA" BUY  10  800.00 "$(d  796)"  # ~2yr 2mo         1.0642
+txn "$P_AT" "$NVDA" SELL 10  900.00 "$(d  752)"  # ~2yr             1.0821
+txn "$P_AT" "$NVDA" BUY  25  116.00 "$(d  707)"  # ~23mo            1.0901
+txn "$P_AT" "$NVDA" BUY  25  126.00 "$(d  630)"  # ~21mo            1.0934
+txn "$P_AT" "$NVDA" SELL 15  148.00 "$(d  497)"  # ~16mo            1.0412
+txn "$P_AT" "$NVDA" BUY  20  108.00 "$(d  443)"  # ~15mo            1.0891
+txn "$P_AT" "$NVDA" BUY  15  118.00 "$(d  377)"  # ~12mo            1.1283
+txn "$P_AT" "$NVDA" SELL 10  135.00 "$(d  311)"  # ~10mo            1.1082
+txn "$P_AT" "$NVDA" BUY  20  142.00 "$(d  269)"  # ~9mo             1.0981
+txn "$P_AT" "$NVDA" SELL 10  138.00 "$(d  224)"  # ~7mo             1.0562
+txn "$P_AT" "$NVDA" BUY  15  128.00 "$(d  199)"  # ~6mo             1.0541
+txn "$P_AT" "$NVDA" SELL 10  122.00 "$(d  158)"  # ~5mo             1.0412
+txn "$P_AT" "$NVDA" BUY  20  112.00 "$(d  119)"  # ~4mo             1.0481
+txn "$P_AT" "$NVDA" BUY  15   88.00 "$(d   80)"  # ~3mo tariff dip  1.0952
+txn "$P_AT" "$NVDA" SELL 10  115.00 "$(d   43)"  # ~6wk             1.1281
+txn "$P_AT" "$NVDA" BUY  10  128.00 "$(d    7)"  # last week        1.1354
+
+echo "  AAPL"
+txn "$P_AT" "$AAPL" BUY  15  130.00 "$(d 1254)"  # ~3.5yr           1.0762
+txn "$P_AT" "$AAPL" BUY  10  185.00 "$(d 1108)"  # ~3yr             1.1241
+txn "$P_AT" "$AAPL" SELL  5  190.00 "$(d 1065)"  # ~2yr 11mo        1.0931
+txn "$P_AT" "$AAPL" BUY  10  170.00 "$(d  996)"  # ~2yr 9mo         1.0593
+txn "$P_AT" "$AAPL" BUY  10  185.00 "$(d  877)"  # ~2yr 5mo         1.0844
+txn "$P_AT" "$AAPL" SELL 15  215.00 "$(d  722)"  # ~2yr             1.0821
+txn "$P_AT" "$AAPL" BUY  10  205.00 "$(d  676)"  # ~22mo            1.0901
+txn "$P_AT" "$AAPL" BUY   5  235.00 "$(d  528)"  # ~17mo            1.0298
+txn "$P_AT" "$AAPL" SELL  5  240.00 "$(d  382)"  # ~12mo            1.1287
+txn "$P_AT" "$AAPL" BUY  10  215.00 "$(d  342)"  # ~11mo            1.1143
+txn "$P_AT" "$AAPL" SELL  5  228.00 "$(d  285)"  # ~9mo             1.0934
+txn "$P_AT" "$AAPL" BUY  10  232.00 "$(d  245)"  # ~8mo             1.0981
+txn "$P_AT" "$AAPL" SELL  5  248.00 "$(d  208)"  # ~7mo             1.0541
+txn "$P_AT" "$AAPL" BUY   5  238.00 "$(d  163)"  # ~5mo             1.0412
+txn "$P_AT" "$AAPL" SELL  5  245.00 "$(d  132)"  # ~4mo             1.0481
+txn "$P_AT" "$AAPL" BUY  10  218.00 "$(d  109)"  # ~3.5mo           1.0821
+txn "$P_AT" "$AAPL" BUY  10  188.00 "$(d   80)"  # ~3mo tariff dip  1.0952
+txn "$P_AT" "$AAPL" SELL  5  210.00 "$(d   38)"  # ~5wk             1.1281
+txn "$P_AT" "$AAPL" BUY   5  205.00 "$(d   12)"  # ~2wk             1.1354
+
+echo "  META — bought the dip, sold the rip"
+txn "$P_AT" "$META" BUY  15  120.00 "$(d 1269)"  # ~3.5yr           1.0762
+txn "$P_AT" "$META" BUY  10  175.00 "$(d 1169)"  # ~3yr 2mo         1.0986
+txn "$P_AT" "$META" SELL 10  330.00 "$(d 1000)"  # ~2yr 9mo         1.0593
+txn "$P_AT" "$META" BUY   8  355.00 "$(d  889)"  # ~2yr 5mo         1.0949
+txn "$P_AT" "$META" SELL  8  495.00 "$(d  788)"  # ~2yr 2mo         1.0642
+txn "$P_AT" "$META" BUY  10  480.00 "$(d  660)"  # ~22mo            1.0812
+txn "$P_AT" "$META" SELL  5  620.00 "$(d  511)"  # ~17mo            1.0412
+txn "$P_AT" "$META" BUY   8  520.00 "$(d  443)"  # ~15mo tariff dip 1.0891
+txn "$P_AT" "$META" SELL  5  615.00 "$(d  387)"  # ~13mo            1.1283
+txn "$P_AT" "$META" BUY  10  635.00 "$(d  330)"  # ~11mo            1.1082
+txn "$P_AT" "$META" SELL  5  660.00 "$(d  269)"  # ~9mo             1.0981
+txn "$P_AT" "$META" BUY   8  648.00 "$(d  219)"  # ~7mo             1.0562
+txn "$P_AT" "$META" SELL  5  685.00 "$(d  168)"  # ~5mo             1.0412
+txn "$P_AT" "$META" BUY  10  650.00 "$(d  127)"  # ~4mo             1.0481
+txn "$P_AT" "$META" BUY  10  530.00 "$(d   80)"  # ~3mo tariff dip  1.0952
+txn "$P_AT" "$META" SELL  8  650.00 "$(d   33)"  # ~5wk             1.1281
+txn "$P_AT" "$META" BUY   5  658.00 "$(d    7)"  # last week        1.1354
+
+echo "  GOOGL"
+txn "$P_AT" "$GOOGL" BUY  15  89.00 "$(d 1259)"  # ~3.5yr           1.0762
+txn "$P_AT" "$GOOGL" BUY  10 124.00 "$(d 1092)"  # ~3yr             1.1241
+txn "$P_AT" "$GOOGL" SELL  8 140.00 "$(d  894)"  # ~2yr 6mo         1.0949
+txn "$P_AT" "$GOOGL" BUY  10 160.00 "$(d  793)"  # ~2yr 2mo         1.0642
+txn "$P_AT" "$GOOGL" BUY  10 175.00 "$(d  533)"  # ~17mo            1.0298
+txn "$P_AT" "$GOOGL" SELL  5 195.00 "$(d  299)"  # ~10mo            1.0934
+txn "$P_AT" "$GOOGL" BUY  10 180.00 "$(d  255)"  # ~8mo             1.0981
+txn "$P_AT" "$GOOGL" SELL  5 198.00 "$(d  204)"  # ~7mo             1.0541
+txn "$P_AT" "$GOOGL" BUY   8 192.00 "$(d  158)"  # ~5mo             1.0412
+txn "$P_AT" "$GOOGL" SELL  5 198.00 "$(d  137)"  # ~4.5mo           1.0481
+txn "$P_AT" "$GOOGL" BUY  10 162.00 "$(d  104)"  # ~3.5mo           1.0821
+txn "$P_AT" "$GOOGL" BUY  10 148.00 "$(d   80)"  # ~3mo tariff dip  1.0952
+txn "$P_AT" "$GOOGL" SELL  5 172.00 "$(d   38)"  # ~5wk             1.1281
+txn "$P_AT" "$GOOGL" BUY  10 175.00 "$(d   12)"  # ~2wk             1.1354
+
+echo "  AMZN"
+txn "$P_AT" "$AMZN" BUY  15  94.00 "$(d 1242)"  # ~3.5yr            1.0762
+txn "$P_AT" "$AMZN" BUY  10 130.00 "$(d 1047)"  # ~2yr 11mo         1.0823
+txn "$P_AT" "$AMZN" SELL 10 180.00 "$(d  863)"  # ~2yr 5mo          1.0844
+txn "$P_AT" "$AMZN" BUY  10 183.00 "$(d  787)"  # ~2yr 2mo          1.0751
+txn "$P_AT" "$AMZN" SELL 10 225.00 "$(d  483)"  # ~16mo             1.0734
+txn "$P_AT" "$AMZN" BUY  10 195.00 "$(d  413)"  # ~14mo             1.1289
+txn "$P_AT" "$AMZN" SELL  5 218.00 "$(d  347)"  # ~11mo             1.1143
+txn "$P_AT" "$AMZN" BUY  10 210.00 "$(d  280)"  # ~9mo              1.0934
+txn "$P_AT" "$AMZN" SELL  5 225.00 "$(d  238)"  # ~8mo              1.0562
+txn "$P_AT" "$AMZN" BUY  10 220.00 "$(d  189)"  # ~6mo              1.0541
+txn "$P_AT" "$AMZN" SELL  5 228.00 "$(d  153)"  # ~5mo              1.0412
+txn "$P_AT" "$AMZN" BUY  10 195.00 "$(d  118)"  # ~4mo              1.0821
+txn "$P_AT" "$AMZN" BUY  15 175.00 "$(d   80)"  # ~3mo tariff dip   1.0952
+txn "$P_AT" "$AMZN" SELL  5 210.00 "$(d   38)"  # ~5wk              1.1281
+txn "$P_AT" "$AMZN" BUY   5 218.00 "$(d    7)"  # last week         1.1354
+
+echo "  QQQ — broad index exposure"
+txn "$P_AT" "$QQQ" BUY   5 280.00 "$(d 1269)"  # ~3.5yr             1.0762
+txn "$P_AT" "$QQQ" BUY   5 355.00 "$(d 1088)"  # ~3yr               1.1241
+txn "$P_AT" "$QQQ" BUY   5 410.00 "$(d  813)"  # ~2yr 3mo           1.0642
+txn "$P_AT" "$QQQ" SELL  5 480.00 "$(d  569)"  # ~19mo              1.0534
+txn "$P_AT" "$QQQ" BUY  10 460.00 "$(d  448)"  # ~15mo              1.0891
+txn "$P_AT" "$QQQ" SELL  5 498.00 "$(d  382)"  # ~12mo              1.1283
+txn "$P_AT" "$QQQ" BUY  10 502.00 "$(d  316)"  # ~10mo              1.1082
+txn "$P_AT" "$QQQ" SELL  5 495.00 "$(d  260)"  # ~8mo               1.0981
+txn "$P_AT" "$QQQ" BUY  10 510.00 "$(d  194)"  # ~6mo               1.0541
+txn "$P_AT" "$QQQ" SELL  5 495.00 "$(d  168)"  # ~5mo               1.0412
+txn "$P_AT" "$QQQ" BUY   5 488.00 "$(d  146)"  # ~5mo               1.0481
+txn "$P_AT" "$QQQ" SELL  5 472.00 "$(d   99)"  # ~3mo               1.0821
+txn "$P_AT" "$QQQ" BUY  15 428.00 "$(d   80)"  # ~3mo tariff dip    1.0952
+txn "$P_AT" "$QQQ" SELL  5 498.00 "$(d   43)"  # ~6wk               1.1281
+txn "$P_AT" "$QQQ" BUY   5 512.00 "$(d    7)"  # last week          1.1354
+
+echo "  MSFT"
+txn "$P_AT" "$MSFT" BUY  10 240.00 "$(d 1214)"  # ~3.5yr            1.0762
+txn "$P_AT" "$MSFT" BUY   5 320.00 "$(d 1030)"  # ~2yr 10mo         1.0756
+txn "$P_AT" "$MSFT" SELL  5 380.00 "$(d  884)"  # ~2yr 5mo          1.0949
+txn "$P_AT" "$MSFT" BUY  10 410.00 "$(d  742)"  # ~2yr              1.0821
+txn "$P_AT" "$MSFT" SELL  5 440.00 "$(d  523)"  # ~17mo             1.0298
+txn "$P_AT" "$MSFT" BUY  10 388.00 "$(d  469)"  # ~15mo             1.0734
+txn "$P_AT" "$MSFT" SELL  5 425.00 "$(d  403)"  # ~13mo             1.1289
+txn "$P_AT" "$MSFT" BUY   8 458.00 "$(d  342)"  # ~11mo             1.1143
+txn "$P_AT" "$MSFT" SELL  5 465.00 "$(d  290)"  # ~9mo              1.0934
+txn "$P_AT" "$MSFT" BUY  10 448.00 "$(d  224)"  # ~7mo              1.0562
+txn "$P_AT" "$MSFT" SELL  5 428.00 "$(d  168)"  # ~5mo              1.0412
+txn "$P_AT" "$MSFT" BUY   5 402.00 "$(d  127)"  # ~4mo              1.0481
+txn "$P_AT" "$MSFT" BUY  10 372.00 "$(d   80)"  # ~3mo tariff dip   1.0952
+txn "$P_AT" "$MSFT" SELL  5 455.00 "$(d   33)"  # ~5wk              1.1281
+txn "$P_AT" "$MSFT" BUY   5 462.00 "$(d   12)"  # ~2wk              1.1354
+
+echo "  Done."
+
+# ─── Portfolio 3: Crypto DCA ──────────────────────────────────────────────────
+echo ""
+echo "Creating Crypto DCA portfolio..."
+P_CR=$(post /portfolios '{"name":"Crypto DCA (demo)"}' | jq -r '.id')
+echo "  id=$P_CR"
+
+echo "  BTC — systematic DCA with selective profit-taking"
+txn "$P_CR" "$BTC" BUY   0.2  17000 "$(d 1264)"  # ~3.5yr           1.0762
+txn "$P_CR" "$BTC" BUY   0.2  28000 "$(d 1174)"  # ~3yr 2mo         1.0986
+txn "$P_CR" "$BTC" BUY   0.1  29500 "$(d 1083)"  # ~3yr             1.1241
+txn "$P_CR" "$BTC" BUY   0.2  27000 "$(d  991)"  # ~2yr 9mo         1.0593
+txn "$P_CR" "$BTC" BUY   0.1  42000 "$(d  894)"  # ~2yr 6mo         1.0949
+txn "$P_CR" "$BTC" BUY   0.1  65000 "$(d  808)"  # ~2yr 2mo         1.0642
+txn "$P_CR" "$BTC" SELL  0.3  68000 "$(d  768)"  # ~2yr             1.0821
+txn "$P_CR" "$BTC" BUY   0.2  57000 "$(d  686)"  # ~22mo            1.0901
+txn "$P_CR" "$BTC" BUY   0.1  95000 "$(d  594)"  # ~19mo            1.0534
+txn "$P_CR" "$BTC" SELL  0.2  98000 "$(d  569)"  # ~18mo            1.0423
+txn "$P_CR" "$BTC" BUY   0.2  85000 "$(d  502)"  # ~16mo            1.0412
+txn "$P_CR" "$BTC" BUY   0.1  78000 "$(d  413)"  # ~13mo            1.1289
+
+echo "  ETH"
+txn "$P_CR" "$ETH" BUY   2.0  1200 "$(d 1264)"  # ~3.5yr            1.0762
+txn "$P_CR" "$ETH" BUY   1.0  1800 "$(d 1174)"  # ~3yr 2mo          1.0986
+txn "$P_CR" "$ETH" BUY   1.0  1900 "$(d 1083)"  # ~3yr              1.1241
+txn "$P_CR" "$ETH" BUY   1.0  1600 "$(d  991)"  # ~2yr 9mo          1.0593
+txn "$P_CR" "$ETH" BUY   0.5  2500 "$(d  899)"  # ~2yr 6mo          1.0949
+txn "$P_CR" "$ETH" SELL  2.0  3500 "$(d  834)"  # ~2yr 4mo          1.0921
+txn "$P_CR" "$ETH" BUY   1.0  3100 "$(d  747)"  # ~2yr              1.0821
+txn "$P_CR" "$ETH" BUY   1.0  2400 "$(d  655)"  # ~21mo             1.0901
+txn "$P_CR" "$ETH" SELL  1.0  3800 "$(d  584)"  # ~19mo             1.0534
+txn "$P_CR" "$ETH" BUY   2.0  2800 "$(d  502)"  # ~16mo             1.0412
+
+echo "  Done."
+
+echo ""
+echo "All portfolios seeded:"
+echo "  $P_BH  — Bogleheads Three-Fund"
+echo "  $P_AT  — Active Trader"
+echo "  $P_CR  — Crypto DCA"

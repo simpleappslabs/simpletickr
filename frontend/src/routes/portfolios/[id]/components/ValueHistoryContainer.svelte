@@ -3,7 +3,7 @@
     import type { PortfolioValuePoint } from '$lib/api/types.gen';
     import ValueHistoryChart from './ValueHistoryChart.svelte';
 
-    let { portfolioId }: { portfolioId: number } = $props();
+    let { portfolioId, refreshKey = 0 }: { portfolioId: number; refreshKey?: number } = $props();
 
     type Range = '1M' | '3M' | '6M' | '1Y' | 'All';
     const RANGES: Range[] = ['1M', '3M', '6M', '1Y', 'All'];
@@ -45,6 +45,7 @@
     }
 
     $effect(() => {
+        refreshKey; // re-run when parent signals a refresh
         load(activeRange);
     });
 </script>
