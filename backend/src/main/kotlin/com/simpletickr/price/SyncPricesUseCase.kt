@@ -22,12 +22,12 @@ class SyncPricesUseCase(
 
     private val log = LoggerFactory.getLogger(javaClass)
 
-    fun execute(from: LocalDate? = null, to: LocalDate? = null, trigger: SyncTrigger = SyncTrigger.MANUAL): SyncResult {
+    fun execute(from: LocalDate? = null, to: LocalDate? = null, trigger: SyncTrigger = SyncTrigger.MANUAL, listingId: Long? = null): SyncResult {
         log.info("Syncing prices: trigger={}", trigger)
         val startedAt = System.currentTimeMillis()
         val effectiveFrom = from ?: LocalDate.now().minusDays(lookbackDays)
         val effectiveTo = to ?: LocalDate.now()
-        val mappings = mappingRepository.findAll()
+        val mappings = if (listingId != null) mappingRepository.findByListingId(listingId) else mappingRepository.findAll()
         var synced = 0
         var failed = 0
 

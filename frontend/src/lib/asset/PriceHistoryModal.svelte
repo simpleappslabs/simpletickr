@@ -9,8 +9,8 @@
         onclose: () => void;
     } = $props();
 
-    type Range = '1M' | '3M' | '6M' | '1Y' | 'All';
-    const RANGES: Range[] = ['1M', '3M', '6M', '1Y', 'All'];
+    type Range = '1M' | '3M' | '6M' | '1Y';
+    const RANGES: Range[] = ['1M', '3M', '6M', '1Y'];
 
     let activeRange = $state<Range>('1Y');
     let points = $state<PricePoint[]>([]);
@@ -21,13 +21,12 @@
         return d.toISOString().slice(0, 10);
     }
 
-    function fromDate(range: Range): string | undefined {
-        if (range === 'All') return undefined;
+    function fromDate(range: Range): string {
         const d = new Date();
         if (range === '1M') d.setMonth(d.getMonth() - 1);
         else if (range === '3M') d.setMonth(d.getMonth() - 3);
         else if (range === '6M') d.setMonth(d.getMonth() - 6);
-        else if (range === '1Y') d.setFullYear(d.getFullYear() - 1);
+        else d.setFullYear(d.getFullYear() - 1);
         return toDateString(d);
     }
 
@@ -42,7 +41,7 @@
 
         getPriceHistory({
             path: { id },
-            query: { from: fromDate(range) ?? '', to: toDateString(new Date()) },
+            query: { from: fromDate(range), to: toDateString(new Date()) },
         }).then(({ data, error: err }) => {
             if (err || !data) {
                 error = 'Failed to load price history.';

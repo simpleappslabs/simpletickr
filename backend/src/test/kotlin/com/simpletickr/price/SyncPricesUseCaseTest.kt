@@ -87,4 +87,16 @@ class SyncPricesUseCaseTest {
         )
         assertEquals(SyncStatus.SUCCESS, statusCaptor.firstValue)
     }
+
+    @Test
+    fun `execute scoped to listingId uses findByListingId instead of findAll`() {
+        whenever(mappingRepository.findByListingId(10L)).thenReturn(listOf(mapping))
+        whenever(provider.fetchHistory(any(), any(), any())).thenReturn(listOf(pricePoint))
+
+        val result = useCase.execute(listingId = 10L, trigger = SyncTrigger.MANUAL)
+
+        assertEquals(1, result.synced)
+        verify(mappingRepository).findByListingId(10L)
+        verify(mappingRepository, org.mockito.kotlin.never()).findAll()
+    }
 }
