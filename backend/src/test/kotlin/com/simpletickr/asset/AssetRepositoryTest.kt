@@ -1,7 +1,11 @@
 package com.simpletickr.asset
 
-import com.simpletickr.price.AssetPriceHistoryRepository
-import com.simpletickr.price.PricePoint
+import com.simpletickr.asset.model.Asset
+import com.simpletickr.asset.model.AssetType
+import com.simpletickr.asset.persistence.AssetRepository
+import com.simpletickr.asset.persistence.ListingRepository
+import com.simpletickr.price.persistence.AssetPriceHistoryRepository
+import com.simpletickr.price.model.PricePoint
 import com.simpletickr.shared.CurrencyCode
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired

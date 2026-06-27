@@ -1,9 +1,9 @@
 package com.simpletickr.gains
 
-import com.simpletickr.asset.Listing
+import com.simpletickr.asset.model.Listing
 import com.simpletickr.shared.CurrencyCode
-import com.simpletickr.transaction.Transaction
-import com.simpletickr.transaction.TransactionType
+import com.simpletickr.transaction.model.Transaction
+import com.simpletickr.transaction.model.TransactionType
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import java.math.BigDecimal

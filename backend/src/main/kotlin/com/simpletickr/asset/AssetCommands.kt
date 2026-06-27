@@ -1,5 +1,6 @@
 package com.simpletickr.asset
 
+import com.simpletickr.asset.model.AssetType
 import com.simpletickr.shared.CurrencyCode
 
 data class PriceMappingCommand(val provider: String, val externalId: String)

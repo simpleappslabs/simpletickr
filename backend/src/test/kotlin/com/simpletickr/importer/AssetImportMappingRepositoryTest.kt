@@ -1,7 +1,7 @@
 package com.simpletickr.importer
 
-import com.simpletickr.asset.AssetRepository
-import com.simpletickr.asset.AssetType
+import com.simpletickr.asset.persistence.AssetRepository
+import com.simpletickr.asset.model.AssetType
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired

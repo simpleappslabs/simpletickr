@@ -1,10 +1,13 @@
 package com.simpletickr.transaction
 
-import com.simpletickr.asset.AssetRepository
-import com.simpletickr.asset.AssetType
-import com.simpletickr.asset.ListingRepository
+import com.simpletickr.asset.persistence.AssetRepository
+import com.simpletickr.asset.model.AssetType
+import com.simpletickr.asset.persistence.ListingRepository
+import com.simpletickr.portfolio.persistence.PortfolioRepository
 import com.simpletickr.shared.CurrencyCode
-import com.simpletickr.portfolio.PortfolioRepository
+import com.simpletickr.transaction.model.Transaction
+import com.simpletickr.transaction.model.TransactionType
+import com.simpletickr.transaction.persistence.TransactionRepository
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired

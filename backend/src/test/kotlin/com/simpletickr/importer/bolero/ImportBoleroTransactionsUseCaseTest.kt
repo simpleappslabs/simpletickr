@@ -1,15 +1,15 @@
 package com.simpletickr.importer.bolero
 
-import com.simpletickr.asset.Listing
-import com.simpletickr.asset.ListingRepository
+import com.simpletickr.asset.model.Listing
+import com.simpletickr.asset.persistence.ListingRepository
 import com.simpletickr.importer.AssetImportMapping
 import com.simpletickr.importer.AssetImportMappingRepository
 import com.simpletickr.importer.ImportStatus
 import com.simpletickr.shared.CurrencyCode
-import com.simpletickr.transaction.RecordTransactionUseCase
-import com.simpletickr.transaction.Transaction
-import com.simpletickr.transaction.TransactionRepository
-import com.simpletickr.transaction.TransactionType
+import com.simpletickr.transaction.model.Transaction
+import com.simpletickr.transaction.model.TransactionType
+import com.simpletickr.transaction.persistence.TransactionRepository
+import com.simpletickr.transaction.usecase.RecordTransactionUseCase
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any

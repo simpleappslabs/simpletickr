@@ -1,15 +1,18 @@
 package com.simpletickr.portfolio
 
-import com.simpletickr.asset.AssetRepository
+import com.simpletickr.asset.persistence.AssetRepository
 import com.simpletickr.gains.RealizedGainsCalculator
 import com.simpletickr.gains.RealizationMethod
 import com.simpletickr.gains.RealizedGainEntry
 import com.simpletickr.gains.RealizedGainsReport
 import com.simpletickr.generated.api.PortfoliosApi
 import com.simpletickr.generated.model.PortfolioRequest
-import com.simpletickr.price.BackfillPortfolioPricesUseCase
+import com.simpletickr.portfolio.model.HoldingWithValuation
+import com.simpletickr.portfolio.model.Portfolio
+import com.simpletickr.portfolio.persistence.PortfolioRepository
+import com.simpletickr.price.usecase.BackfillPortfolioPricesUseCase
 import com.simpletickr.settings.UserSettingsRepository
-import com.simpletickr.transaction.TransactionRepository
+import com.simpletickr.transaction.persistence.TransactionRepository
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.RestController
 import com.simpletickr.generated.model.SyncResult as SyncResultModel

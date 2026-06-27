@@ -3,7 +3,7 @@ package com.simpletickr.importer.bolero
 import com.simpletickr.importer.BrokerParseResult
 import com.simpletickr.importer.BrokerTransactionRow
 import com.simpletickr.shared.CurrencyCode
-import com.simpletickr.transaction.TransactionType
+import com.simpletickr.transaction.model.TransactionType
 import org.apache.poi.ss.usermodel.DateUtil
 import org.apache.poi.xssf.usermodel.XSSFWorkbook
 import java.io.InputStream

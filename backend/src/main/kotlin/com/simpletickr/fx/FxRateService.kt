@@ -1,5 +1,8 @@
 package com.simpletickr.fx
 
+import com.simpletickr.fx.model.FxRate
+import com.simpletickr.fx.persistence.FxRateRepository
+import com.simpletickr.fx.provider.FxRateProvider
 import com.simpletickr.shared.CurrencyCode
 import org.springframework.stereotype.Service
 import java.time.LocalDate

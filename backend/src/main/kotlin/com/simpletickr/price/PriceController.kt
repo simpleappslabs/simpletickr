@@ -2,6 +2,11 @@ package com.simpletickr.price
 
 import com.simpletickr.generated.api.PricesApi
 import com.simpletickr.generated.model.PriceMappingRequest
+import com.simpletickr.price.model.PricePoint
+import com.simpletickr.price.model.PriceProviderMapping
+import com.simpletickr.price.usecase.DeletePriceMappingUseCase
+import com.simpletickr.price.usecase.SetPriceMappingUseCase
+import com.simpletickr.price.usecase.SyncPricesUseCase
 import com.simpletickr.sync.SyncTrigger
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.RestController

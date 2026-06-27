@@ -1,5 +1,7 @@
 package com.simpletickr.transaction
 
+import com.simpletickr.transaction.model.Transaction
+import com.simpletickr.transaction.model.TransactionType
 import org.junit.jupiter.api.Test
 import java.math.BigDecimal
 import java.time.LocalDate

@@ -5,10 +5,10 @@ import com.simpletickr.importer.BrokerParseResult
 import com.simpletickr.importer.ImportResult
 import com.simpletickr.importer.ImportRowResult
 import com.simpletickr.importer.ImportStatus
-import com.simpletickr.asset.ListingRepository
+import com.simpletickr.asset.persistence.ListingRepository
 import com.simpletickr.transaction.RecordTransactionCommand
-import com.simpletickr.transaction.RecordTransactionUseCase
-import com.simpletickr.transaction.TransactionRepository
+import com.simpletickr.transaction.persistence.TransactionRepository
+import com.simpletickr.transaction.usecase.RecordTransactionUseCase
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.web.multipart.MultipartFile

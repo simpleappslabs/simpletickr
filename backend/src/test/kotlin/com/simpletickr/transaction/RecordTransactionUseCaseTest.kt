@@ -1,12 +1,16 @@
 package com.simpletickr.transaction
 
-import com.simpletickr.asset.Listing
-import com.simpletickr.asset.ListingRepository
-import com.simpletickr.fx.FxRate
+import com.simpletickr.asset.model.Listing
+import com.simpletickr.asset.persistence.ListingRepository
+import com.simpletickr.fx.model.FxRate
 import com.simpletickr.fx.FxRateService
 import com.simpletickr.settings.UserSettings
 import com.simpletickr.settings.UserSettingsRepository
 import com.simpletickr.shared.CurrencyCode
+import com.simpletickr.transaction.model.Transaction
+import com.simpletickr.transaction.model.TransactionType
+import com.simpletickr.transaction.persistence.TransactionRepository
+import com.simpletickr.transaction.usecase.RecordTransactionUseCase
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
 import org.mockito.kotlin.mock

@@ -1,10 +1,12 @@
 package com.simpletickr.portfolio
 
-import com.simpletickr.asset.AssetRepository
-import com.simpletickr.asset.AssetType
-import com.simpletickr.asset.ListingRepository
-import com.simpletickr.price.AssetPriceHistoryRepository
-import com.simpletickr.price.PricePoint
+import com.simpletickr.asset.persistence.AssetRepository
+import com.simpletickr.asset.model.AssetType
+import com.simpletickr.asset.persistence.ListingRepository
+import com.simpletickr.portfolio.persistence.PortfolioRepository
+import com.simpletickr.portfolio.persistence.PortfolioValueHistoryRepository
+import com.simpletickr.price.persistence.AssetPriceHistoryRepository
+import com.simpletickr.price.model.PricePoint
 import com.simpletickr.shared.CurrencyCode
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test

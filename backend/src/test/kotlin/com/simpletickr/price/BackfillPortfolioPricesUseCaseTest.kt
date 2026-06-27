@@ -1,12 +1,19 @@
 package com.simpletickr.price
 
-import com.simpletickr.portfolio.Portfolio
-import com.simpletickr.portfolio.PortfolioRepository
+import com.simpletickr.portfolio.model.Portfolio
+import com.simpletickr.portfolio.persistence.PortfolioRepository
+import com.simpletickr.price.model.PricePoint
+import com.simpletickr.price.model.PriceProviderMapping
+import com.simpletickr.price.persistence.AssetPriceHistoryRepository
+import com.simpletickr.price.persistence.PriceProviderMappingRepository
+import com.simpletickr.price.provider.PriceProvider
+import com.simpletickr.price.usecase.BackfillPortfolioPricesUseCase
+import com.simpletickr.price.usecase.SyncResult
 import com.simpletickr.sync.SyncHistoryRepository
 import com.simpletickr.sync.SyncStatus
 import com.simpletickr.sync.SyncTrigger
 import com.simpletickr.sync.SyncType
-import com.simpletickr.transaction.TransactionRepository
+import com.simpletickr.transaction.persistence.TransactionRepository
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
 import org.mockito.kotlin.eq

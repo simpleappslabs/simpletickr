@@ -1,5 +1,6 @@
 package com.simpletickr.price
 
+import com.simpletickr.price.usecase.SyncPricesUseCase
 import com.simpletickr.sync.SyncTrigger
 import org.slf4j.LoggerFactory
 import org.springframework.scheduling.annotation.Scheduled

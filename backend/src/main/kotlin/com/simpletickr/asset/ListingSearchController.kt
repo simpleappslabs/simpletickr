@@ -1,5 +1,7 @@
 package com.simpletickr.asset
 
+import com.simpletickr.asset.search.ListingSearchResult
+import com.simpletickr.asset.search.ListingSearchService
 import com.simpletickr.generated.api.ListingSearchApi
 import com.simpletickr.generated.model.AssetType as GeneratedAssetType
 import com.simpletickr.generated.model.ListingSearchResult as ListingSearchResultModel

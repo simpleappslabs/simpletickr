@@ -1,7 +1,7 @@
 package com.simpletickr.importer
 
 import com.simpletickr.shared.CurrencyCode
-import com.simpletickr.transaction.TransactionType
+import com.simpletickr.transaction.model.TransactionType
 import java.math.BigDecimal
 import java.time.LocalDate
 

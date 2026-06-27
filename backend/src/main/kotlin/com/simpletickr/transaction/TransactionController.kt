@@ -1,9 +1,15 @@
 package com.simpletickr.transaction
 
-import com.simpletickr.fx.FxRateSource
+import com.simpletickr.fx.model.FxRateSource
 import com.simpletickr.generated.api.TransactionsApi
 import com.simpletickr.generated.model.TransactionPage
 import com.simpletickr.generated.model.TransactionRequest
+import com.simpletickr.transaction.model.Transaction
+import com.simpletickr.transaction.model.TransactionType
+import com.simpletickr.transaction.persistence.TransactionRepository
+import com.simpletickr.transaction.usecase.AmendTransactionUseCase
+import com.simpletickr.transaction.usecase.DeleteTransactionUseCase
+import com.simpletickr.transaction.usecase.RecordTransactionUseCase
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.RestController
 import java.math.BigDecimal

@@ -1,6 +1,10 @@
 package com.simpletickr.price
 
-import com.simpletickr.asset.ListingRepository
+import com.simpletickr.asset.persistence.ListingRepository
+import com.simpletickr.price.model.PricePoint
+import com.simpletickr.price.model.PriceProviderMapping
+import com.simpletickr.price.persistence.AssetPriceHistoryRepository
+import com.simpletickr.price.persistence.PriceProviderMappingRepository
 import org.springframework.stereotype.Service
 import java.time.LocalDate
 

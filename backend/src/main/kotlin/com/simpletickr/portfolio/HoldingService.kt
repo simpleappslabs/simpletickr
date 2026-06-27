@@ -1,8 +1,10 @@
 package com.simpletickr.portfolio
 
+import com.simpletickr.portfolio.model.Holding
+import com.simpletickr.portfolio.persistence.HoldingRepository
 import com.simpletickr.shared.CurrencyCode
-import com.simpletickr.transaction.SplitAdjuster
-import com.simpletickr.transaction.TransactionType
+import com.simpletickr.transaction.model.SplitAdjuster
+import com.simpletickr.transaction.model.TransactionType
 import org.springframework.stereotype.Service
 import java.math.BigDecimal
 import java.math.RoundingMode

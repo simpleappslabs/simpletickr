@@ -1,11 +1,15 @@
 package com.simpletickr.portfolio
 
-import com.simpletickr.asset.AssetRepository
-import com.simpletickr.price.BackfillPortfolioPricesUseCase
-import com.simpletickr.price.SyncResult
+import com.simpletickr.asset.persistence.AssetRepository
+import com.simpletickr.price.usecase.BackfillPortfolioPricesUseCase
+import com.simpletickr.price.usecase.SyncResult
 import com.simpletickr.settings.UserSettingsRepository
 import com.simpletickr.shared.CurrencyCode
-import com.simpletickr.transaction.TransactionRepository
+import com.simpletickr.portfolio.model.HoldingWithValuation
+import com.simpletickr.portfolio.model.Portfolio
+import com.simpletickr.portfolio.model.PortfolioValuePoint
+import com.simpletickr.portfolio.persistence.PortfolioRepository
+import com.simpletickr.transaction.persistence.TransactionRepository
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.whenever
 import org.springframework.beans.factory.annotation.Autowired

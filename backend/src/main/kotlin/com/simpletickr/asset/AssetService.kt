@@ -1,7 +1,10 @@
 package com.simpletickr.asset
 
-import com.simpletickr.price.PriceProviderMapping
-import com.simpletickr.price.PriceProviderMappingRepository
+import com.simpletickr.asset.model.Asset
+import com.simpletickr.asset.model.AssetWithPrices
+import com.simpletickr.asset.persistence.AssetRepository
+import com.simpletickr.price.model.PriceProviderMapping
+import com.simpletickr.price.persistence.PriceProviderMappingRepository
 import org.springframework.stereotype.Service
 
 data class AssetDetail(val asset: Asset, val mappings: Map<Long, List<PriceProviderMapping>>)

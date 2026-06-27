@@ -1,5 +1,6 @@
 package com.simpletickr.portfolio
 
+import com.simpletickr.portfolio.persistence.PortfolioRepository
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase

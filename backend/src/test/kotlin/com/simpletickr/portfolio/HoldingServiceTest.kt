@@ -1,7 +1,9 @@
 package com.simpletickr.portfolio
 
+import com.simpletickr.portfolio.model.Holding
+import com.simpletickr.portfolio.persistence.HoldingRepository
 import com.simpletickr.shared.CurrencyCode
-import com.simpletickr.transaction.TransactionType
+import com.simpletickr.transaction.model.TransactionType
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.mock

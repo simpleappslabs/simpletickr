@@ -1,6 +1,6 @@
 package com.simpletickr.importer
 
-import com.simpletickr.asset.AssetRepository
+import com.simpletickr.asset.persistence.AssetRepository
 import org.slf4j.LoggerFactory
 import org.springframework.dao.DuplicateKeyException
 import org.springframework.stereotype.Service

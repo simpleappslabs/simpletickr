@@ -1,7 +1,9 @@
 package com.simpletickr.portfolio
 
-import com.simpletickr.fx.FxRateRepository
-import com.simpletickr.price.AssetPriceHistoryRepository
+import com.simpletickr.fx.persistence.FxRateRepository
+import com.simpletickr.portfolio.model.Holding
+import com.simpletickr.portfolio.model.HoldingWithValuation
+import com.simpletickr.price.persistence.AssetPriceHistoryRepository
 import com.simpletickr.settings.UserSettingsRepository
 import com.simpletickr.shared.CurrencyCode
 import org.springframework.stereotype.Service

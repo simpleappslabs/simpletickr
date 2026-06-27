@@ -1,10 +1,10 @@
 package com.simpletickr.gains
 
-import com.simpletickr.asset.Listing
+import com.simpletickr.asset.model.Listing
 import com.simpletickr.shared.CurrencyCode
-import com.simpletickr.transaction.SplitAdjuster
-import com.simpletickr.transaction.Transaction
-import com.simpletickr.transaction.TransactionType
+import com.simpletickr.transaction.model.SplitAdjuster
+import com.simpletickr.transaction.model.Transaction
+import com.simpletickr.transaction.model.TransactionType
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.LocalDate

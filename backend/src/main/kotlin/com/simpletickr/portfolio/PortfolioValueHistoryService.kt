@@ -1,5 +1,7 @@
 package com.simpletickr.portfolio
 
+import com.simpletickr.portfolio.model.PortfolioValuePoint
+import com.simpletickr.portfolio.persistence.PortfolioValueHistoryRepository
 import com.simpletickr.settings.UserSettingsRepository
 import com.simpletickr.shared.CurrencyCode
 import org.springframework.stereotype.Service

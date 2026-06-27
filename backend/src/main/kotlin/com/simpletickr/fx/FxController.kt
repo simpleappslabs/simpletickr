@@ -1,5 +1,6 @@
 package com.simpletickr.fx
 
+import com.simpletickr.fx.usecase.SyncFxRatesUseCase
 import com.simpletickr.generated.api.FXApi
 import com.simpletickr.shared.CurrencyCode
 import com.simpletickr.sync.SyncTrigger

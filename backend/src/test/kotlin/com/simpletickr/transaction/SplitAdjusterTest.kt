@@ -1,5 +1,6 @@
 package com.simpletickr.transaction
 
+import com.simpletickr.transaction.model.SplitAdjuster
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import java.math.BigDecimal

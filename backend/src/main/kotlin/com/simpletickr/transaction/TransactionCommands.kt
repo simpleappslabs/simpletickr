@@ -1,5 +1,6 @@
 package com.simpletickr.transaction
 
+import com.simpletickr.transaction.model.TransactionType
 import java.math.BigDecimal
 import java.time.LocalDate
 
