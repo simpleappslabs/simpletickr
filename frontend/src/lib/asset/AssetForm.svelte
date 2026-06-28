@@ -34,6 +34,17 @@
     let searchDebounce: ReturnType<typeof setTimeout> | null = null;
     let searchOpen = $state(false);
 
+    let searchInputEl: HTMLInputElement | undefined = $state();
+    let nameInputEl: HTMLInputElement | undefined = $state();
+
+    $effect(() => {
+        if (asset) {
+            nameInputEl?.focus();
+        } else {
+            searchInputEl?.focus();
+        }
+    });
+
     function onSearchInput() {
         if (searchDebounce) clearTimeout(searchDebounce);
         if (!searchQuery.trim()) { searchResults = []; searchOpen = false; return; }
@@ -191,10 +202,10 @@
                     type="text"
                     placeholder="e.g. VWCE or Vanguard..."
                     bind:value={searchQuery}
+                    bind:this={searchInputEl}
                     oninput={onSearchInput}
                     onblur={() => setTimeout(() => { searchOpen = false; }, 150)}
                     autocomplete="off"
-                    autofocus
                 />
             </fieldset>
             {#if searchOpen}
@@ -225,7 +236,7 @@
 
     <fieldset class="fieldset">
         <legend class="fieldset-legend">Name</legend>
-        <input class="input w-full" type="text" placeholder="e.g. Apple Inc." bind:value={name} disabled={submitting} required autofocus={!!asset} />
+        <input class="input w-full" type="text" placeholder="e.g. Apple Inc." bind:value={name} bind:this={nameInputEl} disabled={submitting} required />
     </fieldset>
 
     <div class="grid grid-cols-2 gap-4">

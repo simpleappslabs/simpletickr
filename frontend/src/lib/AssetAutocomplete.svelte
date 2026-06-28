@@ -12,6 +12,10 @@
     let { assets, value = $bindable(0), autofocus = false }: Props = $props();
 
     let query = $state('');
+
+    $effect(() => {
+        if (autofocus) inputEl?.focus();
+    });
     let open = $state(false);
     let highlighted = $state(-1);
     let selectedId = $state(-1);
@@ -126,9 +130,8 @@
         oninput={handleInput}
         onkeydown={handleKeydown}
         onblur={handleBlur}
-        onfocus={() => { syncDropdownPos(); open = true; }}
+        onfocus={() => { syncDropdownPos(); }}
         autocomplete="off"
-        {autofocus}
     />
 
     {#if open && value === 0 && matchingAssets.length > 0}
