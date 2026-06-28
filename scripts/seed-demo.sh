@@ -10,25 +10,25 @@ post() {
     curl -sf -X POST "$API$1" -H "Content-Type: application/json" -d "$2"
 }
 
-echo "Fetching assets..."
-ASSETS=$(curl -sf "$API/assets")
+echo "Creating assets..."
 
-listing_id() {
-    echo "$ASSETS" | jq -r --arg t "$1" '[.[] | .listings[] | select(.ticker == $t)][0].id'
+# Create an asset and return its first listing's id
+make_asset() {
+    post /assets "$1" | jq -r '.listings[0].id'
 }
 
-AAPL=$(listing_id AAPL)
-MSFT=$(listing_id MSFT)
-GOOGL=$(listing_id GOOGL)
-AMZN=$(listing_id AMZN)
-NVDA=$(listing_id NVDA)
-META=$(listing_id META)
-SPY=$(listing_id SPY)
-QQQ=$(listing_id QQQ)
-VTI=$(listing_id VTI)
-VWCE=$(listing_id VWCE)
-BTC=$(listing_id BTC)
-ETH=$(listing_id ETH)
+AAPL=$(make_asset '{"name":"Apple Inc.","type":"STOCK","listings":[{"exchange":"NASDAQ","ticker":"AAPL","currency":"USD","priceMappings":[{"provider":"YAHOO","externalId":"AAPL"}]}]}')
+MSFT=$(make_asset '{"name":"Microsoft Corporation","type":"STOCK","listings":[{"exchange":"NASDAQ","ticker":"MSFT","currency":"USD","priceMappings":[{"provider":"YAHOO","externalId":"MSFT"}]}]}')
+GOOGL=$(make_asset '{"name":"Alphabet Inc.","type":"STOCK","listings":[{"exchange":"NASDAQ","ticker":"GOOGL","currency":"USD","priceMappings":[{"provider":"YAHOO","externalId":"GOOGL"}]}]}')
+AMZN=$(make_asset '{"name":"Amazon.com Inc.","type":"STOCK","listings":[{"exchange":"NASDAQ","ticker":"AMZN","currency":"USD","priceMappings":[{"provider":"YAHOO","externalId":"AMZN"}]}]}')
+NVDA=$(make_asset '{"name":"NVIDIA Corporation","type":"STOCK","listings":[{"exchange":"NASDAQ","ticker":"NVDA","currency":"USD","priceMappings":[{"provider":"YAHOO","externalId":"NVDA"}]}]}')
+META=$(make_asset '{"name":"Meta Platforms Inc.","type":"STOCK","listings":[{"exchange":"NASDAQ","ticker":"META","currency":"USD","priceMappings":[{"provider":"YAHOO","externalId":"META"}]}]}')
+SPY=$(make_asset '{"name":"SPDR S&P 500 ETF Trust","type":"ETF","listings":[{"exchange":"NYSE Arca","ticker":"SPY","currency":"USD","priceMappings":[{"provider":"YAHOO","externalId":"SPY"}]}]}')
+QQQ=$(make_asset '{"name":"Invesco QQQ Trust","type":"ETF","listings":[{"exchange":"NASDAQ","ticker":"QQQ","currency":"USD","priceMappings":[{"provider":"YAHOO","externalId":"QQQ"}]}]}')
+VTI=$(make_asset '{"name":"Vanguard Total Stock Market ETF","type":"ETF","listings":[{"exchange":"NYSE Arca","ticker":"VTI","currency":"USD","priceMappings":[{"provider":"YAHOO","externalId":"VTI"}]}]}')
+VWCE=$(make_asset '{"name":"Vanguard FTSE All-World UCITS ETF","type":"ETF","listings":[{"exchange":"Euronext Amsterdam","ticker":"VWCE","currency":"EUR","priceMappings":[{"provider":"YAHOO","externalId":"VWCE.AS"}]}]}')
+BTC=$(make_asset '{"name":"Bitcoin","type":"CRYPTO","listings":[{"ticker":"BTC","currency":"EUR","priceMappings":[{"provider":"YAHOO","externalId":"BTC-EUR"}]}]}')
+ETH=$(make_asset '{"name":"Ethereum","type":"CRYPTO","listings":[{"ticker":"ETH","currency":"EUR","priceMappings":[{"provider":"YAHOO","externalId":"ETH-EUR"}]}]}')
 
 txn() {
     local portfolio_id=$1 listing_id=$2 type=$3 qty=$4 price=$5 date=$6 fx_rate=${7:-}
