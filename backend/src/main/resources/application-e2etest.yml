@@ -1,3 +1,6 @@
 spring:
   flyway:
     clean-disabled: false
+    locations:
+      - classpath:db/migration
+      - classpath:db/e2e-seed
