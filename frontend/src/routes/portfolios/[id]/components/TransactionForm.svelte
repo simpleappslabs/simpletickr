@@ -149,7 +149,7 @@
 <form class="space-y-4" onsubmit={submit}>
     <fieldset class="fieldset">
         <legend class="fieldset-legend">Asset</legend>
-        <AssetAutocomplete {assets} bind:value={formListingId} />
+        <AssetAutocomplete {assets} bind:value={formListingId} autofocus={true} />
     </fieldset>
 
     <fieldset class="fieldset">

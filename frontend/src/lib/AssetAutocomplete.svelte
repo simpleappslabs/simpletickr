@@ -6,9 +6,10 @@
     interface Props {
         assets: Asset[];
         value?: number;  // listingId
+        autofocus?: boolean;
     }
 
-    let { assets, value = $bindable(0) }: Props = $props();
+    let { assets, value = $bindable(0), autofocus = false }: Props = $props();
 
     let query = $state('');
     let open = $state(false);
@@ -127,6 +128,7 @@
         onblur={handleBlur}
         onfocus={() => { syncDropdownPos(); open = true; }}
         autocomplete="off"
+        {autofocus}
     />
 
     {#if open && value === 0 && matchingAssets.length > 0}

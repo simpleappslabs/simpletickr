@@ -12,6 +12,8 @@
     } = $props();
 </script>
 
+<svelte:window onkeydown={(e) => { if (open && e.key === 'Escape') oncancel(); }} />
+
 <dialog class="modal modal-bottom sm:modal-middle" class:modal-open={open}>
     <div class="modal-box">
         <h3 class="text-lg font-bold mb-2">{title}</h3>

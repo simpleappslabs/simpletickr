@@ -194,6 +194,7 @@
                     oninput={onSearchInput}
                     onblur={() => setTimeout(() => { searchOpen = false; }, 150)}
                     autocomplete="off"
+                    autofocus
                 />
             </fieldset>
             {#if searchOpen}
@@ -224,7 +225,7 @@
 
     <fieldset class="fieldset">
         <legend class="fieldset-legend">Name</legend>
-        <input class="input w-full" type="text" placeholder="e.g. Apple Inc." bind:value={name} disabled={submitting} required />
+        <input class="input w-full" type="text" placeholder="e.g. Apple Inc." bind:value={name} disabled={submitting} required autofocus={!!asset} />
     </fieldset>
 
     <div class="grid grid-cols-2 gap-4">

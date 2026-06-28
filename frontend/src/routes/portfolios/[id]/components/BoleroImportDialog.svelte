@@ -151,6 +151,8 @@
     );
 </script>
 
+<svelte:window onkeydown={(e) => { if (open && e.key === 'Escape') handleClose(); }} />
+
 <dialog class="modal modal-middle" class:modal-open={open}>
     <div class="modal-box w-11/12 max-w-lg overflow-x-hidden">
         <!-- Step indicator -->

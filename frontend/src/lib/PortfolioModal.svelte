@@ -14,11 +14,13 @@
     let name = $state('');
     let submitting = $state(false);
     let error = $state<string | null>(null);
+    let inputEl: HTMLInputElement | undefined = $state();
 
     $effect(() => {
         if (open) {
             name = portfolio?.name ?? '';
             error = null;
+            setTimeout(() => inputEl?.focus(), 0);
         }
     });
 
@@ -40,11 +42,14 @@
     }
 </script>
 
+<svelte:window onkeydown={(e) => { if (open && e.key === 'Escape') onCancel(); }} />
+
 <dialog class="modal modal-bottom sm:modal-middle" class:modal-open={open}>
     <div class="modal-box">
         <h3 class="text-lg font-bold mb-6">{portfolio ? 'Rename portfolio' : 'New portfolio'}</h3>
         <form onsubmit={handleSubmit} class="space-y-4">
             <input
+                bind:this={inputEl}
                 type="text"
                 placeholder="Portfolio name"
                 bind:value={name}

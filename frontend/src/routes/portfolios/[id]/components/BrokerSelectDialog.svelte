@@ -10,6 +10,8 @@
     ];
 </script>
 
+<svelte:window onkeydown={(e) => { if (open && e.key === 'Escape') onclose(); }} />
+
 <dialog class="modal modal-middle" class:modal-open={open}>
     <div class="modal-box">
         <h3 class="text-lg font-bold mb-4">Import transactions</h3>
