@@ -1,4 +1,4 @@
-package com.simpletickr.importer
+package com.simpletickr.brokerimport
 
 enum class ImportStatus { IMPORTED, SKIPPED }
 

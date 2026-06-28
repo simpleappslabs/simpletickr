@@ -1,6 +1,6 @@
-package com.simpletickr.importer.bolero
+package com.simpletickr.brokerimport.bolero
 
-import com.simpletickr.importer.BrokerParseResult
+import com.simpletickr.brokerimport.BrokerParseResult
 import com.simpletickr.transaction.model.TransactionType
 import org.apache.poi.xssf.usermodel.XSSFWorkbook
 import org.junit.jupiter.api.Test

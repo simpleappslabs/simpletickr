@@ -1,7 +1,7 @@
-package com.simpletickr.importer.bolero
+package com.simpletickr.brokerimport.bolero
 
-import com.simpletickr.importer.AssetImportMappingRepository
-import com.simpletickr.importer.BrokerParseResult
+import com.simpletickr.brokerimport.AssetImportMappingRepository
+import com.simpletickr.brokerimport.BrokerParseResult
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.web.multipart.MultipartFile

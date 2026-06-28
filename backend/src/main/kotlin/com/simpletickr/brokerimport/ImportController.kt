@@ -1,4 +1,4 @@
-package com.simpletickr.importer
+package com.simpletickr.brokerimport
 
 import com.simpletickr.generated.api.ImportApi
 import com.simpletickr.generated.model.AssetImportMapping as GeneratedMapping
@@ -8,8 +8,8 @@ import com.simpletickr.generated.model.BoleroInstrumentInfo as GeneratedInstrume
 import com.simpletickr.generated.model.CreateAssetImportMappingRequest
 import com.simpletickr.generated.model.ImportResult as GeneratedImportResult
 import com.simpletickr.generated.model.ImportRowResult as GeneratedRowResult
-import com.simpletickr.importer.bolero.AnalyzeBoleroImportUseCase
-import com.simpletickr.importer.bolero.ImportBoleroTransactionsUseCase
+import com.simpletickr.brokerimport.bolero.AnalyzeBoleroImportUseCase
+import com.simpletickr.brokerimport.bolero.ImportBoleroTransactionsUseCase
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.multipart.MultipartFile

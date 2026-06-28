@@ -1,4 +1,4 @@
-package com.simpletickr.importer
+package com.simpletickr.brokerimport
 
 import org.springframework.stereotype.Service
 

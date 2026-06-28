@@ -1,4 +1,4 @@
-package com.simpletickr.importer
+package com.simpletickr.brokerimport
 
 import com.simpletickr.asset.persistence.AssetRepository
 import com.simpletickr.asset.model.AssetType

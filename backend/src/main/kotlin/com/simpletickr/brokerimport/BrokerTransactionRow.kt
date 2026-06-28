@@ -1,4 +1,4 @@
-package com.simpletickr.importer
+package com.simpletickr.brokerimport
 
 import com.simpletickr.shared.CurrencyCode
 import com.simpletickr.transaction.model.TransactionType

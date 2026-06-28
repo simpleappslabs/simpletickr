@@ -1,4 +1,4 @@
-package com.simpletickr.importer
+package com.simpletickr.brokerimport
 
 sealed class BrokerParseResult {
     data class Recognized(val row: BrokerTransactionRow) : BrokerParseResult()

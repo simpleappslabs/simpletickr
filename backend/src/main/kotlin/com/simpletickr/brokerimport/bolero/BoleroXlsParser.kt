@@ -1,7 +1,7 @@
-package com.simpletickr.importer.bolero
+package com.simpletickr.brokerimport.bolero
 
-import com.simpletickr.importer.BrokerParseResult
-import com.simpletickr.importer.BrokerTransactionRow
+import com.simpletickr.brokerimport.BrokerParseResult
+import com.simpletickr.brokerimport.BrokerTransactionRow
 import com.simpletickr.shared.CurrencyCode
 import com.simpletickr.transaction.model.TransactionType
 import org.apache.poi.ss.usermodel.DateUtil

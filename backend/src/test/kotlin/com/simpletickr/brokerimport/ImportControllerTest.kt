@@ -1,11 +1,11 @@
-package com.simpletickr.importer
+package com.simpletickr.brokerimport
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.simpletickr.importer.bolero.AnalyzeBoleroImportUseCase
-import com.simpletickr.importer.bolero.AssetImportMappingRef
-import com.simpletickr.importer.bolero.BoleroAnalysisResult
-import com.simpletickr.importer.bolero.BoleroInstrumentInfo
-import com.simpletickr.importer.bolero.ImportBoleroTransactionsUseCase
+import com.simpletickr.brokerimport.bolero.AnalyzeBoleroImportUseCase
+import com.simpletickr.brokerimport.bolero.AssetImportMappingRef
+import com.simpletickr.brokerimport.bolero.BoleroAnalysisResult
+import com.simpletickr.brokerimport.bolero.BoleroInstrumentInfo
+import com.simpletickr.brokerimport.bolero.ImportBoleroTransactionsUseCase
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
 import org.mockito.kotlin.eq

@@ -1,10 +1,10 @@
-package com.simpletickr.importer.bolero
+package com.simpletickr.brokerimport.bolero
 
-import com.simpletickr.importer.AssetImportMappingRepository
-import com.simpletickr.importer.BrokerParseResult
-import com.simpletickr.importer.ImportResult
-import com.simpletickr.importer.ImportRowResult
-import com.simpletickr.importer.ImportStatus
+import com.simpletickr.brokerimport.AssetImportMappingRepository
+import com.simpletickr.brokerimport.BrokerParseResult
+import com.simpletickr.brokerimport.ImportResult
+import com.simpletickr.brokerimport.ImportRowResult
+import com.simpletickr.brokerimport.ImportStatus
 import com.simpletickr.asset.persistence.ListingRepository
 import com.simpletickr.transaction.RecordTransactionCommand
 import com.simpletickr.transaction.persistence.TransactionRepository
@@ -54,7 +54,7 @@ class ImportBoleroTransactionsUseCase(
         return ImportResult(imported, skipped, rows)
     }
 
-    private fun tryImport(portfolioId: Long, row: com.simpletickr.importer.BrokerTransactionRow, externalId: String): ImportRowResult {
+    private fun tryImport(portfolioId: Long, row: com.simpletickr.brokerimport.BrokerTransactionRow, externalId: String): ImportRowResult {
         if (transactionRepository.existsByExternalId(portfolioId, externalId)) {
             return ImportRowResult(row.lineNumber, ImportStatus.SKIPPED, "already imported")
         }
@@ -92,7 +92,7 @@ class ImportBoleroTransactionsUseCase(
         }
     }
 
-    private fun computeExternalId(row: com.simpletickr.importer.BrokerTransactionRow): String {
+    private fun computeExternalId(row: com.simpletickr.brokerimport.BrokerTransactionRow): String {
         val raw = "bolero|${row.date}|${row.externalInstrumentName}|${row.rawQty}|${row.rawPrice}"
         val hash = MessageDigest.getInstance("SHA-256")
             .digest(raw.toByteArray())

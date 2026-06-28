@@ -1,10 +1,10 @@
-package com.simpletickr.importer.bolero
+package com.simpletickr.brokerimport.bolero
 
 import com.simpletickr.asset.model.Listing
 import com.simpletickr.asset.persistence.ListingRepository
-import com.simpletickr.importer.AssetImportMapping
-import com.simpletickr.importer.AssetImportMappingRepository
-import com.simpletickr.importer.ImportStatus
+import com.simpletickr.brokerimport.AssetImportMapping
+import com.simpletickr.brokerimport.AssetImportMappingRepository
+import com.simpletickr.brokerimport.ImportStatus
 import com.simpletickr.shared.CurrencyCode
 import com.simpletickr.transaction.model.Transaction
 import com.simpletickr.transaction.model.TransactionType
