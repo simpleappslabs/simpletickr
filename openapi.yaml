@@ -24,6 +24,7 @@ tags:
   - name: Settings
   - name: Sync
   - name: Import
+  - name: DataExport
 
 paths:
   /health:
@@ -1024,6 +1025,59 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
 
+  /data-export:
+    get:
+      tags: [DataExport]
+      operationId: exportData
+      summary: Export all portfolio data as a JSON file
+      responses:
+        "200":
+          description: JSON export file
+          content:
+            application/json:
+              schema:
+                type: string
+                format: binary
+
+  /data-import:
+    post:
+      tags: [DataExport]
+      operationId: importData
+      summary: Import portfolio data from a JSON export file
+      parameters:
+        - name: dryRun
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "200":
+          description: Import analysis (dryRun=true) or import result (dryRun=false)
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/DataImportAnalysis"
+                  - $ref: "#/components/schemas/DataImportResult"
+        "400":
+          description: Invalid file or validation errors
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
 components:
   schemas:
     Error:
@@ -1850,3 +1904,54 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/PortfolioValuePoint"
+
+    DataImportAnalysis:
+      type: object
+      required:
+        - errors
+        - assetsToCreate
+        - assetsExisting
+        - listingsToCreate
+        - listingsExisting
+        - portfoliosToCreate
+        - portfoliosExisting
+        - transactionsToImport
+        - transactionsSkipped
+      properties:
+        errors:
+          type: array
+          items:
+            type: string
+        assetsToCreate:
+          type: integer
+        assetsExisting:
+          type: integer
+        listingsToCreate:
+          type: integer
+        listingsExisting:
+          type: integer
+        portfoliosToCreate:
+          type: integer
+        portfoliosExisting:
+          type: integer
+        transactionsToImport:
+          type: integer
+        transactionsSkipped:
+          type: integer
+
+    DataImportResult:
+      type: object
+      required:
+        - assetsCreated
+        - listingsCreated
+        - portfoliosCreated
+        - transactionsImported
+      properties:
+        assetsCreated:
+          type: integer
+        listingsCreated:
+          type: integer
+        portfoliosCreated:
+          type: integer
+        transactionsImported:
+          type: integer

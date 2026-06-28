@@ -38,6 +38,9 @@ class TransactionRepository(private val jdbcTemplate: JdbcTemplate) {
         JOIN listings l ON l.id = t.listing_id
     """.trimIndent()
 
+    fun findAllForPortfolio(portfolioId: Long): List<Transaction> =
+        jdbcTemplate.query("$baseSelect WHERE t.portfolio_id = ? ORDER BY t.date ASC, t.id ASC", rowMapper, portfolioId)
+
     fun findAll(portfolioId: Long?, page: Int = 0, size: Int = 25): List<Transaction> {
         val offset = page * size
         return if (portfolioId != null)
@@ -91,6 +94,19 @@ class TransactionRepository(private val jdbcTemplate: JdbcTemplate) {
         }, keyHolder)
         return transaction.copy(id = keyHolder.key!!.toLong())
     }
+
+    fun existsIdentical(
+        portfolioId: Long, listingId: Long, date: LocalDate, type: TransactionType,
+        quantity: BigDecimal, price: BigDecimal, fees: BigDecimal?, externalId: String?,
+    ): Boolean = jdbcTemplate.queryForObject(
+        """SELECT COUNT(*) FROM transactions
+           WHERE portfolio_id = ? AND listing_id = ? AND date = ? AND type = ?
+           AND quantity = ? AND price = ?
+           AND fees IS NOT DISTINCT FROM ?
+           AND external_id IS NOT DISTINCT FROM ?""",
+        Int::class.java,
+        portfolioId, listingId, date, type.name, quantity, price, fees, externalId
+    )!! > 0
 
     fun existsByExternalId(portfolioId: Long, externalId: String): Boolean =
         jdbcTemplate.queryForObject(

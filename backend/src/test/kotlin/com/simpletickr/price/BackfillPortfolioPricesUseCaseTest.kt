@@ -24,6 +24,7 @@ import org.mockito.kotlin.whenever
 import org.mockito.kotlin.argumentCaptor
 import java.math.BigDecimal
 import java.time.LocalDate
+import java.util.UUID
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
@@ -40,7 +41,7 @@ class BackfillPortfolioPricesUseCaseTest {
         listOf(provider), historyRepository, syncHistoryRepository,
     )
 
-    private val portfolio = Portfolio(1L, "Test")
+    private val portfolio = Portfolio(1L, UUID(0, 1), "Test")
     private val oldestDate = LocalDate.of(2018, 3, 14)
     private val mapping = PriceProviderMapping(1L, 10L, "YAHOO", "VWCE.DE")
     private val pricePoint = PricePoint(LocalDate.of(2024, 1, 15), BigDecimal("100.00"))

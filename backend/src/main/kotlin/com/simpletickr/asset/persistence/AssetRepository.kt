@@ -11,17 +11,18 @@ import org.springframework.jdbc.support.GeneratedKeyHolder
 import org.springframework.stereotype.Repository
 import java.math.BigDecimal
 import java.time.LocalDate
+import java.util.UUID
 
 @Repository
 class AssetRepository(private val jdbcTemplate: JdbcTemplate) {
 
     private data class AssetRow(
-        val assetId: Long, val isin: String?, val name: String, val type: AssetType,
+        val assetId: Long, val uuid: UUID, val isin: String?, val name: String, val type: AssetType,
         val listingId: Long, val exchange: String?, val ticker: String, val currency: CurrencyCode,
     )
 
     private data class AssetRowWithPrice(
-        val assetId: Long, val isin: String?, val name: String, val type: AssetType,
+        val assetId: Long, val uuid: UUID, val isin: String?, val name: String, val type: AssetType,
         val listingId: Long, val exchange: String?, val ticker: String, val currency: CurrencyCode,
         val lastPriceDate: LocalDate?, val lastPrice: BigDecimal?,
     )
@@ -31,6 +32,7 @@ class AssetRepository(private val jdbcTemplate: JdbcTemplate) {
             val first = assetRows.first()
             Asset(
                 id = assetId,
+                uuid = first.uuid,
                 isin = first.isin,
                 name = first.name,
                 type = first.type,
@@ -43,6 +45,7 @@ class AssetRepository(private val jdbcTemplate: JdbcTemplate) {
             val first = assetRows.first()
             AssetWithPrices(
                 id = assetId,
+                uuid = first.uuid,
                 isin = first.isin,
                 name = first.name,
                 type = first.type,
@@ -54,6 +57,7 @@ class AssetRepository(private val jdbcTemplate: JdbcTemplate) {
 
     private fun rowMapper(rs: java.sql.ResultSet): AssetRow = AssetRow(
         assetId = rs.getLong("asset_id"),
+        uuid = rs.getObject("uuid", UUID::class.java),
         isin = rs.getString("isin"),
         name = rs.getString("name"),
         type = AssetType.valueOf(rs.getString("type")),
@@ -65,6 +69,7 @@ class AssetRepository(private val jdbcTemplate: JdbcTemplate) {
 
     private fun rowMapperWithPrice(rs: java.sql.ResultSet): AssetRowWithPrice = AssetRowWithPrice(
         assetId = rs.getLong("asset_id"),
+        uuid = rs.getObject("uuid", UUID::class.java),
         isin = rs.getString("isin"),
         name = rs.getString("name"),
         type = AssetType.valueOf(rs.getString("type")),
@@ -78,7 +83,7 @@ class AssetRepository(private val jdbcTemplate: JdbcTemplate) {
 
     fun findAll(): List<Asset> {
         val rows = jdbcTemplate.query("""
-            SELECT a.id AS asset_id, a.isin, a.name, a.type,
+            SELECT a.id AS asset_id, a.uuid, a.isin, a.name, a.type,
                    l.id AS listing_id, l.exchange, l.ticker, l.currency
             FROM assets a
             JOIN listings l ON l.asset_id = a.id
@@ -89,7 +94,7 @@ class AssetRepository(private val jdbcTemplate: JdbcTemplate) {
 
     fun findAllWithLatestPrice(): List<AssetWithPrices> {
         val rows = jdbcTemplate.query("""
-            SELECT a.id AS asset_id, a.isin, a.name, a.type,
+            SELECT a.id AS asset_id, a.uuid, a.isin, a.name, a.type,
                    l.id AS listing_id, l.exchange, l.ticker, l.currency,
                    aph.date AS last_price_date, aph.close_price AS last_price
             FROM assets a
@@ -108,7 +113,7 @@ class AssetRepository(private val jdbcTemplate: JdbcTemplate) {
 
     fun findById(id: Long): Asset? {
         val rows = jdbcTemplate.query("""
-            SELECT a.id AS asset_id, a.isin, a.name, a.type,
+            SELECT a.id AS asset_id, a.uuid, a.isin, a.name, a.type,
                    l.id AS listing_id, l.exchange, l.ticker, l.currency
             FROM assets a
             JOIN listings l ON l.asset_id = a.id
@@ -118,19 +123,45 @@ class AssetRepository(private val jdbcTemplate: JdbcTemplate) {
         return aggregateRows(rows).firstOrNull()
     }
 
+    fun findByUuid(uuid: UUID): Asset? {
+        val rows = jdbcTemplate.query("""
+            SELECT a.id AS asset_id, a.uuid, a.isin, a.name, a.type,
+                   l.id AS listing_id, l.exchange, l.ticker, l.currency
+            FROM assets a
+            JOIN listings l ON l.asset_id = a.id
+            WHERE a.uuid = ?
+            ORDER BY l.id
+        """.trimIndent(), { rs, _ -> rowMapper(rs) }, uuid)
+        return aggregateRows(rows).firstOrNull()
+    }
+
+    fun findByIsin(isin: String): List<Asset> {
+        val rows = jdbcTemplate.query("""
+            SELECT a.id AS asset_id, a.uuid, a.isin, a.name, a.type,
+                   l.id AS listing_id, l.exchange, l.ticker, l.currency
+            FROM assets a
+            JOIN listings l ON l.asset_id = a.id
+            WHERE a.isin = ?
+            ORDER BY a.id, l.id
+        """.trimIndent(), { rs, _ -> rowMapper(rs) }, isin)
+        return aggregateRows(rows)
+    }
+
     fun save(isin: String?, name: String, type: AssetType): Asset {
+        val uuid = UUID.randomUUID()
         val keyHolder = GeneratedKeyHolder()
         jdbcTemplate.update({ con ->
             con.prepareStatement(
-                "INSERT INTO assets (isin, name, type) VALUES (?, ?, ?)",
+                "INSERT INTO assets (uuid, isin, name, type) VALUES (?, ?, ?, ?)",
                 arrayOf("id")
             ).apply {
-                setString(1, isin)
-                setString(2, name)
-                setString(3, type.name)
+                setObject(1, uuid)
+                setString(2, isin)
+                setString(3, name)
+                setString(4, type.name)
             }
         }, keyHolder)
-        return Asset(keyHolder.key!!.toLong(), isin, name, type)
+        return Asset(keyHolder.key!!.toLong(), uuid, isin, name, type)
     }
 
     fun update(id: Long, isin: String?, name: String, type: AssetType): Asset? {

@@ -1,8 +1,9 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { listPortfolios, deletePortfolio } from '$lib/api/sdk.gen';
+  import { listPortfolios, deletePortfolio, exportData } from '$lib/api/sdk.gen';
   import type { Portfolio } from '$lib/api/types.gen';
   import PortfolioModal from '$lib/PortfolioModal.svelte';
+  import DataImportDialog from '$lib/DataImportDialog.svelte';
   import '$lib/client';
 
   let portfolios = $state<Portfolio[]>([]);
@@ -15,6 +16,27 @@
   let deletingPortfolio = $state<Portfolio | null>(null);
   let deleteSubmitting = $state(false);
   let deleteError = $state<string | null>(null);
+
+  let importOpen = $state(false);
+  let exportError = $state<string | null>(null);
+
+  async function handleExport() {
+    exportError = null;
+    const { data, error: err } = await exportData();
+    if (err || !data) {
+      exportError = 'Export failed.';
+      return;
+    }
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `simpletickr-export-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
 
   async function load() {
     loading = true;
@@ -48,8 +70,14 @@
 <div class="max-w-2xl mx-auto p-4 sm:p-6 space-y-8">
   <div class="flex items-center gap-3">
     <h1 class="text-2xl font-bold flex-1">Portfolios</h1>
+    <button class="btn btn-ghost btn-sm" onclick={() => importOpen = true}>Import</button>
+    <button class="btn btn-ghost btn-sm" onclick={handleExport}>Export</button>
     <button class="btn btn-primary btn-sm" onclick={() => { editingPortfolio = null; modalOpen = true; }}>+ New portfolio</button>
   </div>
+
+  {#if exportError}
+    <div class="alert alert-error"><span>{exportError}</span></div>
+  {/if}
 
   {#if loading}
     <span class="loading loading-spinner loading-sm"></span>
@@ -103,6 +131,12 @@
     editingPortfolio = null;
   }}
   onCancel={() => { modalOpen = false; editingPortfolio = null; }}
+/>
+
+<DataImportDialog
+  open={importOpen}
+  onsuccess={() => { importOpen = false; load(); }}
+  oncancel={() => importOpen = false}
 />
 
 <!-- Delete confirmation modal -->

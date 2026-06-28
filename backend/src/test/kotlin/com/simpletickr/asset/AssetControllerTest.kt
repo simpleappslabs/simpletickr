@@ -13,6 +13,7 @@ import com.simpletickr.asset.usecase.UpdateAssetUseCase
 import com.simpletickr.asset.usecase.UpdateListingUseCase
 import com.simpletickr.price.model.PriceProviderMapping
 import com.simpletickr.shared.CurrencyCode
+import java.util.UUID
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
 import org.mockito.kotlin.whenever
@@ -49,10 +50,10 @@ class AssetControllerTest {
         ListingWithPrice(id, assetId, null, ticker, CurrencyCode(currency), null, null)
 
     private fun asset(id: Long, name: String, type: AssetType, vararg listings: Listing) =
-        Asset(id, null, name, type, listings.toList())
+        Asset(id, UUID(0, id), null, name, type, listings.toList())
 
     private fun assetWithPrices(id: Long, name: String, type: AssetType, vararg listings: ListingWithPrice) =
-        AssetWithPrices(id, null, name, type, listings.toList())
+        AssetWithPrices(id, UUID(0, id), null, name, type, listings.toList())
 
     @Test
     fun `GET assets returns list of assets with listings`() {

@@ -1,3 +1,5 @@
 package com.simpletickr.portfolio.model
 
-data class Portfolio(val id: Long, val name: String)
+import java.util.UUID
+
+data class Portfolio(val id: Long, val uuid: UUID, val name: String)

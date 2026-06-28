@@ -56,9 +56,11 @@ class AssetRepositoryTest {
     }
 
     @Test
-    fun `findAll returns seeded assets with listings`() {
+    fun `findAll returns created assets with listings`() {
+        saveAssetWithListing(name = "Stock A", ticker = "STKA")
+        saveAssetWithListing(name = "Stock B", ticker = "STKB")
         val assets = repository.findAll()
-        assertTrue(assets.isNotEmpty())
+        assertTrue(assets.size >= 2)
         assertTrue(assets.all { it.listings.isNotEmpty() })
     }
 

@@ -9,6 +9,7 @@ import com.simpletickr.portfolio.model.HoldingWithValuation
 import com.simpletickr.portfolio.model.Portfolio
 import com.simpletickr.portfolio.model.PortfolioValuePoint
 import com.simpletickr.portfolio.persistence.PortfolioRepository
+import java.util.UUID
 import com.simpletickr.transaction.persistence.TransactionRepository
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.whenever
@@ -66,7 +67,7 @@ class PortfolioControllerTest {
     @Test
     fun `GET portfolios returns list of portfolios`() {
         whenever(portfolioRepository.findAll()).thenReturn(
-            listOf(Portfolio(1L, "My Portfolio"), Portfolio(2L, "Savings"))
+            listOf(Portfolio(1L, UUID(0, 1), "My Portfolio"), Portfolio(2L, UUID(0, 2), "Savings"))
         )
 
         mockMvc.perform(get("/portfolios"))
@@ -79,7 +80,7 @@ class PortfolioControllerTest {
 
     @Test
     fun `GET portfolio by id returns 200 when found`() {
-        whenever(portfolioRepository.findById(1L)).thenReturn(Portfolio(1L, "My Portfolio"))
+        whenever(portfolioRepository.findById(1L)).thenReturn(Portfolio(1L, UUID(0, 1), "My Portfolio"))
 
         mockMvc.perform(get("/portfolios/1"))
             .andExpect(status().isOk)
@@ -97,7 +98,7 @@ class PortfolioControllerTest {
 
     @Test
     fun `POST portfolio creates and returns 201`() {
-        whenever(portfolioRepository.save("New Portfolio")).thenReturn(Portfolio(3L, "New Portfolio"))
+        whenever(portfolioRepository.save("New Portfolio")).thenReturn(Portfolio(3L, UUID(0, 3), "New Portfolio"))
 
         mockMvc.perform(
             post("/portfolios")
@@ -111,7 +112,7 @@ class PortfolioControllerTest {
 
     @Test
     fun `PUT portfolio returns 200 with updated portfolio`() {
-        whenever(portfolioRepository.update(1L, "Renamed")).thenReturn(Portfolio(1L, "Renamed"))
+        whenever(portfolioRepository.update(1L, "Renamed")).thenReturn(Portfolio(1L, UUID(0, 1), "Renamed"))
 
         mockMvc.perform(
             put("/portfolios/1")
@@ -137,7 +138,7 @@ class PortfolioControllerTest {
 
     @Test
     fun `DELETE portfolio returns 204 when found`() {
-        whenever(portfolioRepository.findById(1L)).thenReturn(Portfolio(1L, "My Portfolio"))
+        whenever(portfolioRepository.findById(1L)).thenReturn(Portfolio(1L, UUID(0, 1), "My Portfolio"))
 
         mockMvc.perform(delete("/portfolios/1"))
             .andExpect(status().isNoContent)
@@ -179,7 +180,7 @@ class PortfolioControllerTest {
 
     @Test
     fun `GET value-history returns 200 with value and invested points`() {
-        whenever(portfolioRepository.findById(1L)).thenReturn(Portfolio(1L, "My Portfolio"))
+        whenever(portfolioRepository.findById(1L)).thenReturn(Portfolio(1L, UUID(0, 1), "My Portfolio"))
         whenever(
             portfolioValueHistoryService.getValueHistory(1L, LocalDate.of(2024, 1, 1), LocalDate.of(2024, 1, 3))
         ).thenReturn(

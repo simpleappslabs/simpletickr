@@ -1,5 +1,7 @@
 package com.simpletickr.asset.model
 
+import java.util.UUID
+
 enum class AssetType {
     STOCK,
     ETF,
@@ -9,6 +11,7 @@ enum class AssetType {
 
 data class Asset(
     val id: Long,
+    val uuid: UUID,
     val isin: String?,
     val name: String,
     val type: AssetType,
