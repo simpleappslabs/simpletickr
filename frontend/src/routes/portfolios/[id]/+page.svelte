@@ -19,8 +19,6 @@
     let portfolio = $state<Portfolio | null>(null);
     let holdings = $state<Holding[]>([]);
     let transactions = $state<Transaction[]>([]);
-    let transactionPage = $state(0);
-    let transactionTotalPages = $state(0);
     let assets = $state<Asset[]>([]);
     let loading = $state(true);
     let notFound = $state(false);
@@ -62,21 +60,14 @@
     let deletePortfolioSubmitting = $state(false);
     let deletePortfolioError = $state<string | null>(null);
 
-    async function refreshData(page = transactionPage) {
+    async function refreshData() {
         if (!portfolio) return;
         const [holdingsRes, transactionsRes] = await Promise.all([
             getHoldings({path: {id: portfolio.id}}),
-            listTransactions({query: {portfolioId: portfolio.id, page, size: 25}}),
+            listTransactions({query: {portfolioId: portfolio.id, page: 0, size: 20}}),
         ]);
         holdings = holdingsRes.data ?? [];
-        const txPage = transactionsRes.data;
-        transactions = txPage?.items ?? [];
-        transactionPage = txPage?.page ?? 0;
-        transactionTotalPages = txPage?.totalPages ?? 0;
-    }
-
-    async function handlePageChange(page: number) {
-        await refreshData(page);
+        transactions = transactionsRes.data?.items ?? [];
     }
 
     async function handleDeletePortfolio() {
@@ -99,7 +90,7 @@
             getPortfolio({path: {id}}),
             getHoldings({path: {id}}),
             listAssets(),
-            listTransactions({query: {portfolioId: id, page: 0, size: 25}}),
+            listTransactions({query: {portfolioId: id, page: 0, size: 20}}),
         ]);
 
         if (portfolioRes.error) {
@@ -111,10 +102,7 @@
         portfolio = portfolioRes.data ?? null;
         holdings = holdingsRes.data ?? [];
         assets = assetsRes.data ?? [];
-        const txPage = transactionsRes.data;
-        transactions = txPage?.items ?? [];
-        transactionPage = txPage?.page ?? 0;
-        transactionTotalPages = txPage?.totalPages ?? 0;
+        transactions = transactionsRes.data?.items ?? [];
         loading = false;
     });
 </script>
@@ -174,16 +162,24 @@
     {:else if error}
         <div class="alert alert-error"><span>{error}</span></div>
     {:else}
-        <PortfolioSummary {holdings} {lastSyncAt} />
+        <section class="space-y-3">
+            <PortfolioSummary {holdings} {lastSyncAt} />
+        </section>
 
         <ValueHistoryContainer portfolioId={portfolio!.id} refreshKey={valueHistoryKey} />
 
         {#if holdings.length === 0}
             <p class="text-base-content/40 italic text-sm">No holdings yet. Record a transaction to get started.</p>
         {:else}
-            <HoldingsTable {holdings} onchartclick={(l) => chartListing = l} />
+            <section class="space-y-3">
+                <h2 class="text-lg font-semibold">Holdings</h2>
+                <HoldingsTable {holdings} onchartclick={(l) => chartListing = l} />
+            </section>
 
-            <PortfolioChart {holdings} />
+            <section class="space-y-3">
+                <h2 class="text-lg font-semibold">Allocation</h2>
+                <PortfolioChart {holdings} />
+            </section>
         {/if}
 
         <TransactionsContainer
@@ -191,10 +187,7 @@
             {assets}
             {holdings}
             {transactions}
-            currentPage={transactionPage}
-            totalPages={transactionTotalPages}
             onchange={refreshData}
-            onpagechange={handlePageChange}
             bind:createOpen={createTransactionOpen}
         />
     {/if}
