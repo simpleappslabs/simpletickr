@@ -11,6 +11,14 @@ import org.springframework.stereotype.Repository
 import java.math.BigDecimal
 import java.time.LocalDate
 
+data class TransactionFilter(
+    val portfolioId: Long? = null,
+    val type: TransactionType? = null,
+    val listingId: Long? = null,
+    val dateFrom: LocalDate? = null,
+    val dateTo: LocalDate? = null,
+)
+
 @Repository
 class TransactionRepository(private val jdbcTemplate: JdbcTemplate) {
 
@@ -44,19 +52,37 @@ class TransactionRepository(private val jdbcTemplate: JdbcTemplate) {
     fun findAllForPortfolio(portfolioId: Long): List<Transaction> =
         jdbcTemplate.query("$baseSelect WHERE t.portfolio_id = ? ORDER BY t.date ASC, t.id ASC", rowMapper, portfolioId)
 
-    fun findAll(portfolioId: Long?, page: Int = 0, size: Int = 25): List<Transaction> {
-        val offset = page * size
-        return if (portfolioId != null)
-            jdbcTemplate.query("$baseSelect WHERE t.portfolio_id = ? ORDER BY t.date DESC, t.id DESC LIMIT ? OFFSET ?", rowMapper, portfolioId, size, offset)
-        else
-            jdbcTemplate.query("$baseSelect ORDER BY t.date DESC, t.id DESC LIMIT ? OFFSET ?", rowMapper, size, offset)
+    private fun buildWhere(filter: TransactionFilter): Pair<String, List<Any>> {
+        val conditions = mutableListOf<String>()
+        val params = mutableListOf<Any>()
+        filter.portfolioId?.let { conditions += "t.portfolio_id = ?"; params += it }
+        filter.type?.let        { conditions += "t.type = ?";          params += it.name }
+        filter.listingId?.let   { conditions += "t.listing_id = ?";   params += it }
+        filter.dateFrom?.let    { conditions += "t.date >= ?";         params += it }
+        filter.dateTo?.let      { conditions += "t.date <= ?";         params += it }
+        val clause = if (conditions.isEmpty()) "" else "WHERE " + conditions.joinToString(" AND ")
+        return clause to params
     }
 
-    fun count(portfolioId: Long?): Long =
-        if (portfolioId != null)
-            jdbcTemplate.queryForObject("SELECT COUNT(*) FROM transactions WHERE portfolio_id = ?", Long::class.java, portfolioId)!!
-        else
-            jdbcTemplate.queryForObject("SELECT COUNT(*) FROM transactions", Long::class.java)!!
+    fun findAll(filter: TransactionFilter, page: Int = 0, size: Int = 25): List<Transaction> {
+        val offset = page * size
+        val (where, params) = buildWhere(filter)
+        val allParams = (params + size + offset).toTypedArray<Any>()
+        return jdbcTemplate.query(
+            "$baseSelect $where ORDER BY t.date DESC, t.id DESC LIMIT ? OFFSET ?",
+            rowMapper,
+            *allParams,
+        )
+    }
+
+    fun count(filter: TransactionFilter): Long {
+        val (where, params) = buildWhere(filter)
+        return jdbcTemplate.queryForObject(
+            "SELECT COUNT(*) FROM transactions t $where",
+            Long::class.java,
+            *params.toTypedArray(),
+        )!!
+    }
 
     fun findOldestTransactionDate(portfolioId: Long): LocalDate? =
         jdbcTemplate.query(

@@ -6,6 +6,7 @@ import com.simpletickr.generated.model.TransactionPage
 import com.simpletickr.generated.model.TransactionRequest
 import com.simpletickr.transaction.model.Transaction
 import com.simpletickr.transaction.model.TransactionType
+import com.simpletickr.transaction.persistence.TransactionFilter
 import com.simpletickr.transaction.persistence.TransactionRepository
 import com.simpletickr.transaction.usecase.AmendTransactionUseCase
 import com.simpletickr.transaction.usecase.DeleteTransactionUseCase
@@ -13,6 +14,7 @@ import com.simpletickr.transaction.usecase.RecordTransactionUseCase
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.RestController
 import java.math.BigDecimal
+import java.time.LocalDate
 import com.simpletickr.generated.model.FxRateSource as GeneratedFxRateSource
 import com.simpletickr.generated.model.Transaction as TransactionModel
 import com.simpletickr.generated.model.TransactionType as GeneratedTransactionType
@@ -25,9 +27,27 @@ class TransactionController(
     private val deleteTransactionUseCase: DeleteTransactionUseCase,
 ) : TransactionsApi {
 
-    override fun listTransactions(portfolioId: Long?, page: Int, size: Int): ResponseEntity<TransactionPage> {
-        val items = transactionRepository.findAll(portfolioId, page, size)
-        val total = transactionRepository.count(portfolioId)
+    override fun listTransactions(
+        portfolioId: Long?,
+        type: GeneratedTransactionType?,
+        listingId: Long?,
+        dateFrom: LocalDate?,
+        dateTo: LocalDate?,
+        page: Int,
+        size: Int,
+    ): ResponseEntity<TransactionPage> {
+        if (page < 0 || size <= 0 || size > 200) return ResponseEntity.badRequest().build()
+        if (dateFrom != null && dateTo != null && dateFrom > dateTo) return ResponseEntity.badRequest().build()
+
+        val filter = TransactionFilter(
+            portfolioId = portfolioId,
+            type = type?.let { TransactionType.valueOf(it.value) },
+            listingId = listingId,
+            dateFrom = dateFrom,
+            dateTo = dateTo,
+        )
+        val items = transactionRepository.findAll(filter, page, size)
+        val total = transactionRepository.count(filter)
         val totalPages = if (size == 0) 0 else ((total + size - 1) / size).toInt()
         return ResponseEntity.ok(TransactionPage(
             items = items.map { it.toModel() },

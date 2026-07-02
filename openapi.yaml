@@ -856,7 +856,7 @@ paths:
     get:
       tags: [Transactions]
       operationId: listTransactions
-      summary: List transactions, optionally filtered by portfolio
+      summary: List and search transactions with optional filters
       parameters:
         - name: portfolioId
           in: query
@@ -864,6 +864,29 @@ paths:
           schema:
             type: integer
             format: int64
+        - name: type
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/TransactionType"
+        - name: listingId
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int64
+        - name: dateFrom
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: dateTo
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
         - name: page
           in: query
           required: false

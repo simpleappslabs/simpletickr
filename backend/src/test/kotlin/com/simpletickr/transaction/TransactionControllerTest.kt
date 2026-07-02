@@ -2,6 +2,7 @@ package com.simpletickr.transaction
 
 import com.simpletickr.transaction.model.Transaction
 import com.simpletickr.transaction.model.TransactionType
+import com.simpletickr.transaction.persistence.TransactionFilter
 import com.simpletickr.transaction.persistence.TransactionRepository
 import com.simpletickr.transaction.usecase.AmendTransactionUseCase
 import com.simpletickr.transaction.usecase.DeleteTransactionUseCase
@@ -44,8 +45,8 @@ class TransactionControllerTest {
 
     @Test
     fun `GET transactions returns paginated response filtered by portfolioId`() {
-        whenever(transactionRepository.findAll(10L, 0, 25)).thenReturn(listOf(sample))
-        whenever(transactionRepository.count(10L)).thenReturn(1L)
+        whenever(transactionRepository.findAll(TransactionFilter(portfolioId = 10L), 0, 25)).thenReturn(listOf(sample))
+        whenever(transactionRepository.count(TransactionFilter(portfolioId = 10L))).thenReturn(1L)
 
         mockMvc.perform(get("/transactions?portfolioId=10"))
             .andExpect(status().isOk)
@@ -61,8 +62,8 @@ class TransactionControllerTest {
 
     @Test
     fun `GET transactions respects page and size params`() {
-        whenever(transactionRepository.findAll(10L, 1, 10)).thenReturn(emptyList())
-        whenever(transactionRepository.count(10L)).thenReturn(15L)
+        whenever(transactionRepository.findAll(TransactionFilter(portfolioId = 10L), 1, 10)).thenReturn(emptyList())
+        whenever(transactionRepository.count(TransactionFilter(portfolioId = 10L))).thenReturn(15L)
 
         mockMvc.perform(get("/transactions?portfolioId=10&page=1&size=10"))
             .andExpect(status().isOk)
@@ -70,6 +71,66 @@ class TransactionControllerTest {
             .andExpect(jsonPath("$.size").value(10))
             .andExpect(jsonPath("$.totalElements").value(15))
             .andExpect(jsonPath("$.totalPages").value(2))
+    }
+
+    @Test
+    fun `GET transactions filters by type`() {
+        whenever(transactionRepository.findAll(TransactionFilter(type = TransactionType.BUY), 0, 25)).thenReturn(listOf(sample))
+        whenever(transactionRepository.count(TransactionFilter(type = TransactionType.BUY))).thenReturn(1L)
+
+        mockMvc.perform(get("/transactions?type=BUY"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.items.length()").value(1))
+            .andExpect(jsonPath("$.items[0].type").value("BUY"))
+    }
+
+    @Test
+    fun `GET transactions filters by listingId`() {
+        whenever(transactionRepository.findAll(TransactionFilter(listingId = 5L), 0, 25)).thenReturn(listOf(sample))
+        whenever(transactionRepository.count(TransactionFilter(listingId = 5L))).thenReturn(1L)
+
+        mockMvc.perform(get("/transactions?listingId=5"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.items.length()").value(1))
+            .andExpect(jsonPath("$.items[0].listingId").value(5))
+    }
+
+    @Test
+    fun `GET transactions filters by date range`() {
+        val filter = TransactionFilter(
+            dateFrom = LocalDate.of(2024, 1, 1),
+            dateTo = LocalDate.of(2024, 12, 31),
+        )
+        whenever(transactionRepository.findAll(filter, 0, 25)).thenReturn(listOf(sample))
+        whenever(transactionRepository.count(filter)).thenReturn(1L)
+
+        mockMvc.perform(get("/transactions?dateFrom=2024-01-01&dateTo=2024-12-31"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.items.length()").value(1))
+    }
+
+    @Test
+    fun `GET transactions returns 400 when dateFrom is after dateTo`() {
+        mockMvc.perform(get("/transactions?dateFrom=2024-12-31&dateTo=2024-01-01"))
+            .andExpect(status().isBadRequest)
+    }
+
+    @Test
+    fun `GET transactions returns 400 when size is zero`() {
+        mockMvc.perform(get("/transactions?size=0"))
+            .andExpect(status().isBadRequest)
+    }
+
+    @Test
+    fun `GET transactions returns 400 when size exceeds maximum`() {
+        mockMvc.perform(get("/transactions?size=201"))
+            .andExpect(status().isBadRequest)
+    }
+
+    @Test
+    fun `GET transactions returns 400 when page is negative`() {
+        mockMvc.perform(get("/transactions?page=-1"))
+            .andExpect(status().isBadRequest)
     }
 
     @Test
