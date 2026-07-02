@@ -7,9 +7,11 @@
         assets: Asset[];
         value?: number;  // listingId
         autofocus?: boolean;
+        onselect?: (listingId: number) => void;
+        clearable?: boolean;
     }
 
-    let { assets, value = $bindable(0), autofocus = false }: Props = $props();
+    let { assets, value = $bindable(0), autofocus = false, onselect, clearable = false }: Props = $props();
 
     let query = $state('');
 
@@ -19,6 +21,7 @@
     let open = $state(false);
     let highlighted = $state(-1);
     let selectedId = $state(-1);
+    let previousValue = $state(0);
     let containerEl: HTMLDivElement | undefined = $state();
     let inputEl: HTMLInputElement | undefined = $state();
     let dropdownLeft = $state(0);
@@ -79,8 +82,10 @@
 
     function handleInput(e: Event) {
         query = (e.currentTarget as HTMLInputElement).value;
+        const wasSelected = selectedId !== 0;
         selectedId = 0;
         value = 0;
+        if (wasSelected) onselect?.(0);
         open = true;
         highlighted = -1;
         syncDropdownPos();
@@ -92,6 +97,8 @@
         query = listing.exchange ? `${listing.ticker} — ${asset.name} · ${listing.exchange}` : `${listing.ticker} — ${asset.name}`;
         open = false;
         highlighted = -1;
+        previousValue = 0;
+        onselect?.(listing.id);
     }
 
     function handleKeydown(e: KeyboardEvent) {
@@ -112,10 +119,40 @@
         }
     }
 
+    function handleFocus() {
+        syncDropdownPos();
+        if (selectedId !== 0) {
+            previousValue = selectedId;
+            query = '';
+            selectedId = 0;
+            value = 0;
+            // Don't call onselect here — that triggers goto() which steals focus.
+            // Defer to handleBlur (if nothing new is picked) or select() (if a new listing is chosen).
+        }
+        open = true;
+    }
+
+    function clearSelection() {
+        value = 0;
+        selectedId = 0;
+        previousValue = 0;
+        query = '';
+        open = false;
+        onselect?.(0);
+    }
+
     function handleBlur(e: FocusEvent) {
         if (!containerEl?.contains(e.relatedTarget as Node)) {
             open = false;
             highlighted = -1;
+            if (value === 0 && previousValue !== 0) {
+                value = previousValue;
+                selectedId = previousValue;
+                query = displayFor(previousValue);
+            } else if (value !== 0) {
+                query = displayFor(value);
+            }
+            previousValue = 0;
         }
     }
 </script>
@@ -124,15 +161,32 @@
     <input
         bind:this={inputEl}
         class="input w-full"
+        class:pr-8={clearable && value !== 0}
         type="text"
         placeholder="Search by ticker or name..."
         value={query}
         oninput={handleInput}
         onkeydown={handleKeydown}
         onblur={handleBlur}
-        onfocus={() => { syncDropdownPos(); }}
+        onfocus={handleFocus}
+        onclick={handleFocus}
         autocomplete="off"
     />
+    {#if clearable && value !== 0}
+        <button
+            type="button"
+            class="absolute right-2 top-1/2 -translate-y-1/2 text-base-content/40 hover:text-base-content/70 transition-colors"
+            onmousedown={(e) => e.preventDefault()}
+            onclick={clearSelection}
+            tabindex="-1"
+            aria-label="Clear"
+        >
+            <svg xmlns="http://www.w3.org/2000/svg" class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"/>
+                <line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+        </button>
+    {/if}
 
     {#if open && value === 0 && matchingAssets.length > 0}
         <ul

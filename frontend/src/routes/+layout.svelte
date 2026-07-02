@@ -42,6 +42,7 @@
 		<nav class="hidden sm:flex flex-none items-center gap-3">
 			<ul class="menu menu-horizontal gap-1">
 				<li><a href="/">Portfolios</a></li>
+				<li><a href="/transactions">Transactions</a></li>
 				<li><a href="/assets">Assets</a></li>
 				<li><a href="/admin">Admin</a></li>
 				<li><a href="/settings">Settings</a></li>
@@ -97,6 +98,7 @@
 		</div>
 		<ul class="menu menu-vertical p-4 gap-1 flex-1 text-base">
 			<li><a href="/" onclick={() => mobileMenuOpen = false}>Portfolios</a></li>
+			<li><a href="/transactions" onclick={() => mobileMenuOpen = false}>Transactions</a></li>
 			<li><a href="/assets" onclick={() => mobileMenuOpen = false}>Assets</a></li>
 			<li><a href="/admin" onclick={() => mobileMenuOpen = false}>Admin</a></li>
 			<li><a href="/settings" onclick={() => mobileMenuOpen = false}>Settings</a></li>
