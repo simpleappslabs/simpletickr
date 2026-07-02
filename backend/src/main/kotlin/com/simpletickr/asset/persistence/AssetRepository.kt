@@ -147,8 +147,7 @@ class AssetRepository(private val jdbcTemplate: JdbcTemplate) {
         return aggregateRows(rows)
     }
 
-    fun save(isin: String?, name: String, type: AssetType): Asset {
-        val uuid = UUID.randomUUID()
+    fun save(isin: String?, name: String, type: AssetType, uuid: UUID = UUID.randomUUID()): Asset {
         val keyHolder = GeneratedKeyHolder()
         jdbcTemplate.update({ con ->
             con.prepareStatement(

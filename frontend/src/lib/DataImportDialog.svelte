@@ -47,7 +47,6 @@
 
         result = data as DataImportResult;
         step = 3;
-        onsuccess();
     }
 
     function handleClose() {
@@ -57,6 +56,15 @@
         result = null;
         error = null;
         oncancel();
+    }
+
+    function handleDone() {
+        step = 1;
+        file = null;
+        analysis = null;
+        result = null;
+        error = null;
+        onsuccess();
     }
 
     function handleFileChange(e: Event) {
@@ -214,7 +222,7 @@
                 </div>
             </div>
             <div class="modal-action">
-                <button class="btn btn-primary" onclick={handleClose}>Done</button>
+                <button class="btn btn-primary" onclick={handleDone}>Done</button>
             </div>
         {/if}
     </div>

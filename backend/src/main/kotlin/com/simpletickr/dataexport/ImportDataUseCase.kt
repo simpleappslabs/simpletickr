@@ -217,7 +217,7 @@ class ImportDataUseCase(
 
         for (ra in plan.resolvedAssets) {
             val realAssetId: Long = if (ra.needsCreate) {
-                val asset = assetRepository.save(ra.exported.isin, ra.exported.name, AssetType.valueOf(ra.exported.type))
+                val asset = assetRepository.save(ra.exported.isin, ra.exported.name, AssetType.valueOf(ra.exported.type), ra.exported.uuid)
                 assetsCreated++
                 asset.id
             } else {
@@ -259,7 +259,7 @@ class ImportDataUseCase(
 
         for (rp in plan.resolvedPortfolios) {
             val realPortfolioId: Long = if (rp.needsCreate) {
-                portfolioRepository.save(rp.exported.name).id.also { portfoliosCreated++ }
+                portfolioRepository.save(rp.exported.name, rp.exported.uuid).id.also { portfoliosCreated++ }
             } else {
                 rp.existingId!!
             }

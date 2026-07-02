@@ -30,8 +30,7 @@ class PortfolioRepository(private val jdbcTemplate: JdbcTemplate) {
         jdbcTemplate.queryForObject("SELECT id, uuid, name FROM portfolios WHERE name = ?", rowMapper, name)
     } catch (_: EmptyResultDataAccessException) { null }
 
-    fun save(name: String): Portfolio {
-        val uuid = UUID.randomUUID()
+    fun save(name: String, uuid: UUID = UUID.randomUUID()): Portfolio {
         val keyHolder = GeneratedKeyHolder()
         jdbcTemplate.update({ con ->
             con.prepareStatement("INSERT INTO portfolios (user_id, uuid, name) VALUES (?, ?, ?)", arrayOf("id"))

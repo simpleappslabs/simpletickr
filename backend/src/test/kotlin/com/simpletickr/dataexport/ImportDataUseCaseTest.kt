@@ -174,10 +174,10 @@ class ImportDataUseCaseTest {
         val newAsset = Asset(1L, assetUuid, null, "Apple Inc.", AssetType.STOCK, emptyList())
         val newListing = Listing(10L, 1L, "NYSE", "AAPL", CurrencyCode("USD"))
         val newPortfolio = Portfolio(100L, portfolioUuid, "My Portfolio")
-        whenever(assetRepository.save(any(), any(), any())).thenReturn(newAsset)
+        whenever(assetRepository.save(any(), any(), any(), any())).thenReturn(newAsset)
         whenever(listingRepository.save(any(), any(), any(), any())).thenReturn(newListing)
         whenever(listingRepository.findByAssetId(1L)).thenReturn(emptyList())
-        whenever(portfolioRepository.save(any())).thenReturn(newPortfolio)
+        whenever(portfolioRepository.save(any(), any())).thenReturn(newPortfolio)
         whenever(mappingRepository.findByListingAndProvider(any(), any())).thenReturn(null)
 
         val result = useCase.apply(bytes(validExport))
