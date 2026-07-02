@@ -25,6 +25,8 @@
     let formFxRateUserEdited = $state(false);
     let formFxRateFetching = $state(false);
     let fxFetchVersion = $state(0);
+    let formBroker = $state('');
+    let formNotes = $state('');
     let formSubmitting = $state(false);
     let formError = $state<string | null>(null);
 
@@ -87,6 +89,8 @@
             formFxRate = transaction.fxRate != null ? String(transaction.fxRate) : '';
             formFxRateAutoDate = null;
             formFxRateUserEdited = transaction.fxRate != null;
+            formBroker = transaction.broker ?? '';
+            formNotes = transaction.notes ?? '';
         } else {
             formListingId = 0;
             formType = 'BUY';
@@ -97,6 +101,8 @@
             formFxRate = '';
             formFxRateAutoDate = null;
             formFxRateUserEdited = false;
+            formBroker = '';
+            formNotes = '';
         }
         formError = null;
     });
@@ -129,6 +135,8 @@
             date: formDate,
             fees: !isSplit && formFees ? Number(formFees) : undefined,
             fxRate: !isSplit && needsFx && formFxRate ? Number(formFxRate) : undefined,
+            broker: formBroker || undefined,
+            notes: formNotes || undefined,
         };
 
         const res = transaction
@@ -239,6 +247,16 @@
             {/if}
         </fieldset>
     {/if}
+
+    <fieldset class="fieldset">
+        <legend class="fieldset-legend">Broker <span class="text-base-content/40 font-normal">(optional)</span></legend>
+        <input class="input w-full" type="text" placeholder="e.g. Degiro" bind:value={formBroker} />
+    </fieldset>
+
+    <fieldset class="fieldset">
+        <legend class="fieldset-legend">Notes <span class="text-base-content/40 font-normal">(optional)</span></legend>
+        <textarea class="textarea w-full" rows="2" placeholder="Any context" bind:value={formNotes}></textarea>
+    </fieldset>
 
     {#if formError}
         <div class="alert alert-error text-sm"><span>{formError}</span></div>

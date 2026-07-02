@@ -1379,6 +1379,14 @@ components:
           description: "FX rate at execution time: 1 baseCurrency = fxRate listingCurrency"
         fxRateSource:
           $ref: "#/components/schemas/FxRateSource"
+        broker:
+          type: string
+          nullable: true
+          description: "Broker or platform through which the trade was executed"
+        notes:
+          type: string
+          nullable: true
+          description: "Free-form notes or context for this transaction"
 
     TransactionRequest:
       type: object
@@ -1412,6 +1420,14 @@ components:
           format: double
           nullable: true
           description: "Override the FX rate. If omitted, the server will look it up automatically."
+        broker:
+          type: string
+          nullable: true
+          description: "Broker or platform through which the trade was executed"
+        notes:
+          type: string
+          nullable: true
+          description: "Free-form notes or context for this transaction"
 
     TransactionType:
       type: string

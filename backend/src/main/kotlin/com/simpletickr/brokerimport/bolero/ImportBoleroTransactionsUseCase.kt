@@ -84,6 +84,7 @@ class ImportBoleroTransactionsUseCase(
                     fees = null,
                     fxRate = null,
                     externalId = externalId,
+                    broker = "Bolero",
                 )
             )
             ImportRowResult(row.lineNumber, ImportStatus.IMPORTED, "ok")

@@ -53,6 +53,8 @@ class AmendTransactionUseCase(
             fees = command.fees,
             fxRate = fxRate,
             fxRateSource = fxRateSource,
+            broker = command.broker,
+            notes = command.notes,
         ))
     }
 }

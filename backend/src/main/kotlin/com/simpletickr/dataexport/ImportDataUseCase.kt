@@ -293,6 +293,8 @@ class ImportDataUseCase(
                             fxRate = tx.fxRate,
                             fxRateSource = null,
                             externalId = tx.externalId,
+                            broker = tx.broker,
+                            notes = tx.notes,
                         )
                     )
                     transactionsImported++

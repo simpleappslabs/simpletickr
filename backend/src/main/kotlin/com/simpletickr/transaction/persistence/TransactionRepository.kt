@@ -28,12 +28,15 @@ class TransactionRepository(private val jdbcTemplate: JdbcTemplate) {
             fxRate = rs.getBigDecimal("fx_rate"),
             fxRateSource = rs.getString("fx_rate_source")?.let { FxRateSource.valueOf(it) },
             externalId = rs.getString("external_id"),
+            broker = rs.getString("broker"),
+            notes = rs.getString("notes"),
         )
     }
 
     private val baseSelect = """
         SELECT t.id, t.portfolio_id, t.listing_id, l.asset_id,
-               t.type, t.quantity, t.price, t.date, t.fees, t.fx_rate, t.fx_rate_source, t.external_id
+               t.type, t.quantity, t.price, t.date, t.fees, t.fx_rate, t.fx_rate_source, t.external_id,
+               t.broker, t.notes
         FROM transactions t
         JOIN listings l ON l.id = t.listing_id
     """.trimIndent()
@@ -77,7 +80,7 @@ class TransactionRepository(private val jdbcTemplate: JdbcTemplate) {
         val keyHolder = GeneratedKeyHolder()
         jdbcTemplate.update({ con ->
             con.prepareStatement(
-                "INSERT INTO transactions (portfolio_id, listing_id, type, quantity, price, date, fees, fx_rate, fx_rate_source, external_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "INSERT INTO transactions (portfolio_id, listing_id, type, quantity, price, date, fees, fx_rate, fx_rate_source, external_id, broker, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 arrayOf("id")
             ).apply {
                 setLong(1, transaction.portfolioId)
@@ -90,6 +93,8 @@ class TransactionRepository(private val jdbcTemplate: JdbcTemplate) {
                 setBigDecimal(8, transaction.fxRate)
                 setString(9, transaction.fxRateSource?.name)
                 setString(10, transaction.externalId)
+                setString(11, transaction.broker)
+                setString(12, transaction.notes)
             }
         }, keyHolder)
         return transaction.copy(id = keyHolder.key!!.toLong())
@@ -116,9 +121,10 @@ class TransactionRepository(private val jdbcTemplate: JdbcTemplate) {
 
     fun update(transaction: Transaction): Transaction? {
         val updated = jdbcTemplate.update(
-            "UPDATE transactions SET listing_id = ?, type = ?, quantity = ?, price = ?, date = ?, fees = ?, fx_rate = ?, fx_rate_source = ? WHERE id = ?",
+            "UPDATE transactions SET listing_id = ?, type = ?, quantity = ?, price = ?, date = ?, fees = ?, fx_rate = ?, fx_rate_source = ?, broker = ?, notes = ? WHERE id = ?",
             transaction.listingId, transaction.type.name, transaction.quantity, transaction.price,
-            transaction.date, transaction.fees, transaction.fxRate, transaction.fxRateSource?.name, transaction.id
+            transaction.date, transaction.fees, transaction.fxRate, transaction.fxRateSource?.name,
+            transaction.broker, transaction.notes, transaction.id
         )
         return if (updated == 0) null else transaction
     }

@@ -13,6 +13,8 @@ data class RecordTransactionCommand(
     val fees: BigDecimal?,
     val fxRate: BigDecimal? = null,
     val externalId: String? = null,
+    val broker: String? = null,
+    val notes: String? = null,
 )
 
 data class AmendTransactionCommand(
@@ -23,4 +25,6 @@ data class AmendTransactionCommand(
     val date: LocalDate,
     val fees: BigDecimal?,
     val fxRate: BigDecimal? = null,
+    val broker: String? = null,
+    val notes: String? = null,
 )

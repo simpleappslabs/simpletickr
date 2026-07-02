@@ -52,6 +52,8 @@ class TransactionController(
             date = transactionRequest.date,
             fees = transactionRequest.fees?.let { BigDecimal.valueOf(it) },
             fxRate = transactionRequest.fxRate?.let { BigDecimal.valueOf(it) },
+            broker = transactionRequest.broker,
+            notes = transactionRequest.notes,
         )
         val transaction = recordTransactionUseCase.execute(portfolioId, command)
         return ResponseEntity.status(201).body(transaction.toModel())
@@ -66,6 +68,8 @@ class TransactionController(
             date = transactionRequest.date,
             fees = transactionRequest.fees?.let { BigDecimal.valueOf(it) },
             fxRate = transactionRequest.fxRate?.let { BigDecimal.valueOf(it) },
+            broker = transactionRequest.broker,
+            notes = transactionRequest.notes,
         )
         val transaction = amendTransactionUseCase.execute(portfolioId, id, command)
             ?: return ResponseEntity.notFound().build()
@@ -89,5 +93,7 @@ class TransactionController(
         fees = fees?.toDouble(),
         fxRate = fxRate?.toDouble(),
         fxRateSource = fxRateSource?.let { GeneratedFxRateSource.valueOf(it.name) },
+        broker = broker,
+        notes = notes,
     )
 }

@@ -21,6 +21,8 @@ data class Transaction(
     val fxRate: BigDecimal? = null,
     val fxRateSource: FxRateSource? = null,
     val externalId: String? = null,
+    val broker: String? = null,
+    val notes: String? = null,
 ) {
     init {
         require(quantity > BigDecimal.ZERO) { "Quantity must be positive" }

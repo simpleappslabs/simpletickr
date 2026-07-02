@@ -69,6 +69,8 @@ class ExportService(
                             fees = tx.fees,
                             fxRate = tx.fxRate,
                             externalId = tx.externalId,
+                            broker = tx.broker,
+                            notes = tx.notes,
                         )
                     },
                 )

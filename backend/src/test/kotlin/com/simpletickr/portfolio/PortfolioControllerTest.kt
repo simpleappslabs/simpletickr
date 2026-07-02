@@ -12,6 +12,8 @@ import com.simpletickr.portfolio.persistence.PortfolioRepository
 import java.util.UUID
 import com.simpletickr.transaction.persistence.TransactionRepository
 import org.junit.jupiter.api.Test
+import org.mockito.kotlin.any
+import org.mockito.kotlin.eq
 import org.mockito.kotlin.whenever
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest
@@ -98,7 +100,7 @@ class PortfolioControllerTest {
 
     @Test
     fun `POST portfolio creates and returns 201`() {
-        whenever(portfolioRepository.save("New Portfolio")).thenReturn(Portfolio(3L, UUID(0, 3), "New Portfolio"))
+        whenever(portfolioRepository.save(eq("New Portfolio"), any())).thenReturn(Portfolio(3L, UUID(0, 3), "New Portfolio"))
 
         mockMvc.perform(
             post("/portfolios")

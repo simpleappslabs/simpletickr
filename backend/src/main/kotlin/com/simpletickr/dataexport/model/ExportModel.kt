@@ -50,6 +50,8 @@ data class TransactionExport(
     val fees: BigDecimal?,
     val fxRate: BigDecimal?,
     val externalId: String?,
+    val broker: String? = null,
+    val notes: String? = null,
 )
 
 data class ImportAnalysis(
