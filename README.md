@@ -10,6 +10,7 @@ simpletickr is intentionally **not** a trading tool. There are no intra-day char
 * [simpletickr](#simpletickr)
   * [Table of Contents](#table-of-contents)
   * [Features](#features)
+  * [Screenshots](#screenshots)
   * [Self-hosting](#self-hosting)
     * [Prerequisites](#prerequisites)
     * [Quick start](#quick-start)
@@ -18,7 +19,7 @@ simpletickr is intentionally **not** a trading tool. There are no intra-day char
     * [Kubernetes (Helm)](#kubernetes-helm)
   * [Development](#development)
   * [AI pair programming](#ai-pair-programming)
-<!-- TOC -->
+<!-- TOC -->>
 
 ## Features
 
@@ -29,6 +30,25 @@ simpletickr is intentionally **not** a trading tool. There are no intra-day char
 - Realized gains report (FIFO or AVCO)
 - Automatic price sync via Yahoo Finance
 - Configurable dashboard widgets
+- JSON export and import
+
+## Screenshots
+
+Create and manage multiple portfolios :
+
+![Portfolios](./.github/assets/portfolios.png)
+
+Main portfolio page, with the value graph, holdings summary, allocation graph and recent transactions :
+
+![Portfolio detail](./.github/assets/portfolio-details.png)
+
+Dashboard :
+
+![Dashboard](./.github/assets/dashboard.png)
+
+List of assets :
+
+![Assets](./.github/assets/assets.png)
 
 ## Self-hosting
 

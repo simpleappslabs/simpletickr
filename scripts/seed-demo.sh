@@ -12,9 +12,31 @@ post() {
 
 echo "Creating assets..."
 
-# Create an asset and return its first listing's id
+# Create an asset and return its first listing's id.
+# If an asset with the same ticker already exists, return its listing id.
 make_asset() {
-    post /assets "$1" | jq -r '.listings[0].id'
+    local ticker
+    ticker=$(echo "$1" | jq -r '.listings[0].ticker')
+    local existing
+    existing=$(curl -sf "$API/assets" | jq -r --arg t "$ticker" '.[] | .listings[] | select(.ticker == $t) | .id' | head -1)
+    if [[ -n "$existing" ]]; then
+        echo "$existing"
+    else
+        post /assets "$1" | jq -r '.listings[0].id'
+    fi
+}
+
+# Create a portfolio and return its id.
+# If a portfolio with the same name already exists, return its id.
+make_portfolio() {
+    local name="$1" body="$2"
+    local existing
+    existing=$(curl -sf "$API/portfolios" | jq -r --arg n "$name" '.[] | select(.name == $n) | .id' | head -1)
+    if [[ -n "$existing" ]]; then
+        echo "$existing"
+    else
+        post /portfolios "$body" | jq -r '.id'
+    fi
 }
 
 AAPL=$(make_asset '{"name":"Apple Inc.","type":"STOCK","listings":[{"exchange":"NASDAQ","ticker":"AAPL","currency":"USD","priceMappings":[{"provider":"YAHOO","externalId":"AAPL"}]}]}')
@@ -42,7 +64,7 @@ txn() {
 # ─── Portfolio 1: Bogleheads Three-Fund ──────────────────────────────────────
 echo ""
 echo "Creating Bogleheads Three-Fund portfolio..."
-P_BH=$(post /portfolios '{"name":"Bogleheads Three-Fund (demo)"}' | jq -r '.id')
+P_BH=$(make_portfolio "Bogleheads Three-Fund (demo)" '{"name":"Bogleheads Three-Fund (demo)"}')
 echo "  id=$P_BH"
 
 echo "  VTI — quarterly DCA"
@@ -59,6 +81,9 @@ txn "$P_BH" "$VTI" BUY 10 245.00 "$(d  528)"  # ~17mo              1.0298
 txn "$P_BH" "$VTI" BUY 10 252.00 "$(d  438)"  # ~14mo              1.0567
 txn "$P_BH" "$VTI" BUY 10 258.00 "$(d  347)"  # ~11mo              1.0721
 txn "$P_BH" "$VTI" BUY 10 262.00 "$(d  255)"  # ~8mo               1.0831
+txn "$P_BH" "$VTI" BUY 10 268.00 "$(d  165)"  # ~5mo               1.0412
+txn "$P_BH" "$VTI" BUY 10 245.00 "$(d   80)"  # ~3mo tariff dip    1.0952
+txn "$P_BH" "$VTI" BUY 10 274.00 "$(d   10)"  # last week          1.0821
 
 echo "  VWCE — semi-annual DCA"
 txn "$P_BH" "$VWCE" BUY 25  82.00 "$(d 1259)"  # ~3.5yr ago
@@ -67,18 +92,21 @@ txn "$P_BH" "$VWCE" BUY 25  94.00 "$(d  894)"  # ~2yr 6mo
 txn "$P_BH" "$VWCE" BUY 25  98.00 "$(d  712)"  # ~2yr
 txn "$P_BH" "$VWCE" BUY 25 102.00 "$(d  528)"  # ~17mo
 txn "$P_BH" "$VWCE" BUY 25 108.00 "$(d  347)"  # ~11mo
+txn "$P_BH" "$VWCE" BUY 25 114.00 "$(d  165)"  # ~5mo
+txn "$P_BH" "$VWCE" BUY 25 118.00 "$(d   10)"  # last week
 
 echo "  SPY — annual top-ups"
 txn "$P_BH" "$SPY" BUY 5 395.00 "$(d 1259)"  # ~3.5yr ago          1.0762
 txn "$P_BH" "$SPY" BUY 5 440.00 "$(d  894)"  # ~2yr 6mo            1.0949
 txn "$P_BH" "$SPY" BUY 5 480.00 "$(d  528)"  # ~17mo               1.0298
+txn "$P_BH" "$SPY" BUY 5 518.00 "$(d  165)"  # ~5mo                1.0412
 
 echo "  Done."
 
 # ─── Portfolio 2: Active Trader ───────────────────────────────────────────────
 echo ""
 echo "Creating Active Trader portfolio..."
-P_AT=$(post /portfolios '{"name":"Active Trader (demo)"}' | jq -r '.id')
+P_AT=$(make_portfolio "Active Trader (demo)" '{"name":"Active Trader (demo)"}')
 echo "  id=$P_AT"
 
 echo "  NVDA — post-split prices from ~2yr ago onwards"
@@ -217,7 +245,7 @@ echo "  Done."
 # ─── Portfolio 3: Crypto DCA ──────────────────────────────────────────────────
 echo ""
 echo "Creating Crypto DCA portfolio..."
-P_CR=$(post /portfolios '{"name":"Crypto DCA (demo)"}' | jq -r '.id')
+P_CR=$(make_portfolio "Crypto DCA (demo)" '{"name":"Crypto DCA (demo)"}')
 echo "  id=$P_CR"
 
 echo "  BTC — systematic DCA with selective profit-taking"
@@ -233,6 +261,12 @@ txn "$P_CR" "$BTC" BUY   0.1  95000 "$(d  594)"  # ~19mo            1.0534
 txn "$P_CR" "$BTC" SELL  0.2  98000 "$(d  569)"  # ~18mo            1.0423
 txn "$P_CR" "$BTC" BUY   0.2  85000 "$(d  502)"  # ~16mo            1.0412
 txn "$P_CR" "$BTC" BUY   0.1  78000 "$(d  413)"  # ~13mo            1.1289
+txn "$P_CR" "$BTC" BUY   0.1  82000 "$(d  347)"  # ~11mo            1.1143
+txn "$P_CR" "$BTC" BUY   0.1  91000 "$(d  255)"  # ~8mo             1.0831
+txn "$P_CR" "$BTC" SELL  0.2  96000 "$(d  200)"  # ~6.5mo           1.0541
+txn "$P_CR" "$BTC" BUY   0.1  88000 "$(d  165)"  # ~5mo             1.0412
+txn "$P_CR" "$BTC" BUY   0.3  72000 "$(d   80)"  # ~3mo tariff dip  1.0952
+txn "$P_CR" "$BTC" BUY   0.1 102000 "$(d   15)"  # ~2wk             1.0821
 
 echo "  ETH"
 txn "$P_CR" "$ETH" BUY   2.0  1200 "$(d 1264)"  # ~3.5yr            1.0762
@@ -245,6 +279,12 @@ txn "$P_CR" "$ETH" BUY   1.0  3100 "$(d  747)"  # ~2yr              1.0821
 txn "$P_CR" "$ETH" BUY   1.0  2400 "$(d  655)"  # ~21mo             1.0901
 txn "$P_CR" "$ETH" SELL  1.0  3800 "$(d  584)"  # ~19mo             1.0534
 txn "$P_CR" "$ETH" BUY   2.0  2800 "$(d  502)"  # ~16mo             1.0412
+txn "$P_CR" "$ETH" BUY   1.0  2600 "$(d  347)"  # ~11mo             1.1143
+txn "$P_CR" "$ETH" BUY   1.0  3200 "$(d  255)"  # ~8mo              1.0831
+txn "$P_CR" "$ETH" SELL  2.0  3600 "$(d  200)"  # ~6.5mo            1.0541
+txn "$P_CR" "$ETH" BUY   1.0  2900 "$(d  165)"  # ~5mo              1.0412
+txn "$P_CR" "$ETH" BUY   3.0  1600 "$(d   80)"  # ~3mo tariff dip   1.0952
+txn "$P_CR" "$ETH" BUY   1.0  2500 "$(d   15)"  # ~2wk              1.0821
 
 echo "  Done."
 
