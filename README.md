@@ -1,10 +1,119 @@
 # simpletickr
 
-A simple portfolio tracker for ETFs, crypto, and other assets.
+A simple portfolio tracker for ETFs, stocks, crypto, and other assets — built around the [Bogleheads](https://www.bogleheads.org) philosophy of long-term, passive investing.
 
-## Contributing / Development
+simpletickr is intentionally **not** a trading tool. There are no intra-day charts, no real-time tickers, no alerts. The focus is on the long view: track what you own, at what cost, and how it's grown over time.
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for setup instructions, architecture overview, and development workflow.
+## Table of Contents
+
+<!-- TOC -->
+* [simpletickr](#simpletickr)
+  * [Table of Contents](#table-of-contents)
+  * [Features](#features)
+  * [Self-hosting](#self-hosting)
+    * [Prerequisites](#prerequisites)
+    * [Quick start](#quick-start)
+    * [Environment variables](#environment-variables)
+    * [Accessing from another machine](#accessing-from-another-machine)
+    * [Kubernetes (Helm)](#kubernetes-helm)
+  * [Development](#development)
+  * [AI pair programming](#ai-pair-programming)
+<!-- TOC -->
+
+## Features
+
+- Multiple portfolios with per-portfolio base currency
+- Assets with exchange listings and price provider mappings
+- Transaction history (buy, sell, dividend, fee)
+- Holdings view with live valuations and FX conversion
+- Realized gains report (FIFO or AVCO)
+- Automatic price sync via Yahoo Finance
+- Configurable dashboard widgets
+
+## Self-hosting
+
+### Prerequisites
+
+- Docker and Docker Compose
+
+### Quick start
+
+```bash
+# 1. Clone and enter the repo
+git clone https://github.com/simpleappslabs/simpletickr.git
+cd simpletickr
+
+# 2. Create your env file
+cp .env.example .env
+
+# 3. Start everything
+docker compose up -d
+```
+
+The app is available at **http://localhost:3000**. The API is available at **http://localhost:8080**.
+
+Data is stored in a named Docker volume (`db_data`) and persists across restarts.
+
+### Environment variables
+
+| Variable              | Required | Default                 | Description                                                                                                        |
+|-----------------------|----------|-------------------------|--------------------------------------------------------------------------------------------------------------------|
+| `DB_NAME`             | yes      | —                       | PostgreSQL database name                                                                                           |
+| `DB_USER`             | yes      | —                       | PostgreSQL username                                                                                                |
+| `DB_PASSWORD`         | yes      | —                       | PostgreSQL password                                                                                                |
+| `PUBLIC_API_BASE_URL` | no       | `http://localhost:8080` | URL the browser uses to reach the API — set this to your server's hostname or IP if accessing from another machine |
+
+### Accessing from another machine
+
+If you're running simpletickr on a server and accessing it from a different device, set `PUBLIC_API_BASE_URL` to the server's address before starting:
+
+```bash
+# .env
+PUBLIC_API_BASE_URL=http://192.168.1.100:8080
+```
+
+Then run `docker compose up -d` (or `docker compose up -d --build` to rebuild with the new value).
+
+### Kubernetes (Helm)
+
+The Helm chart lives in `charts/simpletickr`. It depends on the Bitnami PostgreSQL subchart, so add the repo first:
+
+```bash
+helm repo add bitnami https://charts.bitnami.com/bitnami
+helm dependency update charts/simpletickr
+```
+
+**With the bundled PostgreSQL** — simplest path, good for a dev cluster:
+
+```bash
+helm install simpletickr charts/simpletickr \
+  --set postgresql.enabled=true \
+  --set postgresql.auth.password=changeme \
+  --set backend.corsAllowedOrigins=https://simpletickr.example.com \
+  --set backend.ingress.enabled=true \
+  --set backend.ingress.hostname=api.simpletickr.example.com \
+  --set frontend.ingress.enabled=true \
+  --set frontend.ingress.hostname=simpletickr.example.com
+```
+
+**With an external database** — recommended for production:
+
+```bash
+helm install simpletickr charts/simpletickr \
+  --set backend.db.host=your-db-host \
+  --set backend.db.password=changeme \
+  --set backend.corsAllowedOrigins=https://simpletickr.example.com \
+  --set backend.ingress.enabled=true \
+  --set backend.ingress.hostname=api.simpletickr.example.com \
+  --set frontend.ingress.enabled=true \
+  --set frontend.ingress.hostname=simpletickr.example.com
+```
+
+To use a pre-existing Secret for the database password, set `backend.db.existingSecret.name` and `backend.db.existingSecret.key` instead of `backend.db.password`. See `charts/simpletickr/values.yaml` for the full reference.
+
+## Development
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for local setup, architecture overview, and development workflow.
 
 ## AI pair programming
 
