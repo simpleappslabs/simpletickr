@@ -2,10 +2,12 @@
     import { onMount, untrack } from 'svelte';
     import { page } from '$app/state';
     import { goto } from '$app/navigation';
-    import { listTransactions, listPortfolios, listAssets } from '$lib/api/sdk.gen';
+    import { listTransactions, listPortfolios, listAssets, removeTransaction } from '$lib/api/sdk.gen';
     import type { Asset, Portfolio, Transaction, TransactionType } from '$lib/api/types.gen';
     import TransactionsTable from '$lib/transaction/TransactionsTable.svelte';
     import AssetAutocomplete from '$lib/AssetAutocomplete.svelte';
+    import ConfirmModal from '$lib/ConfirmModal.svelte';
+    import TransactionPageDialog from './TransactionPageDialog.svelte';
     import '$lib/client';
 
     let portfolioId = $state<number | undefined>(undefined);
@@ -22,6 +24,14 @@
     let totalElements = $state(0);
     let loading = $state(true);
     let error = $state<string | null>(null);
+
+    let createOpen = $state(false);
+    let editingTransaction = $state<Transaction | null>(null);
+    let deletingTransaction = $state<Transaction | null>(null);
+    let deleteSubmitting = $state(false);
+    let deleteError = $state<string | null>(null);
+
+    const dialogOpen = $derived(createOpen || editingTransaction !== null);
 
     function syncFromUrl() {
         const params = page.url.searchParams;
@@ -78,6 +88,28 @@
         await goto(buildUrl(newPage), { replaceState: false });
     }
 
+    async function handleTransactionSuccess() {
+        createOpen = false;
+        editingTransaction = null;
+        await fetchTransactions();
+    }
+
+    async function handleDeleteConfirm() {
+        if (!deletingTransaction) return;
+        deleteSubmitting = true;
+        deleteError = null;
+        const { error: err } = await removeTransaction({
+            path: { portfolioId: deletingTransaction.portfolioId, id: deletingTransaction.id },
+        });
+        if (err) {
+            deleteError = 'Failed to delete transaction.';
+        } else {
+            deletingTransaction = null;
+            await fetchTransactions();
+        }
+        deleteSubmitting = false;
+    }
+
     async function resetFilters() {
         portfolioId = undefined;
         listingId = 0;
@@ -108,7 +140,10 @@
 </script>
 
 <div class="max-w-4xl mx-auto p-4 sm:p-6 space-y-6">
-    <h1 class="text-xl sm:text-2xl font-bold">Transactions</h1>
+    <div class="flex items-center justify-between">
+        <h1 class="text-xl sm:text-2xl font-bold">Transactions</h1>
+        <button class="btn btn-primary btn-sm" onclick={() => createOpen = true}>+ Add transaction</button>
+    </div>
 
     <div class="flex flex-wrap gap-3 items-end">
         <label class="flex flex-col gap-1">
@@ -163,6 +198,8 @@
                 {transactions}
                 {assets}
                 portfolios={portfolioId == null ? portfolios : undefined}
+                onedit={(t) => { editingTransaction = t; }}
+                ondelete={(t) => { deleteError = null; deletingTransaction = t; }}
             />
         {:else}
             <p class="text-base-content/40 italic text-sm">No transactions match the selected filters.</p>
@@ -185,3 +222,24 @@
         {/if}
     {/if}
 </div>
+
+<TransactionPageDialog
+    open={dialogOpen}
+    {portfolios}
+    {assets}
+    transaction={editingTransaction}
+    defaultPortfolioId={portfolioId}
+    onsuccess={handleTransactionSuccess}
+    oncancel={() => { createOpen = false; editingTransaction = null; }}
+/>
+
+<ConfirmModal
+    open={deletingTransaction !== null}
+    title="Delete transaction"
+    submitting={deleteSubmitting}
+    error={deleteError}
+    onconfirm={handleDeleteConfirm}
+    oncancel={() => { deletingTransaction = null; deleteError = null; }}
+>
+    Are you sure you want to delete this transaction? This will affect your holdings.
+</ConfirmModal>
