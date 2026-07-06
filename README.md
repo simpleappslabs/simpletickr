@@ -42,6 +42,8 @@ Main portfolio page, with the value graph, holdings summary, allocation graph an
 
 ![Portfolio detail](./.github/assets/portfolio-details.png)
 
+![Portfolio detail 2](./.github/assets/portfolio-details-2.png)
+
 Dashboard :
 
 ![Dashboard](./.github/assets/dashboard.png)
