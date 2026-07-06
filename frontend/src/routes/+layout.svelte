@@ -45,6 +45,7 @@
 				<li><a href="/" class={$page.url.pathname === '/' ? 'active' : ''}>Portfolios</a></li>
 				<li><a href="/transactions" class={$page.url.pathname.startsWith('/transactions') ? 'active' : ''}>Transactions</a></li>
 				<li><a href="/assets" class={$page.url.pathname.startsWith('/assets') ? 'active' : ''}>Assets</a></li>
+				<li><a href="/dashboard" class={$page.url.pathname.startsWith('/dashboard') ? 'active' : ''}>Dashboard</a></li>
 				<li><a href="/settings" class={$page.url.pathname.startsWith('/settings') ? 'active' : ''}>Settings</a></li>
 			</ul>
 			<div class="dropdown dropdown-end">
@@ -109,6 +110,7 @@
 			<li><a href="/" class={$page.url.pathname === '/' ? 'active' : ''} onclick={() => mobileMenuOpen = false}>Portfolios</a></li>
 			<li><a href="/transactions" class={$page.url.pathname.startsWith('/transactions') ? 'active' : ''} onclick={() => mobileMenuOpen = false}>Transactions</a></li>
 			<li><a href="/assets" class={$page.url.pathname.startsWith('/assets') ? 'active' : ''} onclick={() => mobileMenuOpen = false}>Assets</a></li>
+			<li><a href="/dashboard" class={$page.url.pathname.startsWith('/dashboard') ? 'active' : ''} onclick={() => mobileMenuOpen = false}>Dashboard</a></li>
 			<li><a href="/settings" class={$page.url.pathname.startsWith('/settings') ? 'active' : ''} onclick={() => mobileMenuOpen = false}>Settings</a></li>
 		</ul>
 		<div class="p-4 border-t border-base-300">

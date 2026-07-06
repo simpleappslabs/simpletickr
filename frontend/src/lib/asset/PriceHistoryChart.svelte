@@ -23,7 +23,7 @@
                 labels: points.map((p) => p.date),
                 datasets: [
                     {
-                        label: 'Price',
+                        label: '',
                         data: points.map((p) => p.price),
                         borderColor: '#7c6ff7',
                         backgroundColor: 'rgba(124,111,247,0.15)',
@@ -48,7 +48,9 @@
                     },
                 },
                 plugins: {
+                    legend: { display: false },
                     tooltip: {
+                        displayColors: false,
                         callbacks: {
                             label: (ctx) => {
                                 const v = ctx.parsed.y;

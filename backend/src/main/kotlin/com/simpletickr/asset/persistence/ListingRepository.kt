@@ -62,6 +62,15 @@ class ListingRepository(private val jdbcTemplate: JdbcTemplate) {
         jdbcTemplate.update("DELETE FROM listings WHERE id = ?", id)
     }
 
+    fun findByIds(ids: Set<Long>): List<Listing> {
+        if (ids.isEmpty()) return emptyList()
+        val placeholders = ids.joinToString(",") { "?" }
+        return jdbcTemplate.query(
+            "SELECT id, asset_id, exchange, ticker, currency FROM listings WHERE id IN ($placeholders)",
+            rowMapper, *ids.toTypedArray()
+        )
+    }
+
     fun findDistinctCurrencies(): List<CurrencyCode> =
         jdbcTemplate.queryForList("SELECT DISTINCT currency FROM listings ORDER BY currency", String::class.java)
             .map { CurrencyCode(it) }

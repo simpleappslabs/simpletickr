@@ -48,7 +48,7 @@ class TransactionController(
         )
         val items = transactionRepository.findAll(filter, page, size)
         val total = transactionRepository.count(filter)
-        val totalPages = if (size == 0) 0 else ((total + size - 1) / size).toInt()
+        val totalPages = ((total + size - 1) / size).toInt()
         return ResponseEntity.ok(TransactionPage(
             items = items.map { it.toModel() },
             page = page,

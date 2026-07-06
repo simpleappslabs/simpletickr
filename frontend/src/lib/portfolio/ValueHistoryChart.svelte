@@ -60,9 +60,7 @@
                     },
                 },
                 plugins: {
-                    legend: {
-                        labels: { color: '#e2e8f0', boxWidth: 12 },
-                    },
+                    legend: { display: false },
                     tooltip: {
                         callbacks: {
                             label: (ctx) => {
@@ -84,6 +82,14 @@
     {#if points.length === 0}
         <p class="text-base-content/40 italic text-sm text-center py-8">No value history available.</p>
     {:else}
+        <div class="flex gap-3 mb-2">
+            <span class="flex items-center gap-1 text-xs text-base-content/60">
+                <span class="inline-block w-3 h-0.5 rounded" style="background:#7c6ff7"></span> Market value
+            </span>
+            <span class="flex items-center gap-1 text-xs text-base-content/60">
+                <span class="inline-block w-3 h-0.5 rounded" style="background:#22d3ee"></span> Invested
+            </span>
+        </div>
         <canvas bind:this={chartCanvas}></canvas>
     {/if}
 </div>

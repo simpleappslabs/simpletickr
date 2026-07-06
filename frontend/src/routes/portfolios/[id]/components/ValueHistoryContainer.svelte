@@ -1,7 +1,7 @@
 <script lang="ts">
     import { getPortfolioValueHistory } from '$lib/api/sdk.gen';
     import type { PortfolioValuePoint } from '$lib/api/types.gen';
-    import ValueHistoryChart from './ValueHistoryChart.svelte';
+    import ValueHistoryChart from '$lib/portfolio/ValueHistoryChart.svelte';
 
     let { portfolioId, refreshKey = 0 }: { portfolioId: number; refreshKey?: number } = $props();
 

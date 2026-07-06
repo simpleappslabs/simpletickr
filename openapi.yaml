@@ -1110,6 +1110,75 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
 
+  /dashboard/widgets:
+    get:
+      tags: [Dashboard]
+      operationId: listDashboardWidgets
+      summary: List all dashboard widgets
+      responses:
+        "200":
+          description: List of dashboard widgets
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DashboardWidget"
+    post:
+      tags: [Dashboard]
+      operationId: addDashboardWidget
+      summary: Add a dashboard widget
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddDashboardWidgetRequest"
+      responses:
+        "201":
+          description: Widget created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardWidget"
+
+  /dashboard/widgets/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+    patch:
+      tags: [Dashboard]
+      operationId: updateDashboardWidget
+      summary: Update a dashboard widget's config (e.g. range)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateDashboardWidgetRequest"
+      responses:
+        "200":
+          description: Widget updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardWidget"
+        "404":
+          description: Widget not found
+    delete:
+      tags: [Dashboard]
+      operationId: removeDashboardWidget
+      summary: Remove a dashboard widget
+      responses:
+        "204":
+          description: Widget removed
+        "404":
+          description: Widget not found
+
 components:
   schemas:
     Error:
@@ -2003,3 +2072,80 @@ components:
           type: integer
         transactionsImported:
           type: integer
+
+    DashboardWidgetType:
+      type: string
+      enum: [LISTING_PRICE, PORTFOLIO_VALUE]
+
+    ListingPriceConfig:
+      type: object
+      required:
+        - targetId
+        - range
+      properties:
+        targetId:
+          type: integer
+          format: int64
+        range:
+          type: string
+
+    PortfolioValueConfig:
+      type: object
+      required:
+        - targetId
+        - range
+      properties:
+        targetId:
+          type: integer
+          format: int64
+        range:
+          type: string
+
+    DashboardWidget:
+      type: object
+      required:
+        - id
+        - type
+        - config
+        - label
+      properties:
+        id:
+          type: integer
+          format: int64
+        type:
+          $ref: "#/components/schemas/DashboardWidgetType"
+        config:
+          oneOf:
+            - $ref: "#/components/schemas/ListingPriceConfig"
+            - $ref: "#/components/schemas/PortfolioValueConfig"
+        label:
+          type: string
+        currency:
+          type: string
+          nullable: true
+
+    AddDashboardWidgetRequest:
+      type: object
+      required:
+        - type
+        - config
+      properties:
+        type:
+          $ref: "#/components/schemas/DashboardWidgetType"
+        config:
+          oneOf:
+            - $ref: "#/components/schemas/ListingPriceConfig"
+            - $ref: "#/components/schemas/PortfolioValueConfig"
+
+    UpdateDashboardWidgetRequest:
+      type: object
+      required:
+        - config
+      properties:
+        config:
+          type: object
+          required:
+            - range
+          properties:
+            range:
+              type: string

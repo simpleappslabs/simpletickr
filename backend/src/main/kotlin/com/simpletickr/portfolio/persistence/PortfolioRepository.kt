@@ -26,6 +26,15 @@ class PortfolioRepository(private val jdbcTemplate: JdbcTemplate) {
         jdbcTemplate.queryForObject("SELECT id, uuid, name FROM portfolios WHERE uuid = ?", rowMapper, uuid)
     } catch (_: EmptyResultDataAccessException) { null }
 
+    fun findByIds(ids: Set<Long>): List<Portfolio> {
+        if (ids.isEmpty()) return emptyList()
+        val placeholders = ids.joinToString(",") { "?" }
+        return jdbcTemplate.query(
+            "SELECT id, uuid, name FROM portfolios WHERE id IN ($placeholders)",
+            rowMapper, *ids.toTypedArray()
+        )
+    }
+
     fun findByName(name: String): Portfolio? = try {
         jdbcTemplate.queryForObject("SELECT id, uuid, name FROM portfolios WHERE name = ?", rowMapper, name)
     } catch (_: EmptyResultDataAccessException) { null }
