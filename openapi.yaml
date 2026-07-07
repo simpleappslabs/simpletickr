@@ -228,6 +228,32 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
 
+  /portfolios/{portfolioId}/transactions/trade:
+    parameters:
+      - name: portfolioId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+    post:
+      tags: [Transactions]
+      operationId: recordCryptoTrade
+      summary: Record a crypto-to-crypto trade (atomically records sell + buy legs)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CryptoTradeRequest"
+      responses:
+        "201":
+          description: Trade recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CryptoTradeResponse"
+
   /portfolios/{id}/realized-gains:
     parameters:
       - name: id
@@ -567,6 +593,39 @@ paths:
                   $ref: "#/components/schemas/PricePoint"
         "404":
           description: Listing not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /listings/{id}/price-history/sync:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+    post:
+      tags: [Prices]
+      operationId: syncListingPriceHistory
+      summary: Fetch and store the price for a specific listing on a specific date
+      parameters:
+        - name: date
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Price point fetched and stored
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PricePoint"
+        "404":
+          description: No price mapping configured for this listing, or no price available for that date
           content:
             application/json:
               schema:
@@ -1488,6 +1547,11 @@ components:
           type: string
           nullable: true
           description: "Free-form notes or context for this transaction"
+        tradeId:
+          type: integer
+          format: int64
+          nullable: true
+          description: "ID of the CryptoTrade this transaction belongs to, if it is a trade leg"
 
     TransactionRequest:
       type: object
@@ -1529,6 +1593,65 @@ components:
           type: string
           nullable: true
           description: "Free-form notes or context for this transaction"
+
+    CryptoTradeRequest:
+      type: object
+      required:
+        - sellListingId
+        - sellQuantity
+        - sellPrice
+        - buyListingId
+        - buyQuantity
+        - buyPrice
+        - date
+      properties:
+        sellListingId:
+          type: integer
+          format: int64
+        sellQuantity:
+          type: number
+          format: double
+        sellPrice:
+          type: number
+          format: double
+          description: "Fiat price per unit in sell listing's currency"
+        buyListingId:
+          type: integer
+          format: int64
+        buyQuantity:
+          type: number
+          format: double
+        buyPrice:
+          type: number
+          format: double
+          description: "Fiat price per unit in buy listing's currency"
+        date:
+          type: string
+          format: date
+        fees:
+          type: number
+          format: double
+          nullable: true
+          description: "Fees applied to the sell leg; some exchanges charge in the destination asset (future iteration)"
+        broker:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+
+    CryptoTradeResponse:
+      type: object
+      required: [id, sell, buy]
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: "ID of the CryptoTrade entity"
+        sell:
+          $ref: "#/components/schemas/Transaction"
+        buy:
+          $ref: "#/components/schemas/Transaction"
 
     TransactionType:
       type: string

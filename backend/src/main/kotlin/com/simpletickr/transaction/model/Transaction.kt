@@ -23,6 +23,7 @@ data class Transaction(
     val externalId: String? = null,
     val broker: String? = null,
     val notes: String? = null,
+    val tradeId: Long? = null,
 ) {
     init {
         require(quantity > BigDecimal.ZERO) { "Quantity must be positive" }

@@ -4,6 +4,7 @@ import com.simpletickr.transaction.model.Transaction
 import com.simpletickr.transaction.model.TransactionType
 import com.simpletickr.transaction.persistence.TransactionFilter
 import com.simpletickr.transaction.persistence.TransactionRepository
+import com.simpletickr.trade.RecordCryptoTradeUseCase
 import com.simpletickr.transaction.usecase.AmendTransactionUseCase
 import com.simpletickr.transaction.usecase.DeleteTransactionUseCase
 import com.simpletickr.transaction.usecase.RecordTransactionUseCase
@@ -35,6 +36,7 @@ class TransactionControllerTest {
     @MockitoBean private lateinit var recordTransactionUseCase: RecordTransactionUseCase
     @MockitoBean private lateinit var amendTransactionUseCase: AmendTransactionUseCase
     @MockitoBean private lateinit var deleteTransactionUseCase: DeleteTransactionUseCase
+    @MockitoBean private lateinit var recordCryptoTradeUseCase: RecordCryptoTradeUseCase
 
     private val sample = Transaction(
         id = 1L, portfolioId = 10L, listingId = 5L, assetId = 2L,
@@ -232,5 +234,38 @@ class TransactionControllerTest {
         )
             .andExpect(status().isCreated)
             .andExpect(jsonPath("$.type").value("SPLIT"))
+    }
+
+    @Test
+    fun `POST crypto trade returns 201 with sell and buy legs`() {
+        val sellTx = sample.copy(id = 101L, type = TransactionType.SELL, tradeId = 99L)
+        val buyTx = sample.copy(id = 102L, listingId = 6L, type = TransactionType.BUY, tradeId = 99L)
+        val trade = com.simpletickr.trade.CryptoTrade(id = 99L, portfolioId = 10L, sell = sellTx, buy = buyTx)
+        whenever(recordCryptoTradeUseCase.execute(eq(10L), any())).thenReturn(trade)
+
+        mockMvc.perform(
+            post("/portfolios/10/transactions/trade")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"sellListingId":5,"sellQuantity":0.1,"sellPrice":60000.0,"buyListingId":6,"buyQuantity":2.5,"buyPrice":2400.0,"date":"2024-06-01"}""")
+        )
+            .andExpect(status().isCreated)
+            .andExpect(jsonPath("$.id").value(99))
+            .andExpect(jsonPath("$.sell.type").value("SELL"))
+            .andExpect(jsonPath("$.buy.type").value("BUY"))
+            .andExpect(jsonPath("$.sell.tradeId").value(99))
+            .andExpect(jsonPath("$.buy.tradeId").value(99))
+    }
+
+    @Test
+    fun `POST crypto trade returns 400 when use case throws`() {
+        whenever(recordCryptoTradeUseCase.execute(eq(10L), any()))
+            .thenThrow(IllegalArgumentException("Buy listing must belong to a CRYPTO asset"))
+
+        mockMvc.perform(
+            post("/portfolios/10/transactions/trade")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"sellListingId":5,"sellQuantity":0.1,"sellPrice":60000.0,"buyListingId":6,"buyQuantity":2.5,"buyPrice":2400.0,"date":"2024-06-01"}""")
+        )
+            .andExpect(status().isBadRequest)
     }
 }

@@ -26,6 +26,7 @@
     let error = $state<string | null>(null);
 
     let createTransactionOpen = $state(false);
+    let cryptoTradeOpen = $state(false);
     let brokerSelectOpen = $state(false);
     let boleroImportOpen = $state(false);
     let syncingPrices = $state(false);
@@ -127,6 +128,7 @@
                 </svg>
             </button>
             <button class="btn btn-primary btn-sm shrink-0" onclick={() => createTransactionOpen = true}>+ Record transaction</button>
+            <button class="btn btn-ghost btn-sm shrink-0" onclick={() => cryptoTradeOpen = true}>↔ Trade</button>
             <button class="btn btn-ghost btn-sm hidden sm:inline-flex" onclick={handleSyncPrices} disabled={syncingPrices}>
                 {#if syncingPrices}
                     <span class="loading loading-spinner loading-xs"></span> Syncing…
@@ -189,6 +191,7 @@
             {transactions}
             onchange={refreshData}
             bind:createOpen={createTransactionOpen}
+            bind:tradeOpen={cryptoTradeOpen}
         />
     {/if}
 </div>

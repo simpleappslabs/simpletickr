@@ -17,6 +17,19 @@ data class RecordTransactionCommand(
     val notes: String? = null,
 )
 
+data class RecordCryptoTradeCommand(
+    val sellListingId: Long,
+    val sellQuantity: BigDecimal,
+    val sellPrice: BigDecimal,
+    val buyListingId: Long,
+    val buyQuantity: BigDecimal,
+    val buyPrice: BigDecimal,
+    val date: LocalDate,
+    val fees: BigDecimal? = null,
+    val broker: String? = null,
+    val notes: String? = null,
+)
+
 data class AmendTransactionCommand(
     val listingId: Long,
     val type: TransactionType,

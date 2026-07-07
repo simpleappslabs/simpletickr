@@ -2,16 +2,18 @@
     import type { Asset, Holding, Transaction } from '$lib/api/types.gen';
     import { removeTransaction } from '$lib/api/sdk.gen';
     import TransactionDialog from './TransactionDialog.svelte';
+    import CryptoTradeDialog from './CryptoTradeDialog.svelte';
     import TransactionsTable from '$lib/transaction/TransactionsTable.svelte';
     import ConfirmModal from '$lib/ConfirmModal.svelte';
 
-    let { portfolioId, assets, holdings, transactions, onchange, createOpen = $bindable(false) }: {
+    let { portfolioId, assets, holdings, transactions, onchange, createOpen = $bindable(false), tradeOpen = $bindable(false) }: {
         portfolioId: number;
         assets: Asset[];
         holdings: Holding[];
         transactions: Transaction[];
         onchange: () => void;
         createOpen?: boolean;
+        tradeOpen?: boolean;
     } = $props();
 
     let editingTransaction = $state<Transaction | null>(null);
@@ -27,6 +29,7 @@
 
     function closeModal() {
         createOpen = false;
+        tradeOpen = false;
         editingTransaction = null;
     }
 
@@ -73,6 +76,14 @@
     oncancel={closeModal}
 />
 
+<CryptoTradeDialog
+    open={tradeOpen}
+    {portfolioId}
+    {assets}
+    onsuccess={() => { tradeOpen = false; onchange(); }}
+    oncancel={() => { tradeOpen = false; }}
+/>
+
 <ConfirmModal
     open={deletingTransaction !== null}
     title="Delete transaction"
@@ -81,5 +92,9 @@
     onconfirm={handleDelete}
     oncancel={() => deletingTransaction = null}
 >
-    Are you sure you want to delete this transaction? This will affect your holdings.
+    {#if deletingTransaction?.tradeId != null}
+        This transaction is part of a crypto trade. Deleting it will remove <strong>both legs</strong> of the trade and affect your holdings.
+    {:else}
+        Are you sure you want to delete this transaction? This will affect your holdings.
+    {/if}
 </ConfirmModal>

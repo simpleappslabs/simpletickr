@@ -54,6 +54,14 @@ class PriceController(
         return ResponseEntity.ok(SyncResultModel(synced = result.synced, failed = result.failed))
     }
 
+    override fun syncListingPriceHistory(date: LocalDate, id: Long): ResponseEntity<PricePointModel> {
+        val result = syncPricesUseCase.execute(from = date, to = date, trigger = SyncTrigger.MANUAL, listingId = id)
+        if (result.synced == 0) return ResponseEntity.notFound().build()
+        val points = priceQueryService.getPriceHistory(id, date.minusDays(3), date)
+        val point = points?.lastOrNull() ?: return ResponseEntity.notFound().build()
+        return ResponseEntity.ok(point.toModel())
+    }
+
     private fun PriceProviderMapping.toModel() = PriceMappingModel(
         id = id, listingId = listingId, provider = provider, externalId = externalId
     )

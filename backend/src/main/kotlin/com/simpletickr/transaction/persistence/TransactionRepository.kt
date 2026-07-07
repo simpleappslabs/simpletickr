@@ -38,13 +38,14 @@ class TransactionRepository(private val jdbcTemplate: JdbcTemplate) {
             externalId = rs.getString("external_id"),
             broker = rs.getString("broker"),
             notes = rs.getString("notes"),
+            tradeId = rs.getLong("trade_id").takeIf { !rs.wasNull() },
         )
     }
 
     private val baseSelect = """
         SELECT t.id, t.portfolio_id, t.listing_id, l.asset_id,
                t.type, t.quantity, t.price, t.date, t.fees, t.fx_rate, t.fx_rate_source, t.external_id,
-               t.broker, t.notes
+               t.broker, t.notes, t.trade_id
         FROM transactions t
         JOIN listings l ON l.id = t.listing_id
     """.trimIndent()
@@ -106,7 +107,7 @@ class TransactionRepository(private val jdbcTemplate: JdbcTemplate) {
         val keyHolder = GeneratedKeyHolder()
         jdbcTemplate.update({ con ->
             con.prepareStatement(
-                "INSERT INTO transactions (portfolio_id, listing_id, type, quantity, price, date, fees, fx_rate, fx_rate_source, external_id, broker, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "INSERT INTO transactions (portfolio_id, listing_id, type, quantity, price, date, fees, fx_rate, fx_rate_source, external_id, broker, notes, trade_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 arrayOf("id")
             ).apply {
                 setLong(1, transaction.portfolioId)
@@ -121,6 +122,7 @@ class TransactionRepository(private val jdbcTemplate: JdbcTemplate) {
                 setString(10, transaction.externalId)
                 setString(11, transaction.broker)
                 setString(12, transaction.notes)
+                if (transaction.tradeId != null) setLong(13, transaction.tradeId) else setNull(13, java.sql.Types.BIGINT)
             }
         }, keyHolder)
         return transaction.copy(id = keyHolder.key!!.toLong())

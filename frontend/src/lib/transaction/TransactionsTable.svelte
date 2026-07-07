@@ -57,6 +57,9 @@
                     <span class="badge badge-ghost badge-sm {t.type === 'BUY' ? 'text-success' : t.type === 'SELL' ? 'text-error' : 'text-info'}">
                         {t.type}
                     </span>
+                    {#if t.tradeId != null}
+                        <span class="badge badge-outline badge-xs ml-1 text-base-content/50" title="Part of a crypto trade">↔</span>
+                    {/if}
                 </td>
                 <td class="text-right tabular-nums">{t.type === 'SPLIT' ? `${t.quantity}×` : fmt(t.quantity)}</td>
                 <td class="text-right tabular-nums">{t.type === 'SPLIT' ? '—' : fmt(t.price)}</td>
@@ -79,7 +82,7 @@
                 </td>
                 {#if onedit || ondelete}
                     <td class="text-right">
-                        {#if onedit}
+                        {#if onedit && t.tradeId == null}
                             <button
                                 class="btn btn-ghost btn-xs"
                                 title="Edit"
