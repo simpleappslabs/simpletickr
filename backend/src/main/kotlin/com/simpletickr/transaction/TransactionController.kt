@@ -1,5 +1,6 @@
 package com.simpletickr.transaction
 
+import com.simpletickr.asset.model.AssetType
 import com.simpletickr.fx.model.FxRateSource
 import com.simpletickr.generated.api.TransactionsApi
 import com.simpletickr.generated.model.CryptoTradeRequest
@@ -35,6 +36,7 @@ class TransactionController(
         portfolioId: Long?,
         type: GeneratedTransactionType?,
         listingId: Long?,
+        assetType: com.simpletickr.generated.model.AssetType?,
         dateFrom: LocalDate?,
         dateTo: LocalDate?,
         page: Int,
@@ -47,6 +49,7 @@ class TransactionController(
             portfolioId = portfolioId,
             type = type?.let { TransactionType.valueOf(it.value) },
             listingId = listingId,
+            assetType = assetType?.let { AssetType.valueOf(it.value) },
             dateFrom = dateFrom,
             dateTo = dateTo,
         )

@@ -943,6 +943,11 @@ paths:
           schema:
             type: integer
             format: int64
+        - name: assetType
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/AssetType"
         - name: dateFrom
           in: query
           required: false

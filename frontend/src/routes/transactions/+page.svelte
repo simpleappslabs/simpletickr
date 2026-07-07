@@ -3,7 +3,7 @@
     import { page } from '$app/state';
     import { goto } from '$app/navigation';
     import { listTransactions, listPortfolios, listAssets, removeTransaction } from '$lib/api/sdk.gen';
-    import type { Asset, Portfolio, Transaction, TransactionType } from '$lib/api/types.gen';
+    import type { Asset, AssetType, Portfolio, Transaction, TransactionType } from '$lib/api/types.gen';
     import TransactionsTable from '$lib/transaction/TransactionsTable.svelte';
     import AssetAutocomplete from '$lib/AssetAutocomplete.svelte';
     import ConfirmModal from '$lib/ConfirmModal.svelte';
@@ -13,6 +13,7 @@
     let portfolioId = $state<number | undefined>(undefined);
     let listingId = $state(0);
     let selectedType = $state<TransactionType | ''>('');
+    let selectedAssetType = $state<AssetType | ''>('');
     let dateFrom = $state('');
     let dateTo = $state('');
     let currentPage = $state(0);
@@ -38,6 +39,7 @@
         portfolioId = params.has('portfolioId') ? Number(params.get('portfolioId')) : undefined;
         listingId = params.has('listingId') ? Number(params.get('listingId')) : 0;
         selectedType = (params.get('type') as TransactionType) || '';
+        selectedAssetType = (params.get('assetType') as AssetType) || '';
         dateFrom = params.get('dateFrom') ?? '';
         dateTo = params.get('dateTo') ?? '';
         currentPage = params.has('page') ? Number(params.get('page')) : 0;
@@ -48,6 +50,7 @@
         if (portfolioId != null) params.set('portfolioId', String(portfolioId));
         if (listingId > 0) params.set('listingId', String(listingId));
         if (selectedType) params.set('type', selectedType);
+        if (selectedAssetType) params.set('assetType', selectedAssetType);
         if (dateFrom) params.set('dateFrom', dateFrom);
         if (dateTo) params.set('dateTo', dateTo);
         const p = overridePage ?? currentPage;
@@ -64,6 +67,7 @@
                 portfolioId,
                 listingId: listingId > 0 ? listingId : undefined,
                 type: selectedType || undefined,
+                assetType: selectedAssetType || undefined,
                 dateFrom: dateFrom || undefined,
                 dateTo: dateTo || undefined,
                 page: currentPage,
@@ -114,6 +118,7 @@
         portfolioId = undefined;
         listingId = 0;
         selectedType = '';
+        selectedAssetType = '';
         dateFrom = '';
         dateTo = '';
         await goto('/transactions', { replaceState: false });
@@ -170,6 +175,17 @@
                 <option value="BUY">BUY</option>
                 <option value="SELL">SELL</option>
                 <option value="SPLIT">SPLIT</option>
+            </select>
+        </label>
+
+        <label class="flex flex-col gap-1">
+            <span class="text-xs font-semibold uppercase tracking-widest text-base-content/50">Asset type</span>
+            <select class="select select-bordered select-sm" bind:value={selectedAssetType} onchange={applyFilters}>
+                <option value="">All asset types</option>
+                <option value="STOCK">Stock</option>
+                <option value="ETF">ETF</option>
+                <option value="CRYPTO">Crypto</option>
+                <option value="OTHER">Other</option>
             </select>
         </label>
 

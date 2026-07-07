@@ -1,5 +1,6 @@
 package com.simpletickr.transaction.persistence
 
+import com.simpletickr.asset.model.AssetType
 import com.simpletickr.fx.model.FxRateSource
 import com.simpletickr.transaction.model.Transaction
 import com.simpletickr.transaction.model.TransactionType
@@ -15,6 +16,7 @@ data class TransactionFilter(
     val portfolioId: Long? = null,
     val type: TransactionType? = null,
     val listingId: Long? = null,
+    val assetType: AssetType? = null,
     val dateFrom: LocalDate? = null,
     val dateTo: LocalDate? = null,
 )
@@ -48,6 +50,7 @@ class TransactionRepository(private val jdbcTemplate: JdbcTemplate) {
                t.broker, t.notes, t.trade_id
         FROM transactions t
         JOIN listings l ON l.id = t.listing_id
+        JOIN assets a ON a.id = l.asset_id
     """.trimIndent()
 
     fun findAllForPortfolio(portfolioId: Long): List<Transaction> =
@@ -59,6 +62,7 @@ class TransactionRepository(private val jdbcTemplate: JdbcTemplate) {
         filter.portfolioId?.let { conditions += "t.portfolio_id = ?"; params += it }
         filter.type?.let        { conditions += "t.type = ?";          params += it.name }
         filter.listingId?.let   { conditions += "t.listing_id = ?";   params += it }
+        filter.assetType?.let   { conditions += "a.type = ?";          params += it.name }
         filter.dateFrom?.let    { conditions += "t.date >= ?";         params += it }
         filter.dateTo?.let      { conditions += "t.date <= ?";         params += it }
         val clause = if (conditions.isEmpty()) "" else "WHERE " + conditions.joinToString(" AND ")
@@ -79,7 +83,7 @@ class TransactionRepository(private val jdbcTemplate: JdbcTemplate) {
     fun count(filter: TransactionFilter): Long {
         val (where, params) = buildWhere(filter)
         return jdbcTemplate.queryForObject(
-            "SELECT COUNT(*) FROM transactions t $where",
+            "SELECT COUNT(*) FROM transactions t JOIN listings l ON l.id = t.listing_id JOIN assets a ON a.id = l.asset_id $where",
             Long::class.java,
             *params.toTypedArray(),
         )!!
