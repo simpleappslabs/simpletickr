@@ -213,6 +213,23 @@ class ImportDataUseCaseTest {
     }
 
     @Test
+    fun `analyze asset matched by listing when UUID differs (cross-instance import)`() {
+        val differentUuid = UUID.randomUUID()
+        val existingAsset = Asset(1L, differentUuid, null, "Ethereum", AssetType.CRYPTO,
+            listings = listOf(Listing(10L, 1L, "CRYPTO", "ETH", CurrencyCode("USD"))))
+        val cryptoListing = ListingExport(id = 10L, exchange = "CRYPTO", ticker = "ETH", currency = "USD", priceMappings = emptyList())
+        val cryptoAsset = AssetExport(id = 1L, uuid = UUID.randomUUID(), isin = null, name = "Ethereum", type = "CRYPTO", listings = listOf(cryptoListing))
+        val export = validExport.copy(assets = listOf(cryptoAsset), portfolios = emptyList())
+        whenever(assetRepository.findAll()).thenReturn(listOf(existingAsset))
+
+        val result = useCase.analyze(bytes(export))
+
+        assertEquals(emptyList(), result.errors)
+        assertEquals(0, result.assetsToCreate)
+        assertEquals(1, result.assetsExisting)
+    }
+
+    @Test
     fun `apply with validation errors throws exception`() {
         val export = validExport.copy(schemaVersion = 99)
         try {

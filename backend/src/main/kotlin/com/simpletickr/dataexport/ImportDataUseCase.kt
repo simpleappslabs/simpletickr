@@ -131,8 +131,12 @@ class ImportDataUseCase(
         val existingAssets = assetRepository.findAll()
         val existingByUuid = existingAssets.associateBy { it.uuid }
         val existingByIsin = existingAssets.filter { it.isin != null }.groupBy { it.isin!! }
+        val existingByListingKey = existingAssets.flatMap { asset ->
+            asset.listings.map { listing -> "${listing.ticker}|${listing.exchange}" to asset }
+        }.toMap()
 
         val resolvedAssets = export.assets.map { exportAsset ->
+            val exportListingKeys = exportAsset.listings.map { "${it.ticker}|${it.exchange}" }.toSet()
             val existing = existingByUuid[exportAsset.uuid]
                 ?: exportAsset.isin?.let { isin ->
                     val matches = existingByIsin[isin] ?: emptyList()
@@ -142,6 +146,16 @@ class ImportDataUseCase(
                             null
                         }
                         else -> matches.firstOrNull()
+                    }
+                }
+                ?: run {
+                    val matchedAssets = exportListingKeys.mapNotNull { existingByListingKey[it] }.distinct()
+                    when {
+                        matchedAssets.size > 1 -> {
+                            errors.add("Ambiguous listing match for asset '${exportAsset.name}': ${matchedAssets.size} existing assets match.")
+                            null
+                        }
+                        else -> matchedAssets.firstOrNull()
                     }
                 }
 
