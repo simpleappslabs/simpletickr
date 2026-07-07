@@ -61,6 +61,15 @@ txn() {
     echo "    $type $qty @ $price on $date${fx_rate:+ (fx=$fx_rate)}"
 }
 
+trade() {
+    local portfolio_id=$1 sell_id=$2 sell_qty=$3 sell_price=$4 buy_id=$5 buy_qty=$6 buy_price=$7 date=$8 fees=${9:-}
+    local body="{\"sellListingId\":$sell_id,\"sellQuantity\":$sell_qty,\"sellPrice\":$sell_price,\"buyListingId\":$buy_id,\"buyQuantity\":$buy_qty,\"buyPrice\":$buy_price,\"date\":\"$date\""
+    [[ -n "$fees" ]] && body="$body,\"fees\":$fees"
+    body="$body}"
+    post "/portfolios/$portfolio_id/transactions/trade" "$body" > /dev/null
+    echo "    SWAP $sell_qty (sell @ $sell_price) → $buy_qty (buy @ $buy_price) on $date"
+}
+
 # ─── Portfolio 1: Bogleheads Three-Fund ──────────────────────────────────────
 echo ""
 echo "Creating Bogleheads Three-Fund portfolio..."
@@ -267,6 +276,7 @@ txn "$P_CR" "$BTC" SELL  0.2  96000 "$(d  200)"  # ~6.5mo           1.0541
 txn "$P_CR" "$BTC" BUY   0.1  88000 "$(d  165)"  # ~5mo             1.0412
 txn "$P_CR" "$BTC" BUY   0.3  72000 "$(d   80)"  # ~3mo tariff dip  1.0952
 txn "$P_CR" "$BTC" BUY   0.1 102000 "$(d   15)"  # ~2wk             1.0821
+txn "$P_CR" "$BTC" SELL  0.2 106000 "$(d   28)"  # ~1mo             1.1354
 
 echo "  ETH"
 txn "$P_CR" "$ETH" BUY   2.0  1200 "$(d 1264)"  # ~3.5yr            1.0762
@@ -285,6 +295,16 @@ txn "$P_CR" "$ETH" SELL  2.0  3600 "$(d  200)"  # ~6.5mo            1.0541
 txn "$P_CR" "$ETH" BUY   1.0  2900 "$(d  165)"  # ~5mo              1.0412
 txn "$P_CR" "$ETH" BUY   3.0  1600 "$(d   80)"  # ~3mo tariff dip   1.0952
 txn "$P_CR" "$ETH" BUY   1.0  2500 "$(d   15)"  # ~2wk              1.0821
+
+echo "  BTC↔ETH swaps"
+# ~2yr ago: rotate 0.1 BTC into ETH (ETH looked cheap vs BTC at ~16.8x ratio)
+trade "$P_CR" "$BTC" 0.1  42000 "$ETH"  1.7  2500 "$(d  730)"
+# ~16mo ago: swap 2 ETH back to BTC (BTC/ETH ratio tightened to ~19x)
+trade "$P_CR" "$ETH" 2.0   3400 "$BTC"  0.1 68000 "$(d  480)"  5
+# ~6mo ago: rotate 0.1 BTC into ETH (ratio widened to ~28x, ETH lagging)
+trade "$P_CR" "$BTC" 0.1  88000 "$ETH"  2.8  3100 "$(d  180)"
+# ~2mo ago: swap 3 ETH back to BTC after ETH drawdown (ratio ~48x, BTC dominance peak)
+trade "$P_CR" "$ETH" 3.0   1700 "$BTC"  0.063 81000 "$(d   60)"  3
 
 echo "  Done."
 
