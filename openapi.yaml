@@ -1785,6 +1785,13 @@ components:
           type: number
           format: double
           description: In local currency. Do not sum across currencies.
+        tradeId:
+          type: integer
+          format: int64
+          description: Present when this sell was one leg of a crypto-to-crypto swap.
+        receivedTicker:
+          type: string
+          description: Ticker of the asset received in the swap. Present when tradeId is set.
 
     RealizedGainsReport:
       type: object

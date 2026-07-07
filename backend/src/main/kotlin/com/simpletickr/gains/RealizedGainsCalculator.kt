@@ -40,6 +40,13 @@ object RealizedGainsCalculator {
             .groupBy { it.assetId }
             .mapValues { (_, splits) -> splits.map { it.date to it.quantity } }
 
+    // Maps tradeId → ticker of the BUY leg, so SELL entries can reference what was received.
+    private fun buildTradeIndex(transactions: List<Transaction>, listingMap: Map<Long, Listing>): Map<Long, String> =
+        transactions
+            .filter { it.type == TransactionType.BUY && it.tradeId != null }
+            .mapNotNull { tx -> tx.tradeId?.let { id -> id to (listingMap[tx.listingId]?.ticker ?: return@mapNotNull null) } }
+            .toMap()
+
     private fun computeFifo(
         transactions: List<Transaction>,
         listingMap: Map<Long, Listing>,
@@ -49,6 +56,7 @@ object RealizedGainsCalculator {
         data class Lot(var remaining: BigDecimal, val pricePerUnit: BigDecimal, val feePerUnit: BigDecimal)
 
         val splitIndex = buildSplitIndex(transactions)
+        val tradeIndex = buildTradeIndex(transactions, listingMap)
         val lots = mutableMapOf<Long, ArrayDeque<Lot>>()
         val entries = mutableListOf<RealizedGainEntry>()
 
@@ -95,6 +103,8 @@ object RealizedGainsCalculator {
                             sellFees = fees,
                             costBasis = costBasis,
                             gain = proceeds - costBasis,
+                            tradeId = tx.tradeId,
+                            receivedTicker = tx.tradeId?.let { tradeIndex[it] },
                         )
                     }
                 }
@@ -118,6 +128,7 @@ object RealizedGainsCalculator {
         )
 
         val splitIndex = buildSplitIndex(transactions)
+        val tradeIndex = buildTradeIndex(transactions, listingMap)
         val state = mutableMapOf<Long, AssetState>()
         val entries = mutableListOf<RealizedGainEntry>()
 
@@ -161,6 +172,8 @@ object RealizedGainsCalculator {
                                 sellFees = fees,
                                 costBasis = costBasis,
                                 gain = proceeds - costBasis,
+                                tradeId = tx.tradeId,
+                                receivedTicker = tx.tradeId?.let { tradeIndex[it] },
                             )
                         }
                     }

@@ -196,5 +196,7 @@ class PortfolioController(
         sellFees = sellFees.toDouble(),
         costBasis = costBasis.toDouble(),
         gain = gain.toDouble(),
+        tradeId = tradeId,
+        receivedTicker = receivedTicker,
     )
 }

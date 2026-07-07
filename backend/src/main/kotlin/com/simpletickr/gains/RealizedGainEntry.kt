@@ -15,4 +15,7 @@ data class RealizedGainEntry(
     val sellFees: BigDecimal,
     val costBasis: BigDecimal,
     val gain: BigDecimal,
+    // Non-null when this sell was one leg of a crypto-to-crypto swap.
+    val tradeId: Long? = null,
+    val receivedTicker: String? = null,
 )

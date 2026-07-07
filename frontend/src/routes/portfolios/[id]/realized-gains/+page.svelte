@@ -47,6 +47,17 @@
     const currencyTotals = $derived(
         report ? Object.values(report.byCurrency) : []
     );
+
+    const swapTotalsByCurrency = $derived(
+        report?.entries.reduce((map, e) => {
+            if (!e.tradeId) return map;
+            const cur = e.currency;
+            map[cur] ??= { count: 0, gain: 0 };
+            map[cur].count++;
+            map[cur].gain += e.gain;
+            return map;
+        }, {} as Record<string, { count: number; gain: number }>) ?? {}
+    );
 </script>
 
 <div class="max-w-4xl mx-auto p-4 sm:p-6 space-y-8">
@@ -99,6 +110,7 @@
             {:else}
                 <!-- Per-currency summary stats -->
                 {#each currencyTotals as ct}
+                    {@const swaps = swapTotalsByCurrency[ct.currency]}
                     <div class="stats stats-vertical sm:stats-horizontal bg-base-200 w-full">
                         <div class="stat">
                             <div class="stat-title">Proceeds <span class="badge badge-ghost badge-sm ml-1">{ct.currency}</span></div>
@@ -114,6 +126,11 @@
                             <div class="stat-value text-xl {ct.totalGain >= 0 ? 'text-success' : 'text-error'}">
                                 {ct.totalGain >= 0 ? '+' : ''}{fmt(ct.totalGain)} {ct.currency}
                             </div>
+                            {#if swaps}
+                                <div class="stat-desc">
+                                    incl. {swaps.count} crypto swap{swaps.count === 1 ? '' : 's'}: {swaps.gain >= 0 ? '+' : ''}{fmt(swaps.gain)} {ct.currency}
+                                </div>
+                            {/if}
                         </div>
                     </div>
                 {/each}
@@ -142,7 +159,12 @@
                                 {#each report.entries as e}
                                     <tr>
                                         <td class="tabular-nums">{e.date}</td>
-                                        <td class="font-mono font-semibold">{e.ticker}</td>
+                                        <td class="font-mono font-semibold">
+                                            {e.ticker}
+                                            {#if e.receivedTicker}
+                                                <span class="badge badge-outline badge-xs ml-1 font-normal normal-case tracking-normal align-middle">↔ {e.receivedTicker}</span>
+                                            {/if}
+                                        </td>
                                         <td class="text-xs text-base-content/50">{e.currency}</td>
                                         <td class="text-right tabular-nums">{fmt(e.quantity)}</td>
                                         <td class="text-right tabular-nums">{fmt(e.proceeds)}</td>
