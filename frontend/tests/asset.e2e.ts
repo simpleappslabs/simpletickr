@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 
 test.describe('Asset browser', () => {
 	test('shows seeded assets in the table', async ({ page }) => {
-		await page.goto('/assets');
+		await page.goto('/settings/assets');
 
 		await expect(page.locator('text=AAPL').first()).toBeVisible();
 		await expect(page.locator('text=BTC').first()).toBeVisible();
@@ -12,7 +12,7 @@ test.describe('Asset browser', () => {
 	test('adds a new asset and shows it in the table', async ({ page }) => {
 		const ticker = `T${Date.now().toString().slice(-8)}`;
 
-		await page.goto('/assets');
+		await page.goto('/settings/assets');
 		await page.getByRole('button', { name: '+ Add asset' }).click();
 		await expect(page.locator('dialog.modal-open .modal-box')).toBeVisible();
 
@@ -27,14 +27,14 @@ test.describe('Asset browser', () => {
 	});
 
 	test('submit is disabled with empty fields', async ({ page }) => {
-		await page.goto('/assets');
+		await page.goto('/settings/assets');
 		await page.getByRole('button', { name: '+ Add asset' }).click();
 		await expect(page.locator('dialog.modal-open .modal-box')).toBeVisible();
 		await expect(page.getByRole('button', { name: 'Add asset', exact: true })).toBeDisabled();
 	});
 
 	test('modal closes when cancel is clicked', async ({ page }) => {
-		await page.goto('/assets');
+		await page.goto('/settings/assets');
 		await page.getByRole('button', { name: '+ Add asset' }).click();
 		await expect(page.locator('dialog.modal-open .modal-box')).toBeVisible();
 		await page.getByRole('button', { name: 'Cancel' }).click();
@@ -42,8 +42,9 @@ test.describe('Asset browser', () => {
 	});
 
 	test('navbar links are present', async ({ page }) => {
-		await page.goto('/assets');
+		await page.goto('/settings/assets');
 		await expect(page.locator('nav a', { hasText: 'Portfolios' })).toBeVisible();
-		await expect(page.locator('nav a', { hasText: 'Assets' })).toBeVisible();
+		await expect(page.locator('nav a', { hasText: 'Settings' })).toBeVisible();
+		await expect(page.getByRole('tab', { name: 'Assets' })).toBeVisible();
 	});
 });
