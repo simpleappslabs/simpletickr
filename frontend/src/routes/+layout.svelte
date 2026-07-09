@@ -38,7 +38,13 @@
 <div class="navbar bg-base-200">
 	<div class="max-w-4xl mx-auto w-full px-4 sm:px-6 flex">
 		<div class="flex-1">
-			<a href="/" class="text-lg font-bold">simpletickr</a>
+			<a href="/" class="flex items-center gap-2 text-lg font-bold">
+				<svg xmlns="http://www.w3.org/2000/svg" class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+					<path d="M2 18.5L6.5 13L11 15.5L16.5 9L22 6.5"/>
+					<circle cx="22" cy="6.5" r="2.25" fill="currentColor" stroke="none"/>
+				</svg>
+				simpletickr
+			</a>
 		</div>
 		<nav class="hidden sm:flex flex-none items-center gap-2">
 			<ul class="menu menu-horizontal flex-nowrap gap-1">
