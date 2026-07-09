@@ -2,7 +2,7 @@
     import { onMount } from 'svelte';
     import { listAccounts, createAccount, updateAccount, deleteAccount } from '$lib/api/sdk.gen';
     import type { Account, AccountRequest } from '$lib/api/types.gen';
-    import AccountDialog from './AccountDialog.svelte';
+    import AccountDialog from '$lib/account/AccountDialog.svelte';
     import ConfirmModal from '$lib/ConfirmModal.svelte';
     import '$lib/client';
 

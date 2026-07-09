@@ -44,8 +44,6 @@
 			<ul class="menu menu-horizontal flex-nowrap gap-1">
 				<li><a href="/" class={$page.url.pathname === '/' ? 'bg-primary text-primary-content font-medium' : ''}>Portfolios</a></li>
 				<li><a href="/transactions" class={$page.url.pathname.startsWith('/transactions') ? 'bg-primary text-primary-content font-medium' : ''}>Transactions</a></li>
-				<li><a href="/assets" class={$page.url.pathname.startsWith('/assets') ? 'bg-primary text-primary-content font-medium' : ''}>Assets</a></li>
-				<li><a href="/accounts" class={$page.url.pathname.startsWith('/accounts') ? 'bg-primary text-primary-content font-medium' : ''}>Accounts</a></li>
 				<li><a href="/dashboard" class={$page.url.pathname.startsWith('/dashboard') ? 'bg-primary text-primary-content font-medium' : ''}>Dashboard</a></li>
 				<li><a href="/settings" class={$page.url.pathname.startsWith('/settings') ? 'bg-primary text-primary-content font-medium' : ''}>Settings</a></li>
 			</ul>
@@ -110,8 +108,6 @@
 		<ul class="menu menu-vertical p-4 gap-1 flex-1 text-base">
 			<li><a href="/" class={$page.url.pathname === '/' ? 'bg-primary text-primary-content font-medium' : ''} onclick={() => mobileMenuOpen = false}>Portfolios</a></li>
 			<li><a href="/transactions" class={$page.url.pathname.startsWith('/transactions') ? 'bg-primary text-primary-content font-medium' : ''} onclick={() => mobileMenuOpen = false}>Transactions</a></li>
-			<li><a href="/assets" class={$page.url.pathname.startsWith('/assets') ? 'bg-primary text-primary-content font-medium' : ''} onclick={() => mobileMenuOpen = false}>Assets</a></li>
-			<li><a href="/accounts" class={$page.url.pathname.startsWith('/accounts') ? 'bg-primary text-primary-content font-medium' : ''} onclick={() => mobileMenuOpen = false}>Accounts</a></li>
 			<li><a href="/dashboard" class={$page.url.pathname.startsWith('/dashboard') ? 'bg-primary text-primary-content font-medium' : ''} onclick={() => mobileMenuOpen = false}>Dashboard</a></li>
 			<li><a href="/settings" class={$page.url.pathname.startsWith('/settings') ? 'bg-primary text-primary-content font-medium' : ''} onclick={() => mobileMenuOpen = false}>Settings</a></li>
 		</ul>
