@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { recordTransaction, amendTransaction, lookupFxRate, getSettings } from '$lib/api/sdk.gen';
+    import { recordTransaction, amendTransaction, lookupFxRate, getSettings, getPriceHistory, syncListingPriceHistory } from '$lib/api/sdk.gen';
     import type { Account, Asset, Holding, Transaction, TransactionType } from '$lib/api/types.gen';
     import AssetAutocomplete from '$lib/AssetAutocomplete.svelte';
     import AccountAutocomplete from '$lib/AccountAutocomplete.svelte';
@@ -16,10 +16,20 @@
 
     const { assets, accounts, holdings, portfolioId, transaction = null, onSuccess, onCancel }: Props = $props();
 
+    let dateInputEl: HTMLInputElement | undefined = $state();
+
+    $effect(() => {
+        dateInputEl?.focus();
+    });
+
     let formListingId = $state(0);
     let formType = $state<TransactionType>('BUY');
     let formQuantity = $state('');
     let formPrice = $state('');
+    let formPriceAutoDate = $state<string | null>(null);
+    let formPriceUserEdited = $state(false);
+    let formPriceFetching = $state(false);
+    let formPriceNoData = $state(false);
     let formDate = $state('');
     let formFees = $state('');
     let formFxRate = $state('');
@@ -62,6 +72,49 @@
         Number(formQuantity) > currentListingQuantity
     );
 
+    function daysAgo(dateStr: string, n: number): string {
+        const d = new Date(dateStr);
+        d.setDate(d.getDate() - n);
+        return d.toISOString().slice(0, 10);
+    }
+
+    // Re-fetch price whenever listing or date changes (and user hasn't manually edited it)
+    $effect(() => {
+        const listingId = formListingId;
+        const date = formDate;
+        if (isSplit || !listingId || !date || formPriceUserEdited) return;
+
+        formPriceAutoDate = null;
+        formPriceFetching = true;
+        formPriceNoData = false;
+        getPriceHistory({ path: { id: listingId }, query: { from: daysAgo(date, 3), to: date } }).then(res => {
+            const last = res.data?.at(-1);
+            if (last) { formPrice = String(last.price); formPriceAutoDate = last.date; }
+            else formPriceNoData = true;
+            formPriceFetching = false;
+        });
+    });
+
+    async function syncPrice() {
+        if (!formListingId || !formDate) return;
+        formPriceFetching = true;
+        formPriceNoData = false;
+        const { data } = await syncListingPriceHistory({ path: { id: formListingId }, query: { date: formDate } });
+        if (data) {
+            formPrice = String(data.price);
+            formPriceAutoDate = data.date;
+            formPriceUserEdited = false;
+        } else {
+            formPriceNoData = true;
+        }
+        formPriceFetching = false;
+    }
+
+    function onPriceInput() {
+        formPriceAutoDate = null;
+        formPriceUserEdited = true;
+    }
+
     // Re-fetch FX rate whenever listing, date, or fetch trigger changes (and user hasn't manually edited it)
     $effect(() => {
         fxFetchVersion; // tracked so the refresh button can force a re-run
@@ -86,6 +139,9 @@
             formType = transaction.type;
             formQuantity = String(transaction.quantity);
             formPrice = String(transaction.price);
+            formPriceAutoDate = null;
+            formPriceUserEdited = true;
+            formPriceNoData = false;
             formDate = transaction.date;
             formFees = transaction.fees != null ? String(transaction.fees) : '';
             formFxRate = transaction.fxRate != null ? String(transaction.fxRate) : '';
@@ -98,6 +154,9 @@
             formType = 'BUY';
             formQuantity = '';
             formPrice = '';
+            formPriceAutoDate = null;
+            formPriceUserEdited = false;
+            formPriceNoData = false;
             formDate = new Date().toISOString().slice(0, 10);
             formFees = '';
             formFxRate = '';
@@ -122,6 +181,7 @@
         formDate !== '' &&
         (isSplit || !needsFx || formFxRate !== '') &&
         !formFxRateFetching &&
+        !formPriceFetching &&
         !formSubmitting
     );
 
@@ -159,8 +219,13 @@
 
 <form class="space-y-4" onsubmit={submit}>
     <fieldset class="fieldset">
+        <legend class="fieldset-legend">Date</legend>
+        <input class="input w-full" type="date" bind:value={formDate} bind:this={dateInputEl} required />
+    </fieldset>
+
+    <fieldset class="fieldset">
         <legend class="fieldset-legend">Asset</legend>
-        <AssetAutocomplete {assets} bind:value={formListingId} autofocus={true} />
+        <AssetAutocomplete {assets} bind:value={formListingId} />
     </fieldset>
 
     <fieldset class="fieldset">
@@ -182,8 +247,22 @@
         {#if !isSplit}
         <fieldset class="fieldset">
             <legend class="fieldset-legend">Price per unit</legend>
-            <input class="input w-full" type="number" min="0" step="any"
-                   placeholder="0.00" bind:value={formPrice} required />
+            <div class="relative">
+                <input class="input w-full" type="number" min="0" step="any" placeholder="0.00"
+                       bind:value={formPrice} oninput={onPriceInput} readonly={formPriceFetching} required />
+                {#if formPriceFetching}
+                    <span class="loading loading-spinner loading-xs absolute right-3 top-1/2 -translate-y-1/2 text-base-content/40"></span>
+                {/if}
+            </div>
+            {#if formPriceAutoDate}
+                <p class="text-xs text-base-content/50 mt-1">Auto-filled · price from {formPriceAutoDate}</p>
+            {:else if formPriceNoData}
+                <p class="text-xs text-warning mt-1">
+                    No price data —
+                    <button type="button" class="link link-warning font-normal" onclick={syncPrice}>fetch from provider</button>
+                    or enter manually
+                </p>
+            {/if}
         </fieldset>
         {/if}
     </div>
@@ -194,20 +273,13 @@
         </div>
     {/if}
 
-    <div class="grid grid-cols-2 gap-4">
-        <fieldset class="fieldset">
-            <legend class="fieldset-legend">Date</legend>
-            <input class="input w-full" type="date" bind:value={formDate} required />
-        </fieldset>
-
-        {#if !isSplit}
-        <fieldset class="fieldset">
-            <legend class="fieldset-legend">Fees <span class="text-base-content/40 font-normal">(optional)</span></legend>
-            <input class="input w-full" type="number" min="0" step="any"
-                   placeholder="0.00" bind:value={formFees} />
-        </fieldset>
-        {/if}
-    </div>
+    {#if !isSplit}
+    <fieldset class="fieldset">
+        <legend class="fieldset-legend">Fees <span class="text-base-content/40 font-normal">(optional)</span></legend>
+        <input class="input w-full" type="number" min="0" step="any"
+               placeholder="0.00" bind:value={formFees} />
+    </fieldset>
+    {/if}
 
     {#if !isSplit && needsFx}
         <fieldset class="fieldset">
