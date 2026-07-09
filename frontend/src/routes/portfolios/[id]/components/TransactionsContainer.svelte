@@ -1,14 +1,15 @@
 <script lang="ts">
-    import type { Asset, Holding, Transaction } from '$lib/api/types.gen';
+    import type { Account, Asset, Holding, Transaction } from '$lib/api/types.gen';
     import { removeTransaction } from '$lib/api/sdk.gen';
     import TransactionDialog from './TransactionDialog.svelte';
     import CryptoTradeDialog from './CryptoTradeDialog.svelte';
     import TransactionsTable from '$lib/transaction/TransactionsTable.svelte';
     import ConfirmModal from '$lib/ConfirmModal.svelte';
 
-    let { portfolioId, assets, holdings, transactions, onchange, createOpen = $bindable(false), tradeOpen = $bindable(false) }: {
+    let { portfolioId, assets, accounts, holdings, transactions, onchange, createOpen = $bindable(false), tradeOpen = $bindable(false) }: {
         portfolioId: number;
         assets: Asset[];
+        accounts: Account[];
         holdings: Holding[];
         transactions: Transaction[];
         onchange: () => void;
@@ -70,6 +71,7 @@
     open={modalOpen}
     {portfolioId}
     {assets}
+    {accounts}
     {holdings}
     transaction={editingTransaction}
     onsuccess={handleTransactionSuccess}
@@ -80,6 +82,7 @@
     open={tradeOpen}
     {portfolioId}
     {assets}
+    {accounts}
     onsuccess={() => { tradeOpen = false; onchange(); }}
     oncancel={() => { tradeOpen = false; }}
 />

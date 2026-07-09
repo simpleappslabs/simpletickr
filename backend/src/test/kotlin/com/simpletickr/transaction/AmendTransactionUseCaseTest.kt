@@ -32,7 +32,7 @@ class AmendTransactionUseCaseTest {
 
     private val date = LocalDate.of(2024, 1, 15)
     private val listing = Listing(id = 5L, assetId = 2L, exchange = null, ticker = "AAPL", currency = CurrencyCode("USD"))
-    private val existing = Transaction(1L, 10L, 5L, 2L, TransactionType.BUY, BigDecimal("5"), BigDecimal("100"), date, null)
+    private val existing = Transaction(1L, 10L, 5L, 2L, TransactionType.BUY, BigDecimal("5"), BigDecimal("100"), date, null, accountId = 1L)
 
     init {
         whenever(userSettingsRepository.find()).thenReturn(UserSettings(CurrencyCode("EUR")))
@@ -51,6 +51,7 @@ class AmendTransactionUseCaseTest {
         price = price,
         date = date,
         fees = null,
+        accountId = 1L,
     )
 
     @Test

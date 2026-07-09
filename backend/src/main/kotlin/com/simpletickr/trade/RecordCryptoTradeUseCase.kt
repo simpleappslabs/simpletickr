@@ -71,7 +71,7 @@ class RecordCryptoTradeUseCase(
             fees = command.fees,
             fxRate = sellFxRate,
             fxRateSource = sellFxRateSource,
-            broker = command.broker,
+            accountId = command.accountId,
             notes = command.notes,
             tradeId = tradeId,
         ))
@@ -88,7 +88,7 @@ class RecordCryptoTradeUseCase(
             fees = null,
             fxRate = buyFxRate,
             fxRateSource = buyFxRateSource,
-            broker = command.broker,
+            accountId = command.accountId,
             notes = command.notes,
             tradeId = tradeId,
         ))

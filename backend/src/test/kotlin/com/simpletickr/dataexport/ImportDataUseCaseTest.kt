@@ -6,6 +6,9 @@ import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import com.simpletickr.asset.model.Asset
 import com.simpletickr.asset.model.AssetType
 import com.simpletickr.asset.model.Listing
+import com.simpletickr.account.persistence.AccountRepository
+import com.simpletickr.account.model.Account
+import com.simpletickr.account.model.AccountType
 import com.simpletickr.asset.persistence.AssetRepository
 import com.simpletickr.asset.persistence.ListingRepository
 import com.simpletickr.dataexport.model.AssetExport
@@ -42,6 +45,7 @@ import kotlin.test.assertTrue
 class ImportDataUseCaseTest {
 
     private val assetRepository = mock<AssetRepository>()
+    private val accountRepository = mock<AccountRepository>()
     private val listingRepository = mock<ListingRepository>()
     private val mappingRepository = mock<PriceProviderMappingRepository>()
     private val portfolioRepository = mock<PortfolioRepository>()
@@ -51,8 +55,10 @@ class ImportDataUseCaseTest {
         .registerKotlinModule()
         .registerModule(JavaTimeModule())
 
+    private val defaultAccount = Account(id = 1L, name = "Default", broker = null, accountType = AccountType.BROKERAGE, currency = null, accountNumber = null, institution = null)
+
     private val useCase = ImportDataUseCase(
-        assetRepository, listingRepository, mappingRepository,
+        assetRepository, accountRepository, listingRepository, mappingRepository,
         portfolioRepository, transactionRepository, settingsRepository, objectMapper,
     )
 
@@ -85,9 +91,10 @@ class ImportDataUseCaseTest {
 
     @BeforeEach
     fun setUp() {
-        Mockito.reset(assetRepository, listingRepository, mappingRepository,
+        Mockito.reset(assetRepository, accountRepository, listingRepository, mappingRepository,
             portfolioRepository, transactionRepository, settingsRepository)
         whenever(assetRepository.findAll()).thenReturn(emptyList())
+        whenever(accountRepository.findAll()).thenReturn(listOf(defaultAccount))
         whenever(portfolioRepository.findAll()).thenReturn(emptyList())
         whenever(transactionRepository.existsIdentical(any(), any(), any(), any(), any(), any(), anyOrNull(), anyOrNull()))
             .thenReturn(false)

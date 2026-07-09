@@ -19,6 +19,7 @@ tags:
   - name: Assets
   - name: ListingSearch
   - name: Transactions
+  - name: Accounts
   - name: Prices
   - name: FX
   - name: Settings
@@ -387,6 +388,106 @@ paths:
                 $ref: "#/components/schemas/SyncResult"
         "404":
           description: Portfolio not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /accounts:
+    get:
+      tags: [Accounts]
+      operationId: listAccounts
+      summary: List all accounts
+      responses:
+        "200":
+          description: List of accounts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Account"
+    post:
+      tags: [Accounts]
+      operationId: createAccount
+      summary: Create an account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AccountRequest"
+      responses:
+        "201":
+          description: Account created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Account"
+
+  /accounts/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+    get:
+      tags: [Accounts]
+      operationId: getAccount
+      summary: Get an account by ID
+      responses:
+        "200":
+          description: Account found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Account"
+        "404":
+          description: Account not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    put:
+      tags: [Accounts]
+      operationId: updateAccount
+      summary: Update an account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AccountRequest"
+      responses:
+        "200":
+          description: Account updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Account"
+        "404":
+          description: Account not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      tags: [Accounts]
+      operationId: deleteAccount
+      summary: Delete an account
+      responses:
+        "204":
+          description: Account deleted
+        "404":
+          description: Account not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Account has linked transactions and cannot be deleted
           content:
             application/json:
               schema:
@@ -960,6 +1061,12 @@ paths:
           schema:
             type: string
             format: date
+        - name: accountId
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int64
         - name: page
           in: query
           required: false
@@ -1253,6 +1360,73 @@ components:
         message:
           type: string
 
+    AccountType:
+      type: string
+      enum:
+        - BROKERAGE
+        - CRYPTO
+        - BANK
+        - RETIREMENT
+        - OTHER
+
+    Account:
+      type: object
+      required:
+        - id
+        - name
+        - accountType
+        - transactionCount
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+          example: "My Fidelity Roth IRA"
+        broker:
+          type: string
+          nullable: true
+          example: "Fidelity"
+        accountType:
+          $ref: "#/components/schemas/AccountType"
+        currency:
+          type: string
+          nullable: true
+          example: "USD"
+        accountNumber:
+          type: string
+          nullable: true
+        institution:
+          type: string
+          nullable: true
+        transactionCount:
+          type: integer
+          format: int64
+          description: "Number of transactions linked to this account"
+
+    AccountRequest:
+      type: object
+      required:
+        - name
+        - accountType
+      properties:
+        name:
+          type: string
+        broker:
+          type: string
+          nullable: true
+        accountType:
+          $ref: "#/components/schemas/AccountType"
+        currency:
+          type: string
+          nullable: true
+        accountNumber:
+          type: string
+          nullable: true
+        institution:
+          type: string
+          nullable: true
+
     Portfolio:
       type: object
       required:
@@ -1509,6 +1683,8 @@ components:
         - quantity
         - price
         - date
+        - accountId
+        - account
       properties:
         id:
           type: integer
@@ -1544,10 +1720,12 @@ components:
           description: "FX rate at execution time: 1 baseCurrency = fxRate listingCurrency"
         fxRateSource:
           $ref: "#/components/schemas/FxRateSource"
-        broker:
-          type: string
-          nullable: true
-          description: "Broker or platform through which the trade was executed"
+        accountId:
+          type: integer
+          format: int64
+          description: "Account through which the transaction was executed"
+        account:
+          $ref: "#/components/schemas/Account"
         notes:
           type: string
           nullable: true
@@ -1566,6 +1744,7 @@ components:
         - quantity
         - price
         - date
+        - accountId
       properties:
         listingId:
           type: integer
@@ -1590,10 +1769,10 @@ components:
           format: double
           nullable: true
           description: "Override the FX rate. If omitted, the server will look it up automatically."
-        broker:
-          type: string
-          nullable: true
-          description: "Broker or platform through which the trade was executed"
+        accountId:
+          type: integer
+          format: int64
+          description: "Account through which the transaction was executed"
         notes:
           type: string
           nullable: true
@@ -1609,6 +1788,7 @@ components:
         - buyQuantity
         - buyPrice
         - date
+        - accountId
       properties:
         sellListingId:
           type: integer
@@ -1638,9 +1818,10 @@ components:
           format: double
           nullable: true
           description: "Fees applied to the sell leg; some exchanges charge in the destination asset (future iteration)"
-        broker:
-          type: string
-          nullable: true
+        accountId:
+          type: integer
+          format: int64
+          description: "Account through which the trade was executed"
         notes:
           type: string
           nullable: true

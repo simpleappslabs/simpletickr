@@ -1,6 +1,9 @@
 package com.simpletickr.dataexport
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.simpletickr.account.model.Account
+import com.simpletickr.account.model.AccountType
+import com.simpletickr.account.persistence.AccountRepository
 import com.simpletickr.asset.model.AssetType
 import com.simpletickr.asset.persistence.AssetRepository
 import com.simpletickr.asset.persistence.ListingRepository
@@ -27,6 +30,7 @@ import java.util.UUID
 @Service
 class ImportDataUseCase(
     private val assetRepository: AssetRepository,
+    private val accountRepository: AccountRepository,
     private val listingRepository: ListingRepository,
     private val mappingRepository: PriceProviderMappingRepository,
     private val portfolioRepository: PortfolioRepository,
@@ -102,8 +106,8 @@ class ImportDataUseCase(
     private fun buildPlan(export: SimpletickrExport): ImportPlan {
         val errors = mutableListOf<String>()
 
-        if (export.schemaVersion != 1) {
-            errors.add("Unsupported schema version: ${export.schemaVersion}. Only version 1 is supported.")
+        if (export.schemaVersion !in 1..2) {
+            errors.add("Unsupported schema version: ${export.schemaVersion}. Supported versions: 1, 2.")
             return ImportPlan(errors, emptyList(), emptyList(), 0, 0)
         }
 
@@ -280,6 +284,19 @@ class ImportDataUseCase(
             portfolioIdMap[rp.exported.id] = realPortfolioId
         }
 
+        // Resolve accounts: build name → id map, create missing ones
+        val existingAccounts = accountRepository.findAll().associateBy { it.name }.toMutableMap()
+        fun resolveAccount(name: String?): Long {
+            val key = name ?: "Default"
+            return existingAccounts.getOrPut(key) {
+                accountRepository.save(Account(
+                    id = 0L, name = key, broker = null,
+                    accountType = AccountType.BROKERAGE,
+                    currency = null, accountNumber = null, institution = null,
+                ))
+            }.id
+        }
+
         // Insert transactions (dedup)
         var transactionsImported = 0
 
@@ -307,7 +324,7 @@ class ImportDataUseCase(
                             fxRate = tx.fxRate,
                             fxRateSource = null,
                             externalId = tx.externalId,
-                            broker = tx.broker,
+                            accountId = resolveAccount(tx.accountName),
                             notes = tx.notes,
                         )
                     )

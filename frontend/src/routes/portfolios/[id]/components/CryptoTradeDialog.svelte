@@ -1,11 +1,12 @@
 <script lang="ts">
-    import type { Asset } from '$lib/api/types.gen';
+    import type { Account, Asset } from '$lib/api/types.gen';
     import CryptoTradeForm from './CryptoTradeForm.svelte';
 
-    let { open, portfolioId, assets, onsuccess, oncancel }: {
+    let { open, portfolioId, assets, accounts, onsuccess, oncancel }: {
         open: boolean;
         portfolioId: number;
         assets: Asset[];
+        accounts: Account[];
         onsuccess: () => void;
         oncancel: () => void;
     } = $props();
@@ -19,6 +20,7 @@
         {#key open}
             <CryptoTradeForm
                 {assets}
+                {accounts}
                 {portfolioId}
                 onSuccess={onsuccess}
                 onCancel={oncancel}

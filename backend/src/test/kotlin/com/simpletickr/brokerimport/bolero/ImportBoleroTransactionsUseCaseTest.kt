@@ -1,5 +1,8 @@
 package com.simpletickr.brokerimport.bolero
 
+import com.simpletickr.account.model.Account
+import com.simpletickr.account.model.AccountType
+import com.simpletickr.account.persistence.AccountRepository
 import com.simpletickr.asset.model.Listing
 import com.simpletickr.asset.persistence.ListingRepository
 import com.simpletickr.brokerimport.AssetImportMapping
@@ -28,12 +31,15 @@ import kotlin.test.assertEquals
 class ImportBoleroTransactionsUseCaseTest {
 
     private val mappingRepository = mock<AssetImportMappingRepository>()
+    private val accountRepository = mock<AccountRepository>()
     private val listingRepository = mock<ListingRepository>()
     private val transactionRepository = mock<TransactionRepository>()
     private val recordTransactionUseCase = mock<RecordTransactionUseCase>()
 
+    private val boleroAccount = Account(id = 1L, name = "Bolero", broker = "Bolero", accountType = AccountType.BROKERAGE, currency = null, accountNumber = null, institution = null)
+
     private val useCase = ImportBoleroTransactionsUseCase(
-        mappingRepository, listingRepository, transactionRepository, recordTransactionUseCase
+        mappingRepository, accountRepository, listingRepository, transactionRepository, recordTransactionUseCase
     )
 
     private val portfolioId = 1L
@@ -68,11 +74,12 @@ class ImportBoleroTransactionsUseCaseTest {
     private fun savedTransaction() = Transaction(
         id = 100L, portfolioId = portfolioId, listingId = listingId, assetId = assetId,
         type = TransactionType.BUY, quantity = BigDecimal("5"), price = BigDecimal("100"),
-        date = date, fees = null
+        date = date, fees = null, accountId = 1L,
     )
 
     @BeforeEach
     fun setup() {
+        whenever(accountRepository.findAll()).thenReturn(listOf(boleroAccount))
         whenever(transactionRepository.existsByExternalId(any(), any())).thenReturn(false)
         whenever(mappingRepository.findByBrokerAndName("bolero", instrumentName))
             .thenReturn(AssetImportMapping(1L, "bolero", instrumentName, assetId))

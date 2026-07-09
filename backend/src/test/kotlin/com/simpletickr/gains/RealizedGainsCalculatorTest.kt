@@ -23,6 +23,7 @@ class RealizedGainsCalculatorTest {
         quantity = BigDecimal(qty), price = BigDecimal(price),
         date = LocalDate.parse(date),
         fees = fees?.let { BigDecimal(it) },
+        accountId = 1L,
     )
 
     private fun sell(id: Long, date: String, qty: String, price: String, fees: String? = null) = Transaction(
@@ -31,6 +32,7 @@ class RealizedGainsCalculatorTest {
         quantity = BigDecimal(qty), price = BigDecimal(price),
         date = LocalDate.parse(date),
         fees = fees?.let { BigDecimal(it) },
+        accountId = 1L,
     )
 
     // ── FIFO ────────────────────────────────────────────────────────────────
@@ -150,6 +152,7 @@ class RealizedGainsCalculatorTest {
         quantity = BigDecimal(ratio), price = BigDecimal.ZERO,
         date = LocalDate.parse(date),
         fees = null,
+        accountId = 1L,
     )
 
     // ── SPLIT ────────────────────────────────────────────────────────────────

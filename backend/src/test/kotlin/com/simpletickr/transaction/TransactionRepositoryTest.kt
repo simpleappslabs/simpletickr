@@ -1,5 +1,8 @@
 package com.simpletickr.transaction
 
+import com.simpletickr.account.model.Account
+import com.simpletickr.account.model.AccountType
+import com.simpletickr.account.persistence.AccountRepository
 import com.simpletickr.asset.persistence.AssetRepository
 import com.simpletickr.asset.model.AssetType
 import com.simpletickr.asset.persistence.ListingRepository
@@ -30,7 +33,7 @@ import kotlin.test.assertTrue
 @JdbcTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Testcontainers
-@Import(TransactionRepository::class, PortfolioRepository::class, AssetRepository::class, ListingRepository::class)
+@Import(TransactionRepository::class, PortfolioRepository::class, AssetRepository::class, ListingRepository::class, AccountRepository::class)
 class TransactionRepositoryTest {
 
     companion object {
@@ -43,10 +46,12 @@ class TransactionRepositoryTest {
     @Autowired private lateinit var portfolioRepository: PortfolioRepository
     @Autowired private lateinit var assetRepository: AssetRepository
     @Autowired private lateinit var listingRepository: ListingRepository
+    @Autowired private lateinit var accountRepository: AccountRepository
 
     private var portfolioId: Long = 0
     private var listingId: Long = 0
     private var assetId: Long = 0
+    private var accountId: Long = 0
 
     @BeforeEach
     fun setup() {
@@ -54,6 +59,7 @@ class TransactionRepositoryTest {
         val asset = assetRepository.save(null, "Test Asset", AssetType.STOCK)
         assetId = asset.id
         listingId = listingRepository.save(assetId, null, "TST_TXN", CurrencyCode("USD")).id
+        accountId = accountRepository.save(Account(0L, "Test Account", null, AccountType.BROKERAGE, null, null, null)).id
     }
 
     private fun saveTransaction(
@@ -64,7 +70,7 @@ class TransactionRepositoryTest {
         pId: Long = portfolioId,
         lId: Long = listingId,
         aId: Long = assetId,
-    ) = repository.save(Transaction(0L, pId, lId, aId, type, quantity, price, date, null))
+    ) = repository.save(Transaction(0L, pId, lId, aId, type, quantity, price, date, null, accountId = accountId))
 
     // --- basic CRUD ---
 
@@ -95,7 +101,7 @@ class TransactionRepositoryTest {
 
     @Test
     fun `save stores fees when provided`() {
-        val tx = repository.save(Transaction(0L, portfolioId, listingId, assetId, TransactionType.BUY, BigDecimal("5"), BigDecimal("100"), LocalDate.now(), BigDecimal("1.99")))
+        val tx = repository.save(Transaction(0L, portfolioId, listingId, assetId, TransactionType.BUY, BigDecimal("5"), BigDecimal("100"), LocalDate.now(), BigDecimal("1.99"), accountId = accountId))
         assertEquals(0, BigDecimal("1.99").compareTo(tx.fees))
     }
 
@@ -108,7 +114,7 @@ class TransactionRepositoryTest {
         val otherListingId = listingRepository.save(otherAsset.id, null, "TST_TXN2", CurrencyCode("USD")).id
 
         saveTransaction()
-        repository.save(Transaction(0L, otherPortfolioId, otherListingId, otherAsset.id, TransactionType.BUY, BigDecimal("1"), BigDecimal("300"), LocalDate.now(), null))
+        repository.save(Transaction(0L, otherPortfolioId, otherListingId, otherAsset.id, TransactionType.BUY, BigDecimal("1"), BigDecimal("300"), LocalDate.now(), null, accountId = accountId))
 
         val results = repository.findAll(TransactionFilter(portfolioId = portfolioId))
         assertEquals(1, results.size)
@@ -123,7 +129,7 @@ class TransactionRepositoryTest {
 
         saveTransaction()
         saveTransaction()
-        repository.save(Transaction(0L, otherPortfolioId, otherListingId, otherAsset.id, TransactionType.BUY, BigDecimal("1"), BigDecimal("100"), LocalDate.now(), null))
+        repository.save(Transaction(0L, otherPortfolioId, otherListingId, otherAsset.id, TransactionType.BUY, BigDecimal("1"), BigDecimal("100"), LocalDate.now(), null, accountId = accountId))
 
         assertEquals(2L, repository.count(TransactionFilter(portfolioId = portfolioId)))
         assertEquals(1L, repository.count(TransactionFilter(portfolioId = otherPortfolioId)))
@@ -170,7 +176,7 @@ class TransactionRepositoryTest {
         val otherListingId = listingRepository.save(otherAsset.id, null, "OTH", CurrencyCode("USD")).id
 
         saveTransaction()
-        repository.save(Transaction(0L, portfolioId, otherListingId, otherAsset.id, TransactionType.BUY, BigDecimal("1"), BigDecimal("10"), LocalDate.now(), null))
+        repository.save(Transaction(0L, portfolioId, otherListingId, otherAsset.id, TransactionType.BUY, BigDecimal("1"), BigDecimal("10"), LocalDate.now(), null, accountId = accountId))
 
         val results = repository.findAll(TransactionFilter(listingId = listingId))
         assertEquals(1, results.size)
@@ -222,7 +228,7 @@ class TransactionRepositoryTest {
 
         saveTransaction(type = TransactionType.BUY)
         saveTransaction(type = TransactionType.SELL)
-        repository.save(Transaction(0L, otherPortfolioId, otherListingId, otherAsset.id, TransactionType.BUY, BigDecimal("1"), BigDecimal("10"), LocalDate.now(), null))
+        repository.save(Transaction(0L, otherPortfolioId, otherListingId, otherAsset.id, TransactionType.BUY, BigDecimal("1"), BigDecimal("10"), LocalDate.now(), null, accountId = accountId))
 
         val results = repository.findAll(TransactionFilter(portfolioId = portfolioId, type = TransactionType.BUY))
         assertEquals(1, results.size)
@@ -236,7 +242,7 @@ class TransactionRepositoryTest {
         val otherListingId = listingRepository.save(otherAsset.id, null, "OA2", CurrencyCode("USD")).id
 
         saveTransaction()
-        repository.save(Transaction(0L, portfolioId, otherListingId, otherAsset.id, TransactionType.BUY, BigDecimal("1"), BigDecimal("10"), LocalDate.now(), null))
+        repository.save(Transaction(0L, portfolioId, otherListingId, otherAsset.id, TransactionType.BUY, BigDecimal("1"), BigDecimal("10"), LocalDate.now(), null, accountId = accountId))
 
         val results = repository.findAll(TransactionFilter(portfolioId = portfolioId, listingId = listingId))
         assertEquals(1, results.size)
@@ -265,7 +271,7 @@ class TransactionRepositoryTest {
         saveTransaction(type = TransactionType.BUY, date = LocalDate.of(2024, 3, 1))
         saveTransaction(type = TransactionType.SELL, date = LocalDate.of(2024, 3, 1))
         saveTransaction(type = TransactionType.BUY, date = LocalDate.of(2023, 3, 1))
-        repository.save(Transaction(0L, portfolioId, otherListingId, otherAsset.id, TransactionType.BUY, BigDecimal("1"), BigDecimal("10"), LocalDate.of(2024, 3, 1), null))
+        repository.save(Transaction(0L, portfolioId, otherListingId, otherAsset.id, TransactionType.BUY, BigDecimal("1"), BigDecimal("10"), LocalDate.of(2024, 3, 1), null, accountId = accountId))
 
         val results = repository.findAll(TransactionFilter(
             portfolioId = portfolioId,
@@ -324,7 +330,7 @@ class TransactionRepositoryTest {
     fun `existsByExternalId returns true after saving with that externalId`() {
         val tx = Transaction(0L, portfolioId, listingId, assetId, TransactionType.BUY,
             BigDecimal("5"), BigDecimal("100"), LocalDate.of(2024, 1, 1), null,
-            externalId = "bolero:abc123")
+            externalId = "bolero:abc123", accountId = accountId)
         repository.save(tx)
 
         assertTrue(repository.existsByExternalId(portfolioId, "bolero:abc123"))
@@ -335,7 +341,7 @@ class TransactionRepositoryTest {
         val otherPortfolioId = portfolioRepository.save("Other").id
         val tx = Transaction(0L, portfolioId, listingId, assetId, TransactionType.BUY,
             BigDecimal("5"), BigDecimal("100"), LocalDate.of(2024, 1, 1), null,
-            externalId = "bolero:xyz")
+            externalId = "bolero:xyz", accountId = accountId)
         repository.save(tx)
 
         assertFalse(repository.existsByExternalId(otherPortfolioId, "bolero:xyz"))
@@ -349,9 +355,9 @@ class TransactionRepositoryTest {
 
     @Test
     fun `findOldestTransactionDate returns the earliest transaction date`() {
-        repository.save(Transaction(0L, portfolioId, listingId, assetId, TransactionType.BUY, BigDecimal("1"), BigDecimal("100"), LocalDate.of(2022, 6, 1), null))
-        repository.save(Transaction(0L, portfolioId, listingId, assetId, TransactionType.BUY, BigDecimal("1"), BigDecimal("100"), LocalDate.of(2020, 1, 15), null))
-        repository.save(Transaction(0L, portfolioId, listingId, assetId, TransactionType.BUY, BigDecimal("1"), BigDecimal("100"), LocalDate.of(2024, 3, 10), null))
+        repository.save(Transaction(0L, portfolioId, listingId, assetId, TransactionType.BUY, BigDecimal("1"), BigDecimal("100"), LocalDate.of(2022, 6, 1), null, accountId = accountId))
+        repository.save(Transaction(0L, portfolioId, listingId, assetId, TransactionType.BUY, BigDecimal("1"), BigDecimal("100"), LocalDate.of(2020, 1, 15), null, accountId = accountId))
+        repository.save(Transaction(0L, portfolioId, listingId, assetId, TransactionType.BUY, BigDecimal("1"), BigDecimal("100"), LocalDate.of(2024, 3, 10), null, accountId = accountId))
 
         assertEquals(LocalDate.of(2020, 1, 15), repository.findOldestTransactionDate(portfolioId))
     }
@@ -366,9 +372,9 @@ class TransactionRepositoryTest {
         val otherAsset = assetRepository.save(null, "Other Asset", AssetType.STOCK)
         val otherListingId = listingRepository.save(otherAsset.id, null, "OTHER", CurrencyCode("EUR")).id
 
-        repository.save(Transaction(0L, portfolioId, listingId, assetId, TransactionType.BUY, BigDecimal("5"), BigDecimal("100"), LocalDate.now(), null))
-        repository.save(Transaction(0L, portfolioId, listingId, assetId, TransactionType.SELL, BigDecimal("5"), BigDecimal("110"), LocalDate.now(), null))
-        repository.save(Transaction(0L, portfolioId, otherListingId, otherAsset.id, TransactionType.BUY, BigDecimal("3"), BigDecimal("50"), LocalDate.now(), null))
+        repository.save(Transaction(0L, portfolioId, listingId, assetId, TransactionType.BUY, BigDecimal("5"), BigDecimal("100"), LocalDate.now(), null, accountId = accountId))
+        repository.save(Transaction(0L, portfolioId, listingId, assetId, TransactionType.SELL, BigDecimal("5"), BigDecimal("110"), LocalDate.now(), null, accountId = accountId))
+        repository.save(Transaction(0L, portfolioId, otherListingId, otherAsset.id, TransactionType.BUY, BigDecimal("3"), BigDecimal("50"), LocalDate.now(), null, accountId = accountId))
 
         val ids = repository.findDistinctListingIds(portfolioId)
         assertEquals(2, ids.size)

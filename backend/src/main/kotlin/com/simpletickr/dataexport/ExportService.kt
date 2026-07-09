@@ -1,6 +1,8 @@
 package com.simpletickr.dataexport
 
+import com.simpletickr.account.persistence.AccountRepository
 import com.simpletickr.asset.persistence.AssetRepository
+import com.simpletickr.dataexport.model.AccountExport
 import com.simpletickr.dataexport.model.AssetExport
 import com.simpletickr.dataexport.model.ListingExport
 import com.simpletickr.dataexport.model.PortfolioExport
@@ -18,6 +20,7 @@ import java.time.Instant
 @Service
 class ExportService(
     private val assetRepository: AssetRepository,
+    private val accountRepository: AccountRepository,
     private val mappingRepository: PriceProviderMappingRepository,
     private val portfolioRepository: PortfolioRepository,
     private val transactionRepository: TransactionRepository,
@@ -29,9 +32,11 @@ class ExportService(
         val assets = assetRepository.findAll()
         val allMappings = mappingRepository.findAll().groupBy { it.listingId }
         val portfolios = portfolioRepository.findAll()
+        val accounts = accountRepository.findAll()
+        val accountsById = accounts.associateBy { it.id }
 
         return SimpletickrExport(
-            schemaVersion = 1,
+            schemaVersion = 2,
             exportedAt = Instant.now(),
             settings = SettingsExport(settings.baseCurrency.value),
             assets = assets.map { asset ->
@@ -54,6 +59,16 @@ class ExportService(
                     },
                 )
             },
+            accounts = accounts.map { a ->
+                AccountExport(
+                    name = a.name,
+                    broker = a.broker,
+                    accountType = a.accountType.name,
+                    currency = a.currency,
+                    accountNumber = a.accountNumber,
+                    institution = a.institution,
+                )
+            },
             portfolios = portfolios.map { portfolio ->
                 PortfolioExport(
                     id = portfolio.id,
@@ -69,7 +84,7 @@ class ExportService(
                             fees = tx.fees,
                             fxRate = tx.fxRate,
                             externalId = tx.externalId,
-                            broker = tx.broker,
+                            accountName = accountsById[tx.accountId]?.name,
                             notes = tx.notes,
                         )
                     },

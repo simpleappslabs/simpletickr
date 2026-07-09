@@ -46,8 +46,9 @@ class RecordTransactionUseCaseTest {
             price = BigDecimal("100"),
             date = date,
             fees = null,
+            accountId = 1L,
         )
-        val saved = Transaction(42L, 10L, 5L, 2L, TransactionType.BUY, BigDecimal("5"), BigDecimal("100"), date, null)
+        val saved = Transaction(42L, 10L, 5L, 2L, TransactionType.BUY, BigDecimal("5"), BigDecimal("100"), date, null, accountId = 1L)
         whenever(listingRepository.findById(5L)).thenReturn(listing)
         whenever(transactionRepository.save(any())).thenReturn(saved)
 
@@ -68,8 +69,9 @@ class RecordTransactionUseCaseTest {
             price = BigDecimal("100"),
             date = date,
             fees = null,
+            accountId = 1L,
         )
-        val saved = Transaction(1L, 99L, 5L, 2L, TransactionType.BUY, BigDecimal("5"), BigDecimal("100"), date, null)
+        val saved = Transaction(1L, 99L, 5L, 2L, TransactionType.BUY, BigDecimal("5"), BigDecimal("100"), date, null, accountId = 1L)
         whenever(listingRepository.findById(5L)).thenReturn(listing)
         whenever(transactionRepository.save(any())).thenReturn(saved)
 
@@ -88,8 +90,9 @@ class RecordTransactionUseCaseTest {
             price = BigDecimal.ZERO,
             date = date,
             fees = null,
+            accountId = 1L,
         )
-        val saved = Transaction(1L, 10L, 5L, 2L, TransactionType.SPLIT, BigDecimal("2"), BigDecimal.ZERO, date, null)
+        val saved = Transaction(1L, 10L, 5L, 2L, TransactionType.SPLIT, BigDecimal("2"), BigDecimal.ZERO, date, null, accountId = 1L)
         whenever(listingRepository.findById(5L)).thenReturn(foreignListing)
         whenever(transactionRepository.save(any())).thenReturn(saved)
 

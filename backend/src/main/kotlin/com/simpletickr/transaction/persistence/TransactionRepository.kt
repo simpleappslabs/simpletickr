@@ -19,6 +19,7 @@ data class TransactionFilter(
     val assetType: AssetType? = null,
     val dateFrom: LocalDate? = null,
     val dateTo: LocalDate? = null,
+    val accountId: Long? = null,
 )
 
 @Repository
@@ -38,7 +39,7 @@ class TransactionRepository(private val jdbcTemplate: JdbcTemplate) {
             fxRate = rs.getBigDecimal("fx_rate"),
             fxRateSource = rs.getString("fx_rate_source")?.let { FxRateSource.valueOf(it) },
             externalId = rs.getString("external_id"),
-            broker = rs.getString("broker"),
+            accountId = rs.getLong("account_id"),
             notes = rs.getString("notes"),
             tradeId = rs.getLong("trade_id").takeIf { !rs.wasNull() },
         )
@@ -47,7 +48,7 @@ class TransactionRepository(private val jdbcTemplate: JdbcTemplate) {
     private val baseSelect = """
         SELECT t.id, t.portfolio_id, t.listing_id, l.asset_id,
                t.type, t.quantity, t.price, t.date, t.fees, t.fx_rate, t.fx_rate_source, t.external_id,
-               t.broker, t.notes, t.trade_id
+               t.account_id, t.notes, t.trade_id
         FROM transactions t
         JOIN listings l ON l.id = t.listing_id
         JOIN assets a ON a.id = l.asset_id
@@ -65,6 +66,7 @@ class TransactionRepository(private val jdbcTemplate: JdbcTemplate) {
         filter.assetType?.let   { conditions += "a.type = ?";          params += it.name }
         filter.dateFrom?.let    { conditions += "t.date >= ?";         params += it }
         filter.dateTo?.let      { conditions += "t.date <= ?";         params += it }
+        filter.accountId?.let   { conditions += "t.account_id = ?";   params += it }
         val clause = if (conditions.isEmpty()) "" else "WHERE " + conditions.joinToString(" AND ")
         return clause to params
     }
@@ -111,7 +113,7 @@ class TransactionRepository(private val jdbcTemplate: JdbcTemplate) {
         val keyHolder = GeneratedKeyHolder()
         jdbcTemplate.update({ con ->
             con.prepareStatement(
-                "INSERT INTO transactions (portfolio_id, listing_id, type, quantity, price, date, fees, fx_rate, fx_rate_source, external_id, broker, notes, trade_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "INSERT INTO transactions (portfolio_id, listing_id, type, quantity, price, date, fees, fx_rate, fx_rate_source, external_id, account_id, notes, trade_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 arrayOf("id")
             ).apply {
                 setLong(1, transaction.portfolioId)
@@ -124,7 +126,7 @@ class TransactionRepository(private val jdbcTemplate: JdbcTemplate) {
                 setBigDecimal(8, transaction.fxRate)
                 setString(9, transaction.fxRateSource?.name)
                 setString(10, transaction.externalId)
-                setString(11, transaction.broker)
+                setLong(11, transaction.accountId)
                 setString(12, transaction.notes)
                 if (transaction.tradeId != null) setLong(13, transaction.tradeId) else setNull(13, java.sql.Types.BIGINT)
             }
@@ -153,10 +155,10 @@ class TransactionRepository(private val jdbcTemplate: JdbcTemplate) {
 
     fun update(transaction: Transaction): Transaction? {
         val updated = jdbcTemplate.update(
-            "UPDATE transactions SET listing_id = ?, type = ?, quantity = ?, price = ?, date = ?, fees = ?, fx_rate = ?, fx_rate_source = ?, broker = ?, notes = ? WHERE id = ?",
+            "UPDATE transactions SET listing_id = ?, type = ?, quantity = ?, price = ?, date = ?, fees = ?, fx_rate = ?, fx_rate_source = ?, account_id = ?, notes = ? WHERE id = ?",
             transaction.listingId, transaction.type.name, transaction.quantity, transaction.price,
             transaction.date, transaction.fees, transaction.fxRate, transaction.fxRateSource?.name,
-            transaction.broker, transaction.notes, transaction.id
+            transaction.accountId, transaction.notes, transaction.id
         )
         return if (updated == 0) null else transaction
     }

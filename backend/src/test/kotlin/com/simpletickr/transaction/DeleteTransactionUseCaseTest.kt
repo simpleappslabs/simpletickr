@@ -22,7 +22,7 @@ class DeleteTransactionUseCaseTest {
     private val cryptoTradeRepository = mock<CryptoTradeRepository>()
     private val useCase = DeleteTransactionUseCase(transactionRepository, cryptoTradeRepository)
 
-    private val existing = Transaction(1L, 10L, 5L, 2L, TransactionType.BUY, BigDecimal("5"), BigDecimal("100"), LocalDate.of(2024, 1, 15), null)
+    private val existing = Transaction(1L, 10L, 5L, 2L, TransactionType.BUY, BigDecimal("5"), BigDecimal("100"), LocalDate.of(2024, 1, 15), null, accountId = 1L)
 
     @Test
     fun `execute returns false when transaction not found`() {

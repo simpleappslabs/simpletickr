@@ -1,5 +1,8 @@
 package com.simpletickr.brokerimport.bolero
 
+import com.simpletickr.account.model.Account
+import com.simpletickr.account.model.AccountType
+import com.simpletickr.account.persistence.AccountRepository
 import com.simpletickr.brokerimport.AssetImportMappingRepository
 import com.simpletickr.brokerimport.BrokerParseResult
 import com.simpletickr.brokerimport.ImportResult
@@ -18,6 +21,7 @@ import java.util.Base64
 @Service
 class ImportBoleroTransactionsUseCase(
     private val mappingRepository: AssetImportMappingRepository,
+    private val accountRepository: AccountRepository,
     private val listingRepository: ListingRepository,
     private val transactionRepository: TransactionRepository,
     private val recordTransactionUseCase: RecordTransactionUseCase,
@@ -25,9 +29,20 @@ class ImportBoleroTransactionsUseCase(
 
     private val log = LoggerFactory.getLogger(javaClass)
 
+    private fun boleroAccountId(): Long {
+        val existing = accountRepository.findAll().firstOrNull { it.name == "Bolero" }
+        if (existing != null) return existing.id
+        return accountRepository.save(Account(
+            id = 0L, name = "Bolero", broker = "Bolero",
+            accountType = AccountType.BROKERAGE,
+            currency = null, accountNumber = null, institution = null,
+        )).id
+    }
+
     fun execute(portfolioId: Long, file: MultipartFile): ImportResult {
         log.info("Importing Bolero transactions: portfolioId={}, file={}", portfolioId, file.originalFilename)
         val parseResults = file.inputStream.use { BoleroXlsParser.parse(it) }
+        val accountId = boleroAccountId()
 
         val rows = mutableListOf<ImportRowResult>()
         var imported = 0
@@ -43,7 +58,7 @@ class ImportBoleroTransactionsUseCase(
                     val row = result.row
                     val externalId = computeExternalId(row)
 
-                    val rowResult = tryImport(portfolioId, row, externalId)
+                    val rowResult = tryImport(portfolioId, row, externalId, accountId)
                     rows.add(rowResult)
                     if (rowResult.status == ImportStatus.IMPORTED) imported++ else skipped++
                 }
@@ -54,7 +69,7 @@ class ImportBoleroTransactionsUseCase(
         return ImportResult(imported, skipped, rows)
     }
 
-    private fun tryImport(portfolioId: Long, row: com.simpletickr.brokerimport.BrokerTransactionRow, externalId: String): ImportRowResult {
+    private fun tryImport(portfolioId: Long, row: com.simpletickr.brokerimport.BrokerTransactionRow, externalId: String, accountId: Long): ImportRowResult {
         if (transactionRepository.existsByExternalId(portfolioId, externalId)) {
             return ImportRowResult(row.lineNumber, ImportStatus.SKIPPED, "already imported")
         }
@@ -84,7 +99,7 @@ class ImportBoleroTransactionsUseCase(
                     fees = null,
                     fxRate = null,
                     externalId = externalId,
-                    broker = "Bolero",
+                    accountId = accountId,
                 )
             )
             ImportRowResult(row.lineNumber, ImportStatus.IMPORTED, "ok")

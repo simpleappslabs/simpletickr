@@ -12,7 +12,7 @@ class TransactionTest {
     private val date = LocalDate.of(2024, 1, 15)
 
     private fun tx(qty: BigDecimal, price: BigDecimal, fees: BigDecimal? = null) =
-        Transaction(1L, 10L, 5L, 2L, TransactionType.BUY, qty, price, date, fees)
+        Transaction(1L, 10L, 5L, 2L, TransactionType.BUY, qty, price, date, fees, accountId = 1L)
 
     @Test
     fun `valid transaction is created`() {

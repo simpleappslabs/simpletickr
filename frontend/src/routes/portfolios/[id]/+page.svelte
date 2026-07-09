@@ -2,8 +2,8 @@
     import {onMount} from 'svelte';
     import {page} from '$app/state';
     import {goto} from '$app/navigation';
-    import {getPortfolio, getHoldings, listAssets, listTransactions, deletePortfolio, syncPortfolioPrices} from '$lib/api/sdk.gen';
-    import type {Asset, Holding, Portfolio, Transaction, TransactionPage} from '$lib/api/types.gen';
+    import {getPortfolio, getHoldings, listAssets, listTransactions, deletePortfolio, syncPortfolioPrices, listAccounts} from '$lib/api/sdk.gen';
+    import type {Account, Asset, Holding, Portfolio, Transaction, TransactionPage} from '$lib/api/types.gen';
     import PortfolioSummary from './components/PortfolioSummary.svelte';
     import PortfolioChart from './components/PortfolioChart.svelte';
     import HoldingsTable from './components/HoldingsTable.svelte';
@@ -20,6 +20,7 @@
     let holdings = $state<Holding[]>([]);
     let transactions = $state<Transaction[]>([]);
     let assets = $state<Asset[]>([]);
+    let accounts = $state<Account[]>([]);
     let loading = $state(true);
     let notFound = $state(false);
     let chartListing = $state<{ id: number; ticker: string; currency: string } | null>(null);
@@ -105,6 +106,9 @@
         assets = assetsRes.data ?? [];
         transactions = transactionsRes.data?.items ?? [];
         loading = false;
+
+        // Fire-and-forget: accounts are needed only when the dialog opens, not on initial render
+        listAccounts().then(res => { accounts = res.data ?? []; }).catch(() => {});
     });
 </script>
 
@@ -187,6 +191,7 @@
         <TransactionsContainer
             portfolioId={portfolio!.id}
             {assets}
+            {accounts}
             {holdings}
             {transactions}
             onchange={refreshData}

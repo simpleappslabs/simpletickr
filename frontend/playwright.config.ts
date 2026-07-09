@@ -9,7 +9,7 @@ export default defineConfig({
 			cwd: '../backend',
 			port: 8081,
 			timeout: 180_000,
-			reuseExistingServer: !isCI,
+			reuseExistingServer: false,
 			env: isCI
 				? { SPRING_PROFILES_ACTIVE: 'e2etest', SERVER_PORT: '8081' }
 				: {

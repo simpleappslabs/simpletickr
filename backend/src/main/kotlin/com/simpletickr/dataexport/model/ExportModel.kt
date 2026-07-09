@@ -10,6 +10,7 @@ data class SimpletickrExport(
     val exportedAt: Instant,
     val settings: SettingsExport,
     val assets: List<AssetExport>,
+    val accounts: List<AccountExport> = emptyList(),
     val portfolios: List<PortfolioExport>,
 )
 
@@ -41,6 +42,15 @@ data class PortfolioExport(
     val transactions: List<TransactionExport>,
 )
 
+data class AccountExport(
+    val name: String,
+    val broker: String?,
+    val accountType: String,
+    val currency: String?,
+    val accountNumber: String?,
+    val institution: String?,
+)
+
 data class TransactionExport(
     val listingId: Long,
     val type: String,
@@ -50,7 +60,7 @@ data class TransactionExport(
     val fees: BigDecimal?,
     val fxRate: BigDecimal?,
     val externalId: String?,
-    val broker: String? = null,
+    val accountName: String? = null,
     val notes: String? = null,
 )
 

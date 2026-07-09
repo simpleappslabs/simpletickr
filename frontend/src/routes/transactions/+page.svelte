@@ -2,8 +2,8 @@
     import { onMount, untrack } from 'svelte';
     import { page } from '$app/state';
     import { goto } from '$app/navigation';
-    import { listTransactions, listPortfolios, listAssets, removeTransaction } from '$lib/api/sdk.gen';
-    import type { Asset, AssetType, Portfolio, Transaction, TransactionType } from '$lib/api/types.gen';
+    import { listTransactions, listPortfolios, listAssets, listAccounts, removeTransaction } from '$lib/api/sdk.gen';
+    import type { Account, Asset, AssetType, Portfolio, Transaction, TransactionType } from '$lib/api/types.gen';
     import TransactionsTable from '$lib/transaction/TransactionsTable.svelte';
     import AssetAutocomplete from '$lib/AssetAutocomplete.svelte';
     import ConfirmModal from '$lib/ConfirmModal.svelte';
@@ -14,12 +14,14 @@
     let listingId = $state(0);
     let selectedType = $state<TransactionType | ''>('');
     let selectedAssetType = $state<AssetType | ''>('');
+    let selectedAccountId = $state<number | undefined>(undefined);
     let dateFrom = $state('');
     let dateTo = $state('');
     let currentPage = $state(0);
 
     let portfolios = $state<Portfolio[]>([]);
     let assets = $state<Asset[]>([]);
+    let accounts = $state<Account[]>([]);
     let transactions = $state<Transaction[]>([]);
     let totalPages = $state(0);
     let totalElements = $state(0);
@@ -40,6 +42,7 @@
         listingId = params.has('listingId') ? Number(params.get('listingId')) : 0;
         selectedType = (params.get('type') as TransactionType) || '';
         selectedAssetType = (params.get('assetType') as AssetType) || '';
+        selectedAccountId = params.has('accountId') ? Number(params.get('accountId')) : undefined;
         dateFrom = params.get('dateFrom') ?? '';
         dateTo = params.get('dateTo') ?? '';
         currentPage = params.has('page') ? Number(params.get('page')) : 0;
@@ -51,6 +54,7 @@
         if (listingId > 0) params.set('listingId', String(listingId));
         if (selectedType) params.set('type', selectedType);
         if (selectedAssetType) params.set('assetType', selectedAssetType);
+        if (selectedAccountId != null) params.set('accountId', String(selectedAccountId));
         if (dateFrom) params.set('dateFrom', dateFrom);
         if (dateTo) params.set('dateTo', dateTo);
         const p = overridePage ?? currentPage;
@@ -70,6 +74,7 @@
                 assetType: selectedAssetType || undefined,
                 dateFrom: dateFrom || undefined,
                 dateTo: dateTo || undefined,
+                accountId: selectedAccountId,
                 page: currentPage,
                 size: 25,
             },
@@ -119,6 +124,7 @@
         listingId = 0;
         selectedType = '';
         selectedAssetType = '';
+        selectedAccountId = undefined;
         dateFrom = '';
         dateTo = '';
         await goto('/transactions', { replaceState: false });
@@ -135,12 +141,14 @@
     });
 
     onMount(async () => {
-        const [portfoliosRes, assetsRes] = await Promise.all([
+        const [portfoliosRes, assetsRes, accountsRes] = await Promise.all([
             listPortfolios(),
             listAssets(),
+            listAccounts(),
         ]);
         portfolios = portfoliosRes.data ?? [];
         assets = assetsRes.data ?? [];
+        accounts = accountsRes.data ?? [];
     });
 </script>
 
@@ -186,6 +194,16 @@
                 <option value="ETF">ETF</option>
                 <option value="CRYPTO">Crypto</option>
                 <option value="OTHER">Other</option>
+            </select>
+        </label>
+
+        <label class="flex flex-col gap-1">
+            <span class="text-xs font-semibold uppercase tracking-widest text-base-content/50">Account</span>
+            <select class="select select-bordered select-sm" bind:value={selectedAccountId} onchange={applyFilters}>
+                <option value={undefined}>All accounts</option>
+                {#each accounts as a}
+                    <option value={a.id}>{a.name}</option>
+                {/each}
             </select>
         </label>
 
@@ -243,6 +261,7 @@
     open={dialogOpen}
     {portfolios}
     {assets}
+    {accounts}
     transaction={editingTransaction}
     defaultPortfolioId={portfolioId}
     onsuccess={handleTransactionSuccess}

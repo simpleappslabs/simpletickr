@@ -1,11 +1,12 @@
 <script lang="ts">
-    import type { Asset, Holding, Transaction } from '$lib/api/types.gen';
+    import type { Account, Asset, Holding, Transaction } from '$lib/api/types.gen';
     import TransactionForm from './TransactionForm.svelte';
 
-    let { open, portfolioId, assets, holdings, transaction, onsuccess, oncancel }: {
+    let { open, portfolioId, assets, accounts, holdings, transaction, onsuccess, oncancel }: {
         open: boolean;
         portfolioId: number;
         assets: Asset[];
+        accounts: Account[];
         holdings: Holding[];
         transaction: Transaction | null;
         onsuccess: () => void;
@@ -21,6 +22,7 @@
         {#key open}
             <TransactionForm
                 {assets}
+                {accounts}
                 {holdings}
                 {portfolioId}
                 {transaction}

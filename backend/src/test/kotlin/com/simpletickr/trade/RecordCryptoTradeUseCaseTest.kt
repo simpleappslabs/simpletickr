@@ -45,7 +45,7 @@ class RecordCryptoTradeUseCaseTest {
     private val ethAsset = Asset(id = 2L, uuid = UUID.randomUUID(), isin = null, name = "Ethereum", type = AssetType.CRYPTO)
 
     private fun savedTx(id: Long, listingId: Long, assetId: Long, type: TransactionType, tradeId: Long) =
-        Transaction(id, 5L, listingId, assetId, type, BigDecimal("1"), BigDecimal("50000"), date, null, tradeId = tradeId)
+        Transaction(id, 5L, listingId, assetId, type, BigDecimal("1"), BigDecimal("50000"), date, null, tradeId = tradeId, accountId = 1L)
 
     init {
         whenever(userSettingsRepository.find()).thenReturn(UserSettings(CurrencyCode("USD")))
@@ -64,6 +64,7 @@ class RecordCryptoTradeUseCaseTest {
         sellListingId = 10L, sellQuantity = BigDecimal("0.1"), sellPrice = BigDecimal("60000"),
         buyListingId = 20L, buyQuantity = BigDecimal("2.5"), buyPrice = BigDecimal("2400"),
         date = date,
+        accountId = 1L,
     )
 
     @Test

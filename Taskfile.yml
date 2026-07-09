@@ -69,15 +69,15 @@ tasks:
       - npm run test
 
   frontend:test:e2e:
-    desc: Run E2E tests against an isolated test DB (starts DB automatically)
+    desc: Run E2E tests against an isolated test DB (always recreates containers for a clean state)
     cmds:
-      - docker compose --profile test up -d --wait db-test
+      - docker compose --profile test up -d --wait --force-recreate db-test
       - cd frontend && npm run test:e2e
 
   frontend:test:e2e:ui:
-    desc: Run frontend E2E tests in Playwright UI mode (visual debugger with time-travel)
+    desc: Run frontend E2E tests in Playwright UI mode (always recreates containers for a clean state)
     cmds:
-      - docker compose --profile test up -d --wait db-test
+      - docker compose --profile test up -d --wait --force-recreate db-test
       - cd frontend && npx playwright test --ui
 
   frontend:check:

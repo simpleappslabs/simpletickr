@@ -1,10 +1,12 @@
 <script lang="ts">
     import { recordTransaction, amendTransaction, lookupFxRate, getSettings } from '$lib/api/sdk.gen';
-    import type { Asset, Holding, Transaction, TransactionType } from '$lib/api/types.gen';
+    import type { Account, Asset, Holding, Transaction, TransactionType } from '$lib/api/types.gen';
     import AssetAutocomplete from '$lib/AssetAutocomplete.svelte';
+    import AccountAutocomplete from '$lib/AccountAutocomplete.svelte';
 
     interface Props {
         assets: Asset[];
+        accounts: Account[];
         holdings: Holding[];
         portfolioId: number;
         transaction?: Transaction | null;
@@ -12,7 +14,7 @@
         onCancel: () => void;
     }
 
-    const { assets, holdings, portfolioId, transaction = null, onSuccess, onCancel }: Props = $props();
+    const { assets, accounts, holdings, portfolioId, transaction = null, onSuccess, onCancel }: Props = $props();
 
     let formListingId = $state(0);
     let formType = $state<TransactionType>('BUY');
@@ -25,7 +27,7 @@
     let formFxRateUserEdited = $state(false);
     let formFxRateFetching = $state(false);
     let fxFetchVersion = $state(0);
-    let formBroker = $state('');
+    let formAccountId = $state(0);
     let formNotes = $state('');
     let formSubmitting = $state(false);
     let formError = $state<string | null>(null);
@@ -89,7 +91,7 @@
             formFxRate = transaction.fxRate != null ? String(transaction.fxRate) : '';
             formFxRateAutoDate = null;
             formFxRateUserEdited = transaction.fxRate != null;
-            formBroker = transaction.broker ?? '';
+            formAccountId = transaction.accountId;
             formNotes = transaction.notes ?? '';
         } else {
             formListingId = 0;
@@ -101,7 +103,7 @@
             formFxRate = '';
             formFxRateAutoDate = null;
             formFxRateUserEdited = false;
-            formBroker = '';
+            formAccountId = 0;
             formNotes = '';
         }
         formError = null;
@@ -114,6 +116,7 @@
 
     const canSubmit = $derived(
         formListingId > 0 &&
+        formAccountId > 0 &&
         formQuantity !== '' &&
         (isSplit || formPrice !== '') &&
         formDate !== '' &&
@@ -135,7 +138,7 @@
             date: formDate,
             fees: !isSplit && formFees ? Number(formFees) : undefined,
             fxRate: !isSplit && needsFx && formFxRate ? Number(formFxRate) : undefined,
-            broker: formBroker || undefined,
+            accountId: formAccountId,
             notes: formNotes || undefined,
         };
 
@@ -249,8 +252,8 @@
     {/if}
 
     <fieldset class="fieldset">
-        <legend class="fieldset-legend">Broker <span class="text-base-content/40 font-normal">(optional)</span></legend>
-        <input class="input w-full" type="text" placeholder="e.g. Degiro" bind:value={formBroker} />
+        <legend class="fieldset-legend">Account</legend>
+        <AccountAutocomplete {accounts} bind:value={formAccountId} />
     </fieldset>
 
     <fieldset class="fieldset">

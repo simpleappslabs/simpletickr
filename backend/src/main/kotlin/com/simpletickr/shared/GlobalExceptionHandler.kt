@@ -22,6 +22,8 @@ class GlobalExceptionHandler {
         val message = when {
             e.message?.contains("fk_transactions_listing") == true ->
                 "This asset cannot be deleted because it has linked transactions."
+            e.message?.contains("fk_transactions_account") == true ->
+                "This account cannot be deleted because it has linked transactions."
             else -> "This operation cannot be completed due to a data integrity constraint."
         }
         return ResponseEntity.status(409).body(mapOf("message" to message))

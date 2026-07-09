@@ -21,7 +21,7 @@ data class Transaction(
     val fxRate: BigDecimal? = null,
     val fxRateSource: FxRateSource? = null,
     val externalId: String? = null,
-    val broker: String? = null,
+    val accountId: Long,
     val notes: String? = null,
     val tradeId: Long? = null,
 ) {

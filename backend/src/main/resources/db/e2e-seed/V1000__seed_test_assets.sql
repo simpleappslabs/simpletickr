@@ -15,3 +15,4 @@ WITH vwce AS (
 )
 INSERT INTO listings (asset_id, ticker, currency, exchange)
 SELECT id, 'VWCE', 'EUR', 'Euronext Amsterdam' FROM vwce;
+

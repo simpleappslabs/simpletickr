@@ -56,12 +56,17 @@ class PortfolioValueHistoryRepositoryTest {
 
     private var portfolioId: Long = 0
     private var eurListingId: Long = 0
+    private var accountId: Long = 0
 
     @BeforeEach
     fun setup() {
         portfolioId = portfolioRepository.save("Test Portfolio").id
         val asset = assetRepository.save(null, "Test Asset", AssetType.STOCK)
         eurListingId = listingRepository.save(asset.id, null, "TST", eur).id
+        accountId = jdbcTemplate.queryForObject(
+            "INSERT INTO accounts (name, account_type) VALUES ('Test', 'BROKERAGE') RETURNING id",
+            Long::class.java,
+        )!!
     }
 
     private fun insertTransaction(
@@ -73,9 +78,9 @@ class PortfolioValueHistoryRepositoryTest {
         fxRate: BigDecimal? = null,
     ) {
         jdbcTemplate.update(
-            """INSERT INTO transactions (portfolio_id, listing_id, type, quantity, price, date, fx_rate)
-               VALUES (?, ?, ?, ?, ?, ?, ?)""",
-            portfolioId, listingId, type, quantity, price, date, fxRate,
+            """INSERT INTO transactions (portfolio_id, listing_id, type, quantity, price, date, fx_rate, account_id)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+            portfolioId, listingId, type, quantity, price, date, fxRate, accountId,
         )
     }
 

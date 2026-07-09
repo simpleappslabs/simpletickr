@@ -1,5 +1,8 @@
 package com.simpletickr.transaction
 
+import com.simpletickr.account.AccountService
+import com.simpletickr.account.model.Account
+import com.simpletickr.account.model.AccountType
 import com.simpletickr.transaction.model.Transaction
 import com.simpletickr.transaction.model.TransactionType
 import com.simpletickr.transaction.persistence.TransactionFilter
@@ -8,6 +11,7 @@ import com.simpletickr.trade.RecordCryptoTradeUseCase
 import com.simpletickr.transaction.usecase.AmendTransactionUseCase
 import com.simpletickr.transaction.usecase.DeleteTransactionUseCase
 import com.simpletickr.transaction.usecase.RecordTransactionUseCase
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
 import org.mockito.kotlin.eq
@@ -37,13 +41,23 @@ class TransactionControllerTest {
     @MockitoBean private lateinit var amendTransactionUseCase: AmendTransactionUseCase
     @MockitoBean private lateinit var deleteTransactionUseCase: DeleteTransactionUseCase
     @MockitoBean private lateinit var recordCryptoTradeUseCase: RecordCryptoTradeUseCase
+    @MockitoBean private lateinit var accountService: AccountService
+
+    private val sampleAccount = Account(id = 1L, name = "Test Account", broker = null, accountType = AccountType.BROKERAGE, currency = null, accountNumber = null, institution = null)
 
     private val sample = Transaction(
         id = 1L, portfolioId = 10L, listingId = 5L, assetId = 2L,
         type = TransactionType.BUY,
         quantity = BigDecimal("5"), price = BigDecimal("100"),
         date = LocalDate.of(2024, 1, 15), fees = null,
+        accountId = 1L,
     )
+
+    @BeforeEach
+    fun stubAccounts() {
+        whenever(accountService.listAccounts()).thenReturn(listOf(sampleAccount))
+        whenever(accountService.getAccount(1L)).thenReturn(sampleAccount)
+    }
 
     @Test
     fun `GET transactions returns paginated response filtered by portfolioId`() {
@@ -160,7 +174,7 @@ class TransactionControllerTest {
         mockMvc.perform(
             post("/portfolios/10/transactions")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"listingId":5,"type":"BUY","quantity":5.0,"price":100.0,"date":"2024-01-15"}""")
+                .content("""{"listingId":5,"type":"BUY","quantity":5.0,"price":100.0,"date":"2024-01-15","accountId":1}""")
         )
             .andExpect(status().isCreated)
             .andExpect(jsonPath("$.id").value(1))
@@ -175,7 +189,7 @@ class TransactionControllerTest {
         mockMvc.perform(
             put("/portfolios/10/transactions/1")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"listingId":5,"type":"BUY","quantity":10.0,"price":100.0,"date":"2024-01-15"}""")
+                .content("""{"listingId":5,"type":"BUY","quantity":10.0,"price":100.0,"date":"2024-01-15","accountId":1}""")
         )
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.quantity").value(10.0))
@@ -188,7 +202,7 @@ class TransactionControllerTest {
         mockMvc.perform(
             put("/portfolios/10/transactions/99")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"listingId":5,"type":"BUY","quantity":10.0,"price":100.0,"date":"2024-01-15"}""")
+                .content("""{"listingId":5,"type":"BUY","quantity":10.0,"price":100.0,"date":"2024-01-15","accountId":1}""")
         )
             .andExpect(status().isNotFound)
     }
@@ -217,7 +231,7 @@ class TransactionControllerTest {
         mockMvc.perform(
             post("/portfolios/10/transactions")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"listingId":5,"type":"BUY","quantity":0.0,"price":100.0,"date":"2024-01-15"}""")
+                .content("""{"listingId":5,"type":"BUY","quantity":0.0,"price":100.0,"date":"2024-01-15","accountId":1}""")
         )
             .andExpect(status().isBadRequest)
     }
@@ -230,7 +244,7 @@ class TransactionControllerTest {
         mockMvc.perform(
             post("/portfolios/10/transactions")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"listingId":5,"type":"SPLIT","quantity":2.0,"price":0.0,"date":"2024-06-01"}""")
+                .content("""{"listingId":5,"type":"SPLIT","quantity":2.0,"price":0.0,"date":"2024-06-01","accountId":1}""")
         )
             .andExpect(status().isCreated)
             .andExpect(jsonPath("$.type").value("SPLIT"))
@@ -246,7 +260,7 @@ class TransactionControllerTest {
         mockMvc.perform(
             post("/portfolios/10/transactions/trade")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"sellListingId":5,"sellQuantity":0.1,"sellPrice":60000.0,"buyListingId":6,"buyQuantity":2.5,"buyPrice":2400.0,"date":"2024-06-01"}""")
+                .content("""{"sellListingId":5,"sellQuantity":0.1,"sellPrice":60000.0,"buyListingId":6,"buyQuantity":2.5,"buyPrice":2400.0,"date":"2024-06-01","accountId":1}""")
         )
             .andExpect(status().isCreated)
             .andExpect(jsonPath("$.id").value(99))
@@ -264,7 +278,7 @@ class TransactionControllerTest {
         mockMvc.perform(
             post("/portfolios/10/transactions/trade")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"sellListingId":5,"sellQuantity":0.1,"sellPrice":60000.0,"buyListingId":6,"buyQuantity":2.5,"buyPrice":2400.0,"date":"2024-06-01"}""")
+                .content("""{"sellListingId":5,"sellQuantity":0.1,"sellPrice":60000.0,"buyListingId":6,"buyQuantity":2.5,"buyPrice":2400.0,"date":"2024-06-01","accountId":1}""")
         )
             .andExpect(status().isBadRequest)
     }

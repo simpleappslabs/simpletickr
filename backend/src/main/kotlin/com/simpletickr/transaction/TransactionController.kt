@@ -1,5 +1,7 @@
 package com.simpletickr.transaction
 
+import com.simpletickr.account.AccountService
+import com.simpletickr.account.model.Account
 import com.simpletickr.asset.model.AssetType
 import com.simpletickr.fx.model.FxRateSource
 import com.simpletickr.generated.api.TransactionsApi
@@ -19,6 +21,8 @@ import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.RestController
 import java.math.BigDecimal
 import java.time.LocalDate
+import com.simpletickr.generated.model.Account as AccountModel
+import com.simpletickr.generated.model.AccountType as GeneratedAccountType
 import com.simpletickr.generated.model.FxRateSource as GeneratedFxRateSource
 import com.simpletickr.generated.model.Transaction as TransactionModel
 import com.simpletickr.generated.model.TransactionType as GeneratedTransactionType
@@ -26,6 +30,7 @@ import com.simpletickr.generated.model.TransactionType as GeneratedTransactionTy
 @RestController
 class TransactionController(
     private val transactionRepository: TransactionRepository,
+    private val accountService: AccountService,
     private val recordTransactionUseCase: RecordTransactionUseCase,
     private val amendTransactionUseCase: AmendTransactionUseCase,
     private val deleteTransactionUseCase: DeleteTransactionUseCase,
@@ -39,6 +44,7 @@ class TransactionController(
         assetType: com.simpletickr.generated.model.AssetType?,
         dateFrom: LocalDate?,
         dateTo: LocalDate?,
+        accountId: Long?,
         page: Int,
         size: Int,
     ): ResponseEntity<TransactionPage> {
@@ -52,12 +58,14 @@ class TransactionController(
             assetType = assetType?.let { AssetType.valueOf(it.value) },
             dateFrom = dateFrom,
             dateTo = dateTo,
+            accountId = accountId,
         )
         val items = transactionRepository.findAll(filter, page, size)
         val total = transactionRepository.count(filter)
         val totalPages = ((total + size - 1) / size).toInt()
+        val accountsById = accountService.listAccounts().associateBy { it.id }
         return ResponseEntity.ok(TransactionPage(
-            items = items.map { it.toModel() },
+            items = items.map { it.toModel(accountsById) },
             page = page,
             propertySize = size,
             totalElements = total,
@@ -67,7 +75,8 @@ class TransactionController(
 
     override fun getTransaction(id: Long): ResponseEntity<TransactionModel> {
         val transaction = transactionRepository.findById(id) ?: return ResponseEntity.notFound().build()
-        return ResponseEntity.ok(transaction.toModel())
+        val account = accountService.getAccount(transaction.accountId)!!
+        return ResponseEntity.ok(transaction.toModel(mapOf(account.id to account)))
     }
 
     override fun recordTransaction(portfolioId: Long, transactionRequest: TransactionRequest): ResponseEntity<TransactionModel> {
@@ -79,11 +88,12 @@ class TransactionController(
             date = transactionRequest.date,
             fees = transactionRequest.fees?.let { BigDecimal.valueOf(it) },
             fxRate = transactionRequest.fxRate?.let { BigDecimal.valueOf(it) },
-            broker = transactionRequest.broker,
+            accountId = transactionRequest.accountId,
             notes = transactionRequest.notes,
         )
         val transaction = recordTransactionUseCase.execute(portfolioId, command)
-        return ResponseEntity.status(201).body(transaction.toModel())
+        val account = accountService.getAccount(transaction.accountId)!!
+        return ResponseEntity.status(201).body(transaction.toModel(mapOf(account.id to account)))
     }
 
     override fun amendTransaction(portfolioId: Long, id: Long, transactionRequest: TransactionRequest): ResponseEntity<TransactionModel> {
@@ -95,12 +105,13 @@ class TransactionController(
             date = transactionRequest.date,
             fees = transactionRequest.fees?.let { BigDecimal.valueOf(it) },
             fxRate = transactionRequest.fxRate?.let { BigDecimal.valueOf(it) },
-            broker = transactionRequest.broker,
+            accountId = transactionRequest.accountId,
             notes = transactionRequest.notes,
         )
         val transaction = amendTransactionUseCase.execute(portfolioId, id, command)
             ?: return ResponseEntity.notFound().build()
-        return ResponseEntity.ok(transaction.toModel())
+        val account = accountService.getAccount(transaction.accountId)!!
+        return ResponseEntity.ok(transaction.toModel(mapOf(account.id to account)))
     }
 
     override fun removeTransaction(portfolioId: Long, id: Long): ResponseEntity<Unit> {
@@ -118,18 +129,20 @@ class TransactionController(
             buyPrice = BigDecimal.valueOf(cryptoTradeRequest.buyPrice),
             date = cryptoTradeRequest.date,
             fees = cryptoTradeRequest.fees?.let { BigDecimal.valueOf(it) },
-            broker = cryptoTradeRequest.broker,
+            accountId = cryptoTradeRequest.accountId,
             notes = cryptoTradeRequest.notes,
         )
         val trade = recordCryptoTradeUseCase.execute(portfolioId, command)
+        val account = accountService.getAccount(trade.sell.accountId)!!
+        val accountsById = mapOf(account.id to account)
         return ResponseEntity.status(201).body(CryptoTradeResponse(
             id = trade.id,
-            sell = trade.sell.toModel(),
-            buy = trade.buy.toModel(),
+            sell = trade.sell.toModel(accountsById),
+            buy = trade.buy.toModel(accountsById),
         ))
     }
 
-    private fun Transaction.toModel() = TransactionModel(
+    private fun Transaction.toModel(accountsById: Map<Long, Account>) = TransactionModel(
         id = id,
         portfolioId = portfolioId,
         listingId = listingId,
@@ -141,8 +154,20 @@ class TransactionController(
         fees = fees?.toDouble(),
         fxRate = fxRate?.toDouble(),
         fxRateSource = fxRateSource?.let { GeneratedFxRateSource.valueOf(it.name) },
-        broker = broker,
+        accountId = accountId,
+        account = accountsById[accountId]!!.toModel(),
         notes = notes,
         tradeId = tradeId,
+    )
+
+    private fun Account.toModel() = AccountModel(
+        id = id,
+        name = name,
+        broker = broker,
+        accountType = GeneratedAccountType.valueOf(accountType.name),
+        currency = currency,
+        accountNumber = accountNumber,
+        institution = institution,
+        transactionCount = transactionCount,
     )
 }

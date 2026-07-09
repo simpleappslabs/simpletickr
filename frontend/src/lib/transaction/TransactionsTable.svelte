@@ -39,7 +39,7 @@
             <th class="text-right">Qty</th>
             <th class="text-right">Price</th>
             <th class="text-right">Fees</th>
-            <th>Broker</th>
+            <th>Account</th>
             {#if onedit || ondelete}
                 <th></th>
             {/if}
@@ -66,7 +66,7 @@
                 <td class="text-right tabular-nums">{t.fees != null ? fmt(t.fees) : '—'}</td>
                 <td class="text-base-content/60 text-sm">
                     <span class="inline-flex items-center gap-1.5">
-                        {t.broker ?? '—'}
+                        {t.account?.name ?? '—'}
                         {#if t.notes}
                             <span title={t.notes} class="cursor-default text-base-content/40 hover:text-base-content/70 transition-colors">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

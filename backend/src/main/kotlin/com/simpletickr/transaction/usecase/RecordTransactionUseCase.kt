@@ -54,7 +54,7 @@ class RecordTransactionUseCase(
             fxRate = fxRate,
             fxRateSource = fxRateSource,
             externalId = command.externalId,
-            broker = command.broker,
+            accountId = command.accountId,
             notes = command.notes,
         ))
     }

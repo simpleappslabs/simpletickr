@@ -1,16 +1,18 @@
 <script lang="ts">
     import { recordCryptoTrade, getPriceHistory, syncListingPriceHistory } from '$lib/api/sdk.gen';
-    import type { Asset } from '$lib/api/types.gen';
+    import type { Account, Asset } from '$lib/api/types.gen';
     import AssetAutocomplete from '$lib/AssetAutocomplete.svelte';
+    import AccountAutocomplete from '$lib/AccountAutocomplete.svelte';
 
     interface Props {
         assets: Asset[];
+        accounts: Account[];
         portfolioId: number;
         onSuccess: () => void;
         onCancel: () => void;
     }
 
-    const { assets, portfolioId, onSuccess, onCancel }: Props = $props();
+    const { assets, accounts, portfolioId, onSuccess, onCancel }: Props = $props();
 
     const cryptoAssets = $derived(assets.filter(a => a.type === 'CRYPTO'));
 
@@ -30,7 +32,7 @@
 
     let formDate = $state(new Date().toISOString().slice(0, 10));
     let formFees = $state('');
-    let formBroker = $state('');
+    let formAccountId = $state(0);
     let formNotes = $state('');
     let formSubmitting = $state(false);
     let formError = $state<string | null>(null);
@@ -38,7 +40,7 @@
     const canSubmit = $derived(
         sellListingId > 0 && sellQuantity !== '' && sellPrice !== '' &&
         buyListingId > 0 && buyQuantity !== '' && buyPrice !== '' &&
-        formDate !== '' && !formSubmitting
+        formAccountId > 0 && formDate !== '' && !formSubmitting
     );
 
     const sellValue = $derived(
@@ -124,7 +126,7 @@
                 buyPrice: Number(buyPrice),
                 date: formDate,
                 fees: formFees !== '' ? Number(formFees) : undefined,
-                broker: formBroker || undefined,
+                accountId: formAccountId,
                 notes: formNotes || undefined,
             },
         });
@@ -225,8 +227,8 @@
     </fieldset>
 
     <fieldset class="fieldset">
-        <legend class="fieldset-legend">Broker <span class="text-base-content/40 font-normal">(optional)</span></legend>
-        <input class="input w-full" type="text" placeholder="e.g. Coinbase" bind:value={formBroker} />
+        <legend class="fieldset-legend">Account</legend>
+        <AccountAutocomplete {accounts} bind:value={formAccountId} />
     </fieldset>
 
     <fieldset class="fieldset">
