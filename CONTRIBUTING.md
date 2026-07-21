@@ -23,6 +23,7 @@
     * [All tests + checks](#all-tests--checks)
   * [Code generation](#code-generation)
   * [Workflow](#workflow)
+  * [Branching & CI/CD](#branching--cicd)
   * [Available tasks](#available-tasks)
 <!-- TOC -->
 
@@ -167,6 +168,23 @@ IntelliJ will pick up the generated source root automatically after a Gradle syn
 3. Implement: domain class → repository → controller
 4. Add Flyway migrations for schema changes (`backend/src/main/resources/db/migration/`)
 5. Write tests
+
+## Branching & CI/CD
+
+This project aims to follow [minimumcd.org](https://minimumcd.org)'s minimum viable practices for trunk-based development and continuous integration. Honest status as of this writing:
+
+**Trunk-based development — followed.** All work integrates directly to `main`. When a branch is used, it's short-lived: branched from `main`, merged back, then deleted. There are no long-lived feature branches.
+
+**Continuous integration — mostly followed, one known gap.**
+- CI (`.github/workflows/ci.yml`) runs on every push and PR: backend build + tests, frontend build, Helm lint, and E2E tests against a real Postgres instance.
+- **Gap:** `main` has no branch protection configured, so a red pipeline doesn't actually block anything — "test before merge" and "stop the line on red" are conventions we're relying on, not enforced. Enabling required status checks on `main` would close this gap.
+- Integration is close to daily but not strictly enforced;
+
+**Continuous delivery — intentionally not "continuous."** simpletickr doesn't own a production environment to deploy to; it ships as versioned Docker images and a Helm chart for self-hosters to deploy themselves. Given that, full CD (pipeline auto-deploying to prod) doesn't apply. Instead:
+- `.github/workflows/release.yml` is manually triggered (`workflow_dispatch`) to bump a version, build immutable version-tagged Docker images and a Helm chart, and cut a GitHub release.
+- Released artifacts are immutable — no changes after build.
+- Application config ships with the Helm chart (`values.yaml`), not baked into the image.
+- The release workflow does not currently check that the tagged commit's CI run passed before publishing — worth tightening if this becomes a multi-contributor project.
 
 ## Available tasks
 
