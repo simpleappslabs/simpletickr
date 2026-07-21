@@ -395,6 +395,32 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
 
+  /portfolios/{id}/valuation-summary:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+    get:
+      tags: [Portfolios]
+      operationId: getPortfolioValuationSummary
+      summary: Get portfolio-level market value and unrealized gain, excluding holdings with unavailable prices
+      responses:
+        "200":
+          description: Valuation summary for the portfolio
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PortfolioValuationSummary"
+        "404":
+          description: Portfolio not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
   /portfolios/{id}/value-history:
     parameters:
       - name: id
@@ -2242,16 +2268,17 @@ components:
           type: number
           format: double
           nullable: true
-          description: FX-normalized weighted average cost per unit. Null when any listing lacks an FX rate.
+          description: FX-normalized weighted average cost per unit. Null only when every listing lacks an FX rate.
         totalCostBase:
           type: number
           format: double
           nullable: true
-          description: FX-normalized total cost. Null when any listing lacks an FX rate.
+          description: FX-normalized total cost, summing whichever listings have an FX rate. Null only when every listing lacks one.
         marketValueBase:
           type: number
           format: double
           nullable: true
+          description: Summed across whichever listings have a price. Null only when no listing has one.
         unrealizedPnlBase:
           type: number
           format: double
@@ -2264,6 +2291,40 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ListingHolding"
+
+    PortfolioValuationSummary:
+      type: object
+      description: Portfolio-level market value and unrealized gain, in baseCurrency. Explicitly reports which holdings were excluded rather than leaving consumers to infer it from a null.
+      required:
+        - totalCostBase
+        - excludedHoldingCount
+        - excludedHoldingNames
+      properties:
+        totalCostBase:
+          type: number
+          format: double
+          description: Always fully known — cost basis doesn't require current market price data.
+        totalMarketValueBase:
+          type: number
+          format: double
+          nullable: true
+          description: Summed across whichever holdings have a price. Null only if no holding in the portfolio has one.
+        totalUnrealizedPnlBase:
+          type: number
+          format: double
+          nullable: true
+        totalUnrealizedPnlPct:
+          type: number
+          format: double
+          nullable: true
+          description: Computed against the full totalCostBase, including excluded holdings — a deliberately conservative (not inflated) percentage.
+        excludedHoldingCount:
+          type: integer
+        excludedHoldingNames:
+          type: array
+          items:
+            type: string
+          description: Asset names excluded from totalMarketValueBase/totalUnrealizedPnl* because no listing of that asset has a price.
 
     ListingHolding:
       type: object

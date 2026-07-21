@@ -2,8 +2,8 @@
     import {onMount} from 'svelte';
     import {page} from '$app/state';
     import {goto} from '$app/navigation';
-    import {getPortfolio, getHoldings, listAssets, listTransactions, listTransfersForPortfolio, deletePortfolio, syncPortfolioPrices, listAccounts} from '$lib/api/sdk.gen';
-    import type {Account, Asset, Holding, Portfolio, Transaction, TransactionPage, Transfer} from '$lib/api/types.gen';
+    import {getPortfolio, getHoldings, getPortfolioValuationSummary, listAssets, listTransactions, listTransfersForPortfolio, deletePortfolio, syncPortfolioPrices, listAccounts} from '$lib/api/sdk.gen';
+    import type {Account, Asset, Holding, Portfolio, PortfolioValuationSummary, Transaction, TransactionPage, Transfer} from '$lib/api/types.gen';
     import PortfolioSummary from './components/PortfolioSummary.svelte';
     import PortfolioChart from './components/PortfolioChart.svelte';
     import HoldingsTable from './components/HoldingsTable.svelte';
@@ -18,6 +18,7 @@
 
     let portfolio = $state<Portfolio | null>(null);
     let holdings = $state<Holding[]>([]);
+    let valuationSummary = $state<PortfolioValuationSummary | null>(null);
     let transactions = $state<Transaction[]>([]);
     let transfers = $state<Transfer[]>([]);
     let assets = $state<Asset[]>([]);
@@ -66,12 +67,14 @@
 
     async function refreshData() {
         if (!portfolio) return;
-        const [holdingsRes, transactionsRes, transfersRes] = await Promise.all([
+        const [holdingsRes, summaryRes, transactionsRes, transfersRes] = await Promise.all([
             getHoldings({path: {id: portfolio.id}}),
+            getPortfolioValuationSummary({path: {id: portfolio.id}}),
             listTransactions({query: {portfolioId: portfolio.id, page: 0, size: 20}}),
             listTransfersForPortfolio({path: {portfolioId: portfolio.id}}),
         ]);
         holdings = holdingsRes.data ?? [];
+        valuationSummary = summaryRes.data ?? null;
         transactions = transactionsRes.data?.items ?? [];
         transfers = transfersRes.data ?? [];
     }
@@ -92,9 +95,10 @@
     onMount(async () => {
         const id = Number(page.params.id);
 
-        const [portfolioRes, holdingsRes, assetsRes, transactionsRes, transfersRes] = await Promise.all([
+        const [portfolioRes, holdingsRes, summaryRes, assetsRes, transactionsRes, transfersRes] = await Promise.all([
             getPortfolio({path: {id}}),
             getHoldings({path: {id}}),
+            getPortfolioValuationSummary({path: {id}}),
             listAssets(),
             listTransactions({query: {portfolioId: id, page: 0, size: 20}}),
             listTransfersForPortfolio({path: {portfolioId: id}}),
@@ -108,6 +112,7 @@
 
         portfolio = portfolioRes.data ?? null;
         holdings = holdingsRes.data ?? [];
+        valuationSummary = summaryRes.data ?? null;
         assets = assetsRes.data ?? [];
         transactions = transactionsRes.data?.items ?? [];
         transfers = transfersRes.data ?? [];
@@ -176,10 +181,10 @@
         <div class="alert alert-error"><span>{error}</span></div>
     {:else}
         <section class="space-y-3">
-            <PortfolioSummary {holdings} {lastSyncAt} />
+            <PortfolioSummary {holdings} summary={valuationSummary} {lastSyncAt} />
         </section>
 
-        <ValueHistoryContainer portfolioId={portfolio!.id} refreshKey={valueHistoryKey} />
+        <ValueHistoryContainer portfolioId={portfolio!.id} refreshKey={valueHistoryKey} summary={valuationSummary} />
 
         {#if holdings.length === 0}
             <p class="text-base-content/40 italic text-sm">No holdings yet. Record a transaction to get started.</p>

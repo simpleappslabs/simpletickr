@@ -1,9 +1,13 @@
 <script lang="ts">
     import { getPortfolioValueHistory } from '$lib/api/sdk.gen';
-    import type { PortfolioValuePoint } from '$lib/api/types.gen';
+    import type { PortfolioValuationSummary, PortfolioValuePoint } from '$lib/api/types.gen';
     import ValueHistoryChart from '$lib/portfolio/ValueHistoryChart.svelte';
 
-    let { portfolioId, refreshKey = 0 }: { portfolioId: number; refreshKey?: number } = $props();
+    let { portfolioId, refreshKey = 0, summary = null }: {
+        portfolioId: number;
+        refreshKey?: number;
+        summary?: PortfolioValuationSummary | null;
+    } = $props();
 
     type Range = '1M' | '3M' | '6M' | '1Y' | 'All';
     const RANGES: Range[] = ['1M', '3M', '6M', '1Y', 'All'];
@@ -71,5 +75,12 @@
         <div class="alert alert-error py-2"><span>{error}</span></div>
     {:else}
         <ValueHistoryChart {points} {baseCurrency} />
+        {#if summary && summary.excludedHoldingCount > 0}
+            <p class="text-xs text-base-content/50">
+                Portfolio totals exclude {summary.excludedHoldingCount}
+                holding{summary.excludedHoldingCount === 1 ? '' : 's'} with unavailable market prices
+                ({summary.excludedHoldingNames.join(', ')}).
+            </p>
+        {/if}
     {/if}
 </div>

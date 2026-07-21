@@ -1,23 +1,13 @@
 <script lang="ts">
-    import type { Holding } from '$lib/api/types.gen';
+    import type { Holding, PortfolioValuationSummary } from '$lib/api/types.gen';
 
-    let { holdings, lastSyncAt = null }: { holdings: Holding[]; lastSyncAt?: Date | null } = $props();
+    let { holdings, summary, lastSyncAt = null }: {
+        holdings: Holding[];
+        summary: PortfolioValuationSummary | null;
+        lastSyncAt?: Date | null;
+    } = $props();
 
     const ccy = $derived(holdings[0]?.baseCurrency ?? '');
-    const totalCost = $derived(holdings.reduce((sum, h) => sum + (h.totalCostBase ?? 0), 0));
-    const totalMarketValue = $derived(
-        holdings.length > 0 && holdings.every((h) => h.marketValueBase != null)
-            ? holdings.reduce((sum, h) => sum + (h.marketValueBase ?? 0), 0)
-            : null
-    );
-    const totalGain = $derived(
-        holdings.length > 0 && holdings.every((h) => h.unrealizedPnlBase != null)
-            ? holdings.reduce((sum, h) => sum + (h.unrealizedPnlBase ?? 0), 0)
-            : null
-    );
-    const totalGainPct = $derived(
-        totalGain != null && totalCost > 0 ? (totalGain / totalCost) * 100 : null
-    );
 
     function fmt(n: number) {
         return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -36,21 +26,21 @@
 <div class="stats stats-vertical sm:stats-horizontal bg-base-200 w-full">
     <div class="stat">
         <div class="stat-title">Total cost</div>
-        <div class="stat-value text-xl">{fmt(totalCost)} {ccy}</div>
+        <div class="stat-value text-xl">{summary ? `${fmt(summary.totalCostBase)} ${ccy}` : '—'}</div>
     </div>
     <div class="stat">
         <div class="stat-title">Market value</div>
         <div class="stat-value text-xl">
-            {totalMarketValue == null ? '—' : `${fmt(totalMarketValue)} ${ccy}`}
+            {summary?.totalMarketValueBase == null ? '—' : `${fmt(summary.totalMarketValueBase)} ${ccy}`}
         </div>
     </div>
     <div class="stat">
         <div class="stat-title">Unrealized gain</div>
-        <div class="stat-value text-xl {totalGain == null ? '' : totalGain >= 0 ? 'text-success' : 'text-error'}">
-            {totalGain == null ? '—' : `${totalGain >= 0 ? '+' : ''}${fmt(totalGain)} ${ccy}`}
-            {#if totalGainPct != null}
-                <span class="stat-desc" class:text-success={totalGain != null && totalGain >= 0} class:text-error={totalGain != null && totalGain < 0}>
-                    ({totalGainPct >= 0 ? '+' : ''}{fmt(totalGainPct)}%)
+        <div class="stat-value text-xl {summary?.totalUnrealizedPnlBase == null ? '' : summary.totalUnrealizedPnlBase >= 0 ? 'text-success' : 'text-error'}">
+            {summary?.totalUnrealizedPnlBase == null ? '—' : `${summary.totalUnrealizedPnlBase >= 0 ? '+' : ''}${fmt(summary.totalUnrealizedPnlBase)} ${ccy}`}
+            {#if summary?.totalUnrealizedPnlPct != null}
+                <span class="stat-desc" class:text-success={summary.totalUnrealizedPnlPct >= 0} class:text-error={summary.totalUnrealizedPnlPct < 0}>
+                    ({summary.totalUnrealizedPnlPct >= 0 ? '+' : ''}{fmt(summary.totalUnrealizedPnlPct)}%)
                 </span>
             {/if}
         </div>
@@ -63,3 +53,11 @@
         {/if}
     </div>
 </div>
+
+{#if summary && summary.excludedHoldingCount > 0}
+    <p class="text-xs text-base-content/50 mt-1">
+        Portfolio totals exclude {summary.excludedHoldingCount}
+        holding{summary.excludedHoldingCount === 1 ? '' : 's'} with unavailable market prices
+        ({summary.excludedHoldingNames.join(', ')}).
+    </p>
+{/if}

@@ -245,6 +245,29 @@ class PortfolioValueHistoryRepositoryTest {
     }
 
     @Test
+    fun `findValueHistory sums only the priced listing when another listing has no price history`() {
+        // Two holdings in the same portfolio: TST is priced, TST2 never gets any price data at
+        // all (e.g. no provider mapping) — total_value should reflect only TST's contribution,
+        // not null out the whole day.
+        val asset2 = assetRepository.save(null, "Unpriced Asset", AssetType.STOCK)
+        val unpricedListingId = listingRepository.save(asset2.id, null, "TST2", eur).id
+
+        insertTransaction(listingId = eurListingId, quantity = BigDecimal("10"), price = BigDecimal("100.00"), date = LocalDate.of(2024, 1, 1))
+        insertTransaction(listingId = unpricedListingId, quantity = BigDecimal("5"), price = BigDecimal("50.00"), date = LocalDate.of(2024, 1, 1))
+        priceRepository.upsert(eurListingId, listOf(PricePoint(LocalDate.of(2024, 1, 1), BigDecimal("100.00"))))
+        // No price history seeded for unpricedListingId
+
+        val result = repository.findValueHistory(portfolioId, eur, LocalDate.of(2024, 1, 1), LocalDate.of(2024, 1, 1))
+
+        assertEquals(1, result.size)
+        assertNotNull(result[0].value)
+        // value = 10 x 100 (TST) only; the unpriced TST2 position is excluded, not nulling the total
+        assertEquals(0, BigDecimal("1000.00").compareTo(result[0].value))
+        // invested is unaffected — it doesn't depend on price data
+        assertEquals(0, BigDecimal("1250.00").compareTo(result[0].invested))
+    }
+
+    @Test
     fun `findValueHistory returns null value when FX rate is missing for non-base-currency holding`() {
         val asset = assetRepository.save(null, "US Asset", AssetType.STOCK)
         val usdListingId = listingRepository.save(asset.id, null, "USD_STK2", usd).id

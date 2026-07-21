@@ -1,8 +1,10 @@
 package com.simpletickr.portfolio
 
 import com.simpletickr.fx.persistence.FxRateRepository
+import com.simpletickr.portfolio.model.AssetHolding
 import com.simpletickr.portfolio.model.Holding
 import com.simpletickr.portfolio.model.HoldingWithValuation
+import com.simpletickr.portfolio.model.PortfolioValuationSummary
 import com.simpletickr.price.persistence.AssetPriceHistoryRepository
 import com.simpletickr.settings.UserSettingsRepository
 import com.simpletickr.shared.CurrencyCode
@@ -24,6 +26,17 @@ class ValuationService(
             valuate(holding, baseCurrency)
         }
     }
+
+    // One AssetHolding per asset — multiple listings of the same asset (e.g. cross-listed on two
+    // exchanges) are rolled up together, with a partial sum rather than an all-or-nothing null
+    // when some listings lack price/FX data (see PortfolioValuationCalculator).
+    fun getAssetHoldings(portfolioId: Long): List<AssetHolding> {
+        val baseCurrency = userSettingsRepository.find().baseCurrency
+        return PortfolioValuationCalculator.rollUpByAsset(getHoldingsWithValuation(portfolioId), baseCurrency)
+    }
+
+    fun getValuationSummary(portfolioId: Long): PortfolioValuationSummary =
+        PortfolioValuationCalculator.summarize(getAssetHoldings(portfolioId))
 
     private fun valuate(holding: Holding, baseCurrency: CurrencyCode): HoldingWithValuation {
         val latestPrice = priceHistoryRepository.findLatestByListingId(holding.listingId)?.price

@@ -3,10 +3,13 @@ package com.simpletickr.portfolio
 import com.simpletickr.asset.persistence.AssetRepository
 import com.simpletickr.price.usecase.BackfillPortfolioPricesUseCase
 import com.simpletickr.price.usecase.SyncResult
+import com.simpletickr.settings.UserSettings
 import com.simpletickr.settings.UserSettingsRepository
 import com.simpletickr.shared.CurrencyCode
+import com.simpletickr.portfolio.model.AssetHolding
 import com.simpletickr.portfolio.model.HoldingWithValuation
 import com.simpletickr.portfolio.model.Portfolio
+import com.simpletickr.portfolio.model.PortfolioValuationSummary
 import com.simpletickr.portfolio.model.PortfolioValuePoint
 import com.simpletickr.portfolio.persistence.PortfolioRepository
 import java.util.UUID
@@ -163,6 +166,59 @@ class PortfolioControllerTest {
         whenever(portfolioRepository.findById(99L)).thenReturn(null)
 
         mockMvc.perform(get("/portfolios/99/holdings"))
+            .andExpect(status().isNotFound)
+    }
+
+    @Test
+    fun `GET holdings returns 200 with asset-rolled-up holdings`() {
+        whenever(portfolioRepository.findById(1L)).thenReturn(Portfolio(1L, UUID(0, 1), "My Portfolio"))
+        whenever(userSettingsRepository.find()).thenReturn(UserSettings(CurrencyCode("EUR")))
+        whenever(valuationService.getAssetHoldings(1L)).thenReturn(listOf(
+            AssetHolding(
+                assetId = 5L, assetName = "Request Network",
+                totalQuantity = BigDecimal("91"), avgCostBasisBase = BigDecimal("0.70"),
+                totalCostBase = BigDecimal("63.70"), marketValueBase = null,
+                unrealizedPnlBase = null, unrealizedPnlPct = null,
+                listings = emptyList(),
+            )
+        ))
+
+        mockMvc.perform(get("/portfolios/1/holdings"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.length()").value(1))
+            .andExpect(jsonPath("$[0].assetName").value("Request Network"))
+            .andExpect(jsonPath("$[0].baseCurrency").value("EUR"))
+            .andExpect(jsonPath("$[0].totalCostBase").value(63.70))
+            .andExpect(jsonPath("$[0].marketValueBase").doesNotExist())
+    }
+
+    @Test
+    fun `GET valuation-summary returns 200 with excluded holdings reported explicitly`() {
+        whenever(portfolioRepository.findById(1L)).thenReturn(Portfolio(1L, UUID(0, 1), "My Portfolio"))
+        whenever(valuationService.getValuationSummary(1L)).thenReturn(
+            PortfolioValuationSummary(
+                totalCostBase = BigDecimal("1500"),
+                totalMarketValueBase = BigDecimal("1200"),
+                totalUnrealizedPnlBase = BigDecimal("-300"),
+                totalUnrealizedPnlPct = BigDecimal("-20"),
+                excludedHoldingCount = 1,
+                excludedHoldingNames = listOf("Request Network"),
+            )
+        )
+
+        mockMvc.perform(get("/portfolios/1/valuation-summary"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.totalCostBase").value(1500.0))
+            .andExpect(jsonPath("$.totalMarketValueBase").value(1200.0))
+            .andExpect(jsonPath("$.excludedHoldingCount").value(1))
+            .andExpect(jsonPath("$.excludedHoldingNames[0]").value("Request Network"))
+    }
+
+    @Test
+    fun `GET valuation-summary returns 404 when portfolio not found`() {
+        whenever(portfolioRepository.findById(99L)).thenReturn(null)
+
+        mockMvc.perform(get("/portfolios/99/valuation-summary"))
             .andExpect(status().isNotFound)
     }
 

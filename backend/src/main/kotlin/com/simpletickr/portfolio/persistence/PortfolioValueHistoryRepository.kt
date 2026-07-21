@@ -167,15 +167,12 @@ class PortfolioValueHistoryRepository(private val jdbcTemplate: JdbcTemplate) {
             )
             SELECT
                 ds.d AS date,
-                CASE
-                    -- No open positions on this date
-                    WHEN COUNT(fx.date) = 0 THEN NULL
-                    -- Strict null propagation: if any holding lacks a price or FX rate, return NULL
-                    -- rather than a partial sum that would silently understate the portfolio value.
-                    WHEN bool_and(fx.close_price IS NOT NULL AND fx.fx_rate IS NOT NULL)
-                        THEN SUM(fx.net_qty * fx.close_price / fx.fx_rate)
-                    ELSE NULL
-                END AS total_value,
+                -- Partial sum: holdings missing a price or FX rate on this date are excluded from
+                -- the total rather than nulling out the whole day. SUM(...) FILTER(...) already
+                -- returns NULL when zero rows match (whether because there are no open positions
+                -- at all, or because none of them are priced) — no separate CASE needed for that.
+                SUM(fx.net_qty * fx.close_price / fx.fx_rate)
+                    FILTER (WHERE fx.close_price IS NOT NULL AND fx.fx_rate IS NOT NULL) AS total_value,
                 -- Invested only changes on transaction dates; forward-fill it to every calendar day.
                 (SELECT ci.invested
                  FROM cumulative_invested ci
