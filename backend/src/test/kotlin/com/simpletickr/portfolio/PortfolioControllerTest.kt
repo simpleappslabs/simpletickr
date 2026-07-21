@@ -11,6 +11,7 @@ import com.simpletickr.portfolio.model.PortfolioValuePoint
 import com.simpletickr.portfolio.persistence.PortfolioRepository
 import java.util.UUID
 import com.simpletickr.transaction.persistence.TransactionRepository
+import com.simpletickr.transfer.TransferRepository
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
 import org.mockito.kotlin.eq
@@ -43,6 +44,9 @@ class PortfolioControllerTest {
 
     @MockitoBean
     private lateinit var transactionRepository: TransactionRepository
+
+    @MockitoBean
+    private lateinit var transferRepository: TransferRepository
 
     @MockitoBean
     private lateinit var assetRepository: AssetRepository

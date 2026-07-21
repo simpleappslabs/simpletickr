@@ -1,19 +1,18 @@
 <script lang="ts">
     import { recordTransfer } from '$lib/api/sdk.gen';
-    import type { Account, Asset, Portfolio } from '$lib/api/types.gen';
+    import type { Account, Asset } from '$lib/api/types.gen';
     import AssetAutocomplete from '$lib/AssetAutocomplete.svelte';
     import AccountAutocomplete from '$lib/AccountAutocomplete.svelte';
 
     interface Props {
         assets: Asset[];
         accounts: Account[];
-        portfolios: Portfolio[];
         portfolioId: number;
         onSuccess: () => void;
         onCancel: () => void;
     }
 
-    const { assets, accounts, portfolios, portfolioId, onSuccess, onCancel }: Props = $props();
+    const { assets, accounts, portfolioId, onSuccess, onCancel }: Props = $props();
 
     let listingId = $state(0);
     let quantity = $state('');
@@ -21,22 +20,20 @@
     let formDate = $state(new Date().toISOString().slice(0, 10));
     let sourceAccountId = $state(0);
     let destinationAccountId = $state(0);
-    let destinationPortfolioId = $state(portfolioId);
     let formNotes = $state('');
     let formSubmitting = $state(false);
     let formError = $state<string | null>(null);
 
     const destinationAccounts = $derived(accounts.filter(a => a.id !== sourceAccountId));
 
-    const receivedQuantity = $derived(
-        quantity !== '' ? Number(quantity) - (assetFeeQuantity !== '' ? Number(assetFeeQuantity) : 0) : null
+    const feeValid = $derived(
+        assetFeeQuantity === '' || (quantity !== '' && Number(assetFeeQuantity) < Number(quantity))
     );
 
     const canSubmit = $derived(
         listingId > 0 && quantity !== '' && formDate !== '' &&
         sourceAccountId > 0 && destinationAccountId > 0 && sourceAccountId !== destinationAccountId &&
-        destinationPortfolioId > 0 &&
-        (receivedQuantity == null || receivedQuantity > 0) &&
+        feeValid &&
         !formSubmitting
     );
 
@@ -53,7 +50,6 @@
                 date: formDate,
                 sourceAccountId,
                 destinationAccountId,
-                destinationPortfolioId,
                 notes: formNotes || undefined,
             },
         });
@@ -69,7 +65,7 @@
 
 <form class="space-y-4" onsubmit={submit}>
     <div class="alert text-xs py-2">
-        <span>Transfers preserve cost basis using current average cost. If you use FIFO reporting, transferred assets may not retain their original acquisition lots.</span>
+        <span>Transfers move an asset between accounts within this portfolio. No price is recorded — cost basis is derived automatically from your existing purchase history.</span>
     </div>
 
     <fieldset class="fieldset">
@@ -99,7 +95,7 @@
         <legend class="fieldset-legend">Fee <span class="text-base-content/40 font-normal">(in same asset, optional)</span></legend>
         <input class="input w-full" type="number" min="0" step="any" placeholder="0.00" bind:value={assetFeeQuantity} />
         <p class="text-xs text-base-content/50 mt-1">
-            E.g. crypto gas, deducted from the quantity received. Cash/fiat transfer fees are not supported.
+            E.g. crypto gas — this amount is lost, not received anywhere. Cash/fiat transfer fees are not supported.
         </p>
     </fieldset>
 
@@ -114,27 +110,9 @@
     </fieldset>
 
     <fieldset class="fieldset">
-        <legend class="fieldset-legend">To portfolio</legend>
-        <select class="select w-full" bind:value={destinationPortfolioId}>
-            {#each portfolios as p (p.id)}
-                <option value={p.id}>{p.name}{p.id === portfolioId ? ' (this portfolio)' : ''}</option>
-            {/each}
-        </select>
-    </fieldset>
-
-    <fieldset class="fieldset">
         <legend class="fieldset-legend">Notes <span class="text-base-content/40 font-normal">(optional)</span></legend>
         <textarea class="textarea w-full" rows="2" placeholder="Any context" bind:value={formNotes}></textarea>
     </fieldset>
-
-    {#if receivedQuantity != null}
-        <div class="bg-base-200 rounded-box p-4 text-sm flex justify-between">
-            <span class="text-base-content/60">Received at destination</span>
-            <span class="font-mono {receivedQuantity <= 0 ? 'text-error' : ''}">
-                {receivedQuantity}
-            </span>
-        </div>
-    {/if}
 
     {#if formError}
         <div class="alert alert-error text-sm"><span>{formError}</span></div>

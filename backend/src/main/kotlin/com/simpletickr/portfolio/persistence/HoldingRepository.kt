@@ -29,8 +29,10 @@ class HoldingRepository(private val jdbcTemplate: JdbcTemplate) {
 
     // Returns raw transaction rows with listing/asset context. No aggregation.
     // Ordered for deterministic service-side processing.
-    fun findTransactionRows(portfolioId: Long): List<TransactionRow> =
-        jdbcTemplate.query("""
+    fun findTransactionRows(portfolioId: Long, asOf: LocalDate? = null): List<TransactionRow> {
+        val dateClause = if (asOf != null) "AND t.date <= ?" else ""
+        val params = if (asOf != null) arrayOf<Any>(portfolioId, asOf) else arrayOf<Any>(portfolioId)
+        return jdbcTemplate.query("""
             SELECT
                 t.id          AS transaction_id,
                 a.id          AS asset_id,
@@ -48,7 +50,7 @@ class HoldingRepository(private val jdbcTemplate: JdbcTemplate) {
             FROM transactions t
             JOIN listings l ON l.id = t.listing_id
             JOIN assets a ON a.id = l.asset_id
-            WHERE t.portfolio_id = ?
+            WHERE t.portfolio_id = ? $dateClause
             ORDER BY a.id ASC, l.id ASC, t.date ASC, t.id ASC
         """.trimIndent(), { rs, _ ->
             TransactionRow(
@@ -66,5 +68,38 @@ class HoldingRepository(private val jdbcTemplate: JdbcTemplate) {
                 fxRate = rs.getBigDecimal("fx_rate"),
                 date = rs.getDate("date").toLocalDate(),
             )
-        }, portfolioId)
+        }, *params)
+    }
+
+    data class TransferFeeRow(
+        val listingId: Long,
+        val assetId: Long,
+        val date: LocalDate,
+        val feeQuantity: BigDecimal,
+    )
+
+    // Raw SQL directly against `transfers` — deliberately not routed through transfer.TransferRepository,
+    // to keep the portfolio -> transfer dependency one-directional (RecordTransferUseCase already
+    // depends on HoldingService; the reverse would create a package cycle).
+    fun findTransferFeeRows(portfolioId: Long, asOf: LocalDate? = null): List<TransferFeeRow> {
+        val dateClause = if (asOf != null) "AND tr.date <= ?" else ""
+        val params = if (asOf != null) arrayOf<Any>(portfolioId, asOf) else arrayOf<Any>(portfolioId)
+        return jdbcTemplate.query("""
+            SELECT tr.listing_id, l.asset_id, tr.date, tr.asset_fee_quantity
+            FROM transfers tr
+            JOIN listings l ON l.id = tr.listing_id
+            WHERE tr.portfolio_id = ?
+              AND tr.asset_fee_quantity IS NOT NULL
+              AND tr.asset_fee_quantity > 0
+              $dateClause
+            ORDER BY l.id ASC, tr.date ASC, tr.id ASC
+        """.trimIndent(), { rs, _ ->
+            TransferFeeRow(
+                listingId = rs.getLong("listing_id"),
+                assetId = rs.getLong("asset_id"),
+                date = rs.getDate("date").toLocalDate(),
+                feeQuantity = rs.getBigDecimal("asset_fee_quantity"),
+            )
+        }, *params)
+    }
 }

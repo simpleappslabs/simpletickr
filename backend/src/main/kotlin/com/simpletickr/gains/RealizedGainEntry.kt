@@ -18,4 +18,7 @@ data class RealizedGainEntry(
     // Non-null when this sell was one leg of a crypto-to-crypto swap.
     val tradeId: Long? = null,
     val receivedTicker: String? = null,
+    // Which acquisition lot(s) generated this gain — FIFO only. Average-cost has no discrete
+    // lots (a single blended pool per asset), so this is always empty for AVCO entries.
+    val lots: List<RealizedGainLot> = emptyList(),
 )

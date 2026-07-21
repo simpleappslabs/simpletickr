@@ -7,6 +7,7 @@ import com.simpletickr.transaction.model.TransactionType
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.mock
+import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import java.math.BigDecimal
 import java.time.LocalDate
@@ -136,48 +137,34 @@ class HoldingServiceTest {
         assertEquals(1, holdings.size)
     }
 
+    private fun feeRow(listingId: Long, assetId: Long, date: LocalDate, feeQty: String) =
+        HoldingRepository.TransferFeeRow(listingId = listingId, assetId = assetId, date = date, feeQuantity = BigDecimal(feeQty))
+
     @Test
-    fun `TRANSFER_OUT reduces quantity like a SELL`() {
+    fun `transfer fee reduces quantity but not average cost - a transfer moves custody, not inventory`() {
         val rows = listOf(
             row(1, TransactionType.BUY, "10", "100", LocalDate.of(2024, 1, 1)),
-            row(2, TransactionType.TRANSFER_OUT, "4", "100", LocalDate.of(2024, 3, 1)),
         )
         whenever(repo.findTransactionRows(1L)).thenReturn(rows)
+        whenever(repo.findTransferFeeRows(1L)).thenReturn(listOf(feeRow(1L, 1L, LocalDate.of(2024, 3, 1), "0.5")))
 
         val holdings = service.getHoldings(1L)
 
         assertEquals(1, holdings.size)
-        assertBd("6", holdings[0].quantity)
+        assertBd("9.5", holdings[0].quantity)
+        assertBd("100", holdings[0].avgCostLocal)
     }
 
     @Test
-    fun `TRANSFER_IN increases quantity and contributes its frozen price to WAC, like a BUY`() {
-        // Destination account/portfolio only sees the TRANSFER_IN leg with its frozen per-unit basis.
-        val rows = listOf(
-            row(1, TransactionType.TRANSFER_IN, "0.5", "30000", LocalDate.of(2024, 3, 1)),
-        )
-        whenever(repo.findTransactionRows(1L)).thenReturn(rows)
+    fun `asOf is forwarded to the repository for both transactions and transfer fees`() {
+        val asOf = LocalDate.of(2024, 3, 1)
+        whenever(repo.findTransactionRows(1L, asOf)).thenReturn(emptyList())
+        whenever(repo.findTransferFeeRows(1L, asOf)).thenReturn(emptyList())
 
-        val holdings = service.getHoldings(1L)
+        service.getHoldings(1L, asOf = asOf)
 
-        assertEquals(1, holdings.size)
-        assertBd("0.5", holdings[0].quantity)
-        assertBd("30000", holdings[0].avgCostLocal)
-    }
-
-    @Test
-    fun `TRANSFER_IN blends into WAC alongside a regular BUY`() {
-        val rows = listOf(
-            row(1, TransactionType.BUY, "1", "10000", LocalDate.of(2024, 1, 1)),
-            row(2, TransactionType.TRANSFER_IN, "1", "50000", LocalDate.of(2024, 3, 1)),
-        )
-        whenever(repo.findTransactionRows(1L)).thenReturn(rows)
-
-        val holdings = service.getHoldings(1L)
-
-        assertEquals(1, holdings.size)
-        assertBd("2", holdings[0].quantity)
-        assertBd("30000", holdings[0].avgCostLocal)
+        verify(repo).findTransactionRows(1L, asOf)
+        verify(repo).findTransferFeeRows(1L, asOf)
     }
 
     private fun assertBd(expected: String, actual: BigDecimal) =

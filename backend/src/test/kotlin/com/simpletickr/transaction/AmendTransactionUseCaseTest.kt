@@ -92,11 +92,4 @@ class AmendTransactionUseCaseTest {
         verify(transactionRepository, never()).update(any())
     }
 
-    @Test
-    fun `execute throws when transaction is part of a transfer`() {
-        whenever(transactionRepository.findById(1L)).thenReturn(existing.copy(transferId = 77L))
-
-        assertThrows<IllegalArgumentException> { useCase.execute(10L, 1L, amendCommand()) }
-        verify(transactionRepository, never()).update(any())
-    }
 }

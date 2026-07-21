@@ -9,8 +9,6 @@ import com.simpletickr.generated.model.CryptoTradeRequest
 import com.simpletickr.generated.model.CryptoTradeResponse
 import com.simpletickr.generated.model.TransactionPage
 import com.simpletickr.generated.model.TransactionRequest
-import com.simpletickr.generated.model.TransferRequest
-import com.simpletickr.generated.model.TransferResponse
 import com.simpletickr.trade.RecordCryptoTradeUseCase
 import com.simpletickr.transaction.model.Transaction
 import com.simpletickr.transaction.model.TransactionType
@@ -19,7 +17,6 @@ import com.simpletickr.transaction.persistence.TransactionRepository
 import com.simpletickr.transaction.usecase.AmendTransactionUseCase
 import com.simpletickr.transaction.usecase.DeleteTransactionUseCase
 import com.simpletickr.transaction.usecase.RecordTransactionUseCase
-import com.simpletickr.transfer.RecordTransferUseCase
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.RestController
 import java.math.BigDecimal
@@ -38,7 +35,6 @@ class TransactionController(
     private val amendTransactionUseCase: AmendTransactionUseCase,
     private val deleteTransactionUseCase: DeleteTransactionUseCase,
     private val recordCryptoTradeUseCase: RecordCryptoTradeUseCase,
-    private val recordTransferUseCase: RecordTransferUseCase,
 ) : TransactionsApi {
 
     override fun listTransactions(
@@ -146,28 +142,6 @@ class TransactionController(
         ))
     }
 
-    override fun recordTransfer(portfolioId: Long, transferRequest: TransferRequest): ResponseEntity<TransferResponse> {
-        val command = RecordTransferCommand(
-            listingId = transferRequest.listingId,
-            quantity = BigDecimal.valueOf(transferRequest.quantity),
-            assetFeeQuantity = transferRequest.assetFeeQuantity?.let { BigDecimal.valueOf(it) },
-            date = transferRequest.date,
-            sourceAccountId = transferRequest.sourceAccountId,
-            destinationAccountId = transferRequest.destinationAccountId,
-            destinationPortfolioId = transferRequest.destinationPortfolioId,
-            notes = transferRequest.notes,
-        )
-        val transfer = recordTransferUseCase.execute(portfolioId, command)
-        val sourceAccount = accountService.getAccount(transfer.sourceLeg.accountId)!!
-        val destinationAccount = accountService.getAccount(transfer.destinationLeg.accountId)!!
-        val accountsById = mapOf(sourceAccount.id to sourceAccount, destinationAccount.id to destinationAccount)
-        return ResponseEntity.status(201).body(TransferResponse(
-            id = transfer.id,
-            source = transfer.sourceLeg.toModel(accountsById),
-            destination = transfer.destinationLeg.toModel(accountsById),
-        ))
-    }
-
     private fun Transaction.toModel(accountsById: Map<Long, Account>) = TransactionModel(
         id = id,
         portfolioId = portfolioId,
@@ -184,8 +158,6 @@ class TransactionController(
         account = accountsById[accountId]!!.toModel(),
         notes = notes,
         tradeId = tradeId,
-        transferId = transferId,
-        assetFeeQuantity = assetFeeQuantity?.toDouble(),
     )
 
     private fun Account.toModel() = AccountModel(

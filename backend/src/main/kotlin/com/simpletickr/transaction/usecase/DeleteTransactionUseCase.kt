@@ -3,7 +3,6 @@ package com.simpletickr.transaction.usecase
 import com.simpletickr.trade.CryptoTradeRepository
 import com.simpletickr.transaction.model.Transaction
 import com.simpletickr.transaction.persistence.TransactionRepository
-import com.simpletickr.transfer.TransferRepository
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 
@@ -11,7 +10,6 @@ import org.springframework.stereotype.Service
 class DeleteTransactionUseCase(
     private val transactionRepository: TransactionRepository,
     private val cryptoTradeRepository: CryptoTradeRepository,
-    private val transferRepository: TransferRepository,
 ) {
 
     private val log = LoggerFactory.getLogger(javaClass)
@@ -23,9 +21,6 @@ class DeleteTransactionUseCase(
         if (existing.tradeId != null) {
             log.info("Transaction {} is part of trade {}, deleting entire trade", id, existing.tradeId)
             cryptoTradeRepository.delete(existing.tradeId)
-        } else if (existing.transferId != null) {
-            log.info("Transaction {} is part of transfer {}, deleting both legs", id, existing.transferId)
-            transferRepository.delete(existing.transferId)
         } else {
             transactionRepository.delete(id)
         }

@@ -17,6 +17,14 @@
     let loading = $state(false);
     let error = $state<string | null>(null);
     let notFound = $state(false);
+    let expandedEntries = $state<Set<number>>(new Set());
+
+    function toggleExpand(i: number) {
+        const next = new Set(expandedEntries);
+        if (next.has(i)) next.delete(i);
+        else next.add(i);
+        expandedEntries = next;
+    }
 
     onMount(async () => {
         const res = await getPortfolio({ path: { id: portfolioId } });
@@ -28,6 +36,7 @@
         loading = true;
         error = null;
         report = null;
+        expandedEntries = new Set();
         const res = await getRealizedGains({
             path: { id: portfolioId },
             query: { method, from, to },
@@ -144,6 +153,7 @@
                         <table class="table table-zebra w-full text-sm">
                             <thead>
                                 <tr>
+                                    <th></th>
                                     <th>Date</th>
                                     <th>Ticker</th>
                                     <th>CCY</th>
@@ -156,13 +166,21 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                {#each report.entries as e}
-                                    <tr>
+                                {#each report.entries as e, i}
+                                    <tr
+                                        class={e.lots.length > 0 ? 'cursor-pointer hover' : ''}
+                                        onclick={() => { if (e.lots.length > 0) toggleExpand(i); }}
+                                    >
+                                        <td class="w-6 text-base-content/40">
+                                            {#if e.lots.length > 0}
+                                                {expandedEntries.has(i) ? '▾' : '▸'}
+                                            {/if}
+                                        </td>
                                         <td class="tabular-nums">{e.date}</td>
-                                        <td class="font-mono font-semibold">
+                                        <td class="font-mono font-semibold whitespace-nowrap">
                                             {e.ticker}
                                             {#if e.receivedTicker}
-                                                <span class="badge badge-outline badge-xs ml-1 font-normal normal-case tracking-normal align-middle">↔ {e.receivedTicker}</span>
+                                                <span class="badge badge-outline badge-xs ml-1 whitespace-nowrap font-normal normal-case tracking-normal align-middle">↔ {e.receivedTicker}</span>
                                             {/if}
                                         </td>
                                         <td class="text-xs text-base-content/50">{e.currency}</td>
@@ -175,6 +193,23 @@
                                             {e.gain >= 0 ? '+' : ''}{fmt(e.gain)} {e.currency}
                                         </td>
                                     </tr>
+                                    {#if expandedEntries.has(i) && e.lots.length > 0}
+                                        {#each e.lots as lot}
+                                            <tr class="bg-base-300/30 text-sm">
+                                                <td></td>
+                                                <td class="pl-6 text-base-content/70 tabular-nums" colspan="2">{lot.acquisitionDate}</td>
+                                                <td></td>
+                                                <td class="text-right tabular-nums">
+                                                    {fmt(lot.quantity)} <span class="text-base-content/50">@ {fmt(lot.pricePerUnit)}</span>
+                                                </td>
+                                                <td></td>
+                                                <td class="text-right tabular-nums">{lot.buyFees > 0 ? fmt(lot.buyFees) : '—'}</td>
+                                                <td></td>
+                                                <td class="text-right tabular-nums">{fmt(lot.costBasis)}</td>
+                                                <td></td>
+                                            </tr>
+                                        {/each}
+                                    {/if}
                                 {/each}
                             </tbody>
                         </table>

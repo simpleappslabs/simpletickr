@@ -1,13 +1,30 @@
 package com.simpletickr.transfer
 
-import com.simpletickr.transaction.model.Transaction
+import java.math.BigDecimal
+import java.time.LocalDate
 
-// Moves a quantity of one asset from one account to another, optionally crossing portfolios.
-// Unlike CryptoTrade, source and destination account (and possibly portfolio) always differ,
-// so there's no single "the portfolio" for the transfer itself — each leg carries its own
-// portfolioId/accountId. `in` is a Kotlin keyword, hence sourceLeg/destinationLeg.
+// Moves custody of a quantity of one asset from one account to another, within a single
+// portfolio. It has no price and no cost-basis field: a transfer has no effect on
+// portfolio-level inventory — only its fee (if any) does, since that quantity is genuinely
+// lost. Cost basis is always derived by replaying transactions/transfer fees, never frozen here.
 data class Transfer(
     val id: Long,
-    val sourceLeg: Transaction,
-    val destinationLeg: Transaction,
-)
+    val portfolioId: Long,
+    val listingId: Long,
+    val assetId: Long,
+    val quantity: BigDecimal,
+    val assetFeeQuantity: BigDecimal? = null,
+    val date: LocalDate,
+    val sourceAccountId: Long,
+    val destinationAccountId: Long,
+    val notes: String? = null,
+) {
+    init {
+        require(quantity > BigDecimal.ZERO) { "Quantity must be positive" }
+        require(sourceAccountId != destinationAccountId) { "Source and destination accounts must be different" }
+        assetFeeQuantity?.let {
+            require(it >= BigDecimal.ZERO) { "Asset fee quantity must not be negative" }
+            require(it < quantity) { "Asset fee quantity must be less than quantity" }
+        }
+    }
+}

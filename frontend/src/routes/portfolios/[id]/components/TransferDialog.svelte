@@ -1,13 +1,12 @@
 <script lang="ts">
-    import type { Account, Asset, Portfolio } from '$lib/api/types.gen';
+    import type { Account, Asset } from '$lib/api/types.gen';
     import TransferForm from './TransferForm.svelte';
 
-    let { open, portfolioId, assets, accounts, portfolios, onsuccess, oncancel }: {
+    let { open, portfolioId, assets, accounts, onsuccess, oncancel }: {
         open: boolean;
         portfolioId: number;
         assets: Asset[];
         accounts: Account[];
-        portfolios: Portfolio[];
         onsuccess: () => void;
         oncancel: () => void;
     } = $props();
@@ -22,7 +21,6 @@
             <TransferForm
                 {assets}
                 {accounts}
-                {portfolios}
                 {portfolioId}
                 onSuccess={onsuccess}
                 onCancel={oncancel}

@@ -2,8 +2,8 @@
     import {onMount} from 'svelte';
     import {page} from '$app/state';
     import {goto} from '$app/navigation';
-    import {getPortfolio, getHoldings, listAssets, listTransactions, deletePortfolio, syncPortfolioPrices, listAccounts, listPortfolios} from '$lib/api/sdk.gen';
-    import type {Account, Asset, Holding, Portfolio, Transaction, TransactionPage} from '$lib/api/types.gen';
+    import {getPortfolio, getHoldings, listAssets, listTransactions, listTransfersForPortfolio, deletePortfolio, syncPortfolioPrices, listAccounts} from '$lib/api/sdk.gen';
+    import type {Account, Asset, Holding, Portfolio, Transaction, TransactionPage, Transfer} from '$lib/api/types.gen';
     import PortfolioSummary from './components/PortfolioSummary.svelte';
     import PortfolioChart from './components/PortfolioChart.svelte';
     import HoldingsTable from './components/HoldingsTable.svelte';
@@ -19,9 +19,9 @@
     let portfolio = $state<Portfolio | null>(null);
     let holdings = $state<Holding[]>([]);
     let transactions = $state<Transaction[]>([]);
+    let transfers = $state<Transfer[]>([]);
     let assets = $state<Asset[]>([]);
     let accounts = $state<Account[]>([]);
-    let portfolios = $state<Portfolio[]>([]);
     let loading = $state(true);
     let notFound = $state(false);
     let chartListing = $state<{ id: number; ticker: string; currency: string } | null>(null);
@@ -66,12 +66,14 @@
 
     async function refreshData() {
         if (!portfolio) return;
-        const [holdingsRes, transactionsRes] = await Promise.all([
+        const [holdingsRes, transactionsRes, transfersRes] = await Promise.all([
             getHoldings({path: {id: portfolio.id}}),
             listTransactions({query: {portfolioId: portfolio.id, page: 0, size: 20}}),
+            listTransfersForPortfolio({path: {portfolioId: portfolio.id}}),
         ]);
         holdings = holdingsRes.data ?? [];
         transactions = transactionsRes.data?.items ?? [];
+        transfers = transfersRes.data ?? [];
     }
 
     async function handleDeletePortfolio() {
@@ -90,11 +92,12 @@
     onMount(async () => {
         const id = Number(page.params.id);
 
-        const [portfolioRes, holdingsRes, assetsRes, transactionsRes] = await Promise.all([
+        const [portfolioRes, holdingsRes, assetsRes, transactionsRes, transfersRes] = await Promise.all([
             getPortfolio({path: {id}}),
             getHoldings({path: {id}}),
             listAssets(),
             listTransactions({query: {portfolioId: id, page: 0, size: 20}}),
+            listTransfersForPortfolio({path: {portfolioId: id}}),
         ]);
 
         if (portfolioRes.error) {
@@ -107,11 +110,11 @@
         holdings = holdingsRes.data ?? [];
         assets = assetsRes.data ?? [];
         transactions = transactionsRes.data?.items ?? [];
+        transfers = transfersRes.data ?? [];
         loading = false;
 
-        // Fire-and-forget: accounts/portfolios are needed only when a dialog opens, not on initial render
+        // Fire-and-forget: accounts are needed only when a dialog opens, not on initial render
         listAccounts().then(res => { accounts = res.data ?? []; }).catch(() => {});
-        listPortfolios().then(res => { portfolios = res.data ?? []; }).catch(() => {});
     });
 </script>
 
@@ -196,9 +199,9 @@
             portfolioId={portfolio!.id}
             {assets}
             {accounts}
-            {portfolios}
             {holdings}
             {transactions}
+            {transfers}
             onchange={refreshData}
             bind:createOpen={createTransactionOpen}
             bind:tradeOpen={cryptoTradeOpen}

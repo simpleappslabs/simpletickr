@@ -11,16 +11,48 @@ import java.time.LocalDate
 
 object RealizedGainsCalculator {
 
+    // Transactions and transfer fees are two separate chronological streams that both drive the
+    // same lot/average-cost replay. This makes their merge explicit instead of an ad hoc local sort.
+    sealed interface PortfolioEvent {
+        val date: LocalDate
+    }
+
+    // A transfer moves custody, not portfolio inventory — it never appears here as a whole
+    // event with a price. Only its fee (if any) is a genuine disposal, fed in as one of these.
+    data class TransferFeeEvent(
+        val transferId: Long,
+        val assetId: Long,
+        override val date: LocalDate,
+        val feeQuantity: BigDecimal,
+    ) : PortfolioEvent
+
+    private data class TransactionEvent(val transaction: Transaction) : PortfolioEvent {
+        override val date get() = transaction.date
+    }
+
+    private fun mergeEvents(transactions: List<Transaction>, transferFees: List<TransferFeeEvent>): List<PortfolioEvent> {
+        val events: List<PortfolioEvent> = transactions.map { TransactionEvent(it) } + transferFees
+        // Same-day ties: ordinary transactions before transfer fees (transaction.id / transfer.id
+        // are separate autoincrement sequences from different tables — never compared directly
+        // against each other, only used as a same-kind tiebreak once date/kind already order things).
+        return events.sortedWith(compareBy(
+            { it.date },
+            { when (it) { is TransactionEvent -> 0; is TransferFeeEvent -> 1 } },
+            { when (it) { is TransactionEvent -> it.transaction.id; is TransferFeeEvent -> it.transferId } },
+        ))
+    }
+
     fun compute(
         transactions: List<Transaction>,
+        transferFees: List<TransferFeeEvent>,
         listingMap: Map<Long, Listing>,
         method: RealizationMethod,
         from: LocalDate,
         to: LocalDate,
     ): RealizedGainsReport {
         val entries = when (method) {
-            RealizationMethod.FIFO -> computeFifo(transactions, listingMap, from, to)
-            RealizationMethod.AVERAGE_COST -> computeAverageCost(transactions, listingMap, from, to)
+            RealizationMethod.FIFO -> computeFifo(transactions, transferFees, listingMap, from, to)
+            RealizationMethod.AVERAGE_COST -> computeAverageCost(transactions, transferFees, listingMap, from, to)
         }
         val byCurrency = entries.groupBy { it.currency }.mapValues { (currency, group) ->
             CurrencyTotal(
@@ -47,11 +79,12 @@ object RealizedGainsCalculator {
             .mapNotNull { tx -> tx.tradeId?.let { id -> id to (listingMap[tx.listingId]?.ticker ?: return@mapNotNull null) } }
             .toMap()
 
-    private data class ConsumedLots(val purchaseValue: BigDecimal, val buyFees: BigDecimal)
+    private data class ConsumedLots(val purchaseValue: BigDecimal, val buyFees: BigDecimal, val lots: List<RealizedGainLot>)
 
-    // Pure lot-consumption mechanics — no gain/entry logic. Shared by SELL and TRANSFER_OUT so a
-    // future change to sell-specific semantics (fees, proceeds, gain calc) can't accidentally leak
-    // into transfer handling: TRANSFER_OUT calls this and stops, it never touches the SELL branch.
+    // Pure lot-consumption mechanics — no gain/entry logic. Shared by SELL and transfer-fee
+    // handling so a future change to sell-specific semantics (fees, proceeds, gain calc) can't
+    // accidentally leak into transfer-fee handling: it calls this and stops (the consumed lots
+    // list is simply discarded there — a transfer fee never produces a report entry).
     private fun consumeLotsFifo(
         lots: ArrayDeque<Lot>,
         quantity: BigDecimal,
@@ -59,23 +92,34 @@ object RealizedGainsCalculator {
         var remaining = quantity
         var totalPurchaseValue = BigDecimal.ZERO
         var totalBuyFees = BigDecimal.ZERO
+        val consumedLots = mutableListOf<RealizedGainLot>()
 
         while (remaining > BigDecimal.ZERO && lots.isNotEmpty()) {
             val lot = lots.first()
             val consumed = remaining.min(lot.remaining)
-            totalPurchaseValue += consumed * lot.pricePerUnit
-            totalBuyFees += consumed * lot.feePerUnit
+            val consumedValue = consumed * lot.pricePerUnit
+            val consumedFees = consumed * lot.feePerUnit
+            totalPurchaseValue += consumedValue
+            totalBuyFees += consumedFees
+            consumedLots += RealizedGainLot(
+                acquisitionDate = lot.acquisitionDate,
+                quantity = consumed,
+                pricePerUnit = lot.pricePerUnit,
+                buyFees = consumedFees,
+                costBasis = consumedValue + consumedFees,
+            )
             lot.remaining -= consumed
             remaining -= consumed
             if (lot.remaining.compareTo(BigDecimal.ZERO) == 0) lots.removeFirst()
         }
-        return ConsumedLots(totalPurchaseValue, totalBuyFees)
+        return ConsumedLots(totalPurchaseValue, totalBuyFees, consumedLots)
     }
 
-    private data class Lot(var remaining: BigDecimal, val pricePerUnit: BigDecimal, val feePerUnit: BigDecimal)
+    private data class Lot(var remaining: BigDecimal, val pricePerUnit: BigDecimal, val feePerUnit: BigDecimal, val acquisitionDate: LocalDate)
 
     private fun computeFifo(
         transactions: List<Transaction>,
+        transferFees: List<TransferFeeEvent>,
         listingMap: Map<Long, Listing>,
         from: LocalDate,
         to: LocalDate,
@@ -85,46 +129,53 @@ object RealizedGainsCalculator {
         val lots = mutableMapOf<Long, ArrayDeque<Lot>>()
         val entries = mutableListOf<RealizedGainEntry>()
 
-        for (tx in transactions.sortedWith(compareBy({ it.date }, { it.id }))) {
-            val assetLots = lots.getOrPut(tx.assetId) { ArrayDeque() }
-            val fees = tx.fees ?: BigDecimal.ZERO
+        for (event in mergeEvents(transactions, transferFees)) {
+            when (event) {
+                is TransactionEvent -> {
+                    val tx = event.transaction
+                    val assetLots = lots.getOrPut(tx.assetId) { ArrayDeque() }
+                    val fees = tx.fees ?: BigDecimal.ZERO
 
-            when (tx.type) {
-                TransactionType.BUY, TransactionType.TRANSFER_IN -> {
-                    val adj = SplitAdjuster.adjustmentFor(tx.assetId, tx.date, splitIndex)
-                    val adjQty = tx.quantity * adj.multiplier
-                    val adjPrice = if (adj.multiplier == BigDecimal.ONE) tx.price
-                                   else tx.price.divide(adj.multiplier, 10, RoundingMode.HALF_UP)
-                    val feePerUnit = fees.divide(adjQty, 10, RoundingMode.HALF_UP)
-                    assetLots.addLast(Lot(adjQty, adjPrice, feePerUnit))
-                }
-                TransactionType.SELL -> {
-                    val consumed = consumeLotsFifo(assetLots, tx.quantity)
-                    if (tx.date in from..to) {
-                        val listing = listingMap[tx.listingId] ?: continue
-                        val costBasis = consumed.purchaseValue + consumed.buyFees
-                        val proceeds = tx.quantity * tx.price - fees
-                        entries += RealizedGainEntry(
-                            assetId = tx.assetId,
-                            ticker = listing.ticker,
-                            currency = listing.currency,
-                            date = tx.date,
-                            quantity = tx.quantity,
-                            proceeds = proceeds,
-                            buyFees = consumed.buyFees,
-                            sellFees = fees,
-                            costBasis = costBasis,
-                            gain = proceeds - costBasis,
-                            tradeId = tx.tradeId,
-                            receivedTicker = tx.tradeId?.let { tradeIndex[it] },
-                        )
+                    when (tx.type) {
+                        TransactionType.BUY -> {
+                            val adj = SplitAdjuster.adjustmentFor(tx.assetId, tx.date, splitIndex)
+                            val adjQty = tx.quantity * adj.multiplier
+                            val adjPrice = if (adj.multiplier == BigDecimal.ONE) tx.price
+                                           else tx.price.divide(adj.multiplier, 10, RoundingMode.HALF_UP)
+                            val feePerUnit = fees.divide(adjQty, 10, RoundingMode.HALF_UP)
+                            assetLots.addLast(Lot(adjQty, adjPrice, feePerUnit, tx.date))
+                        }
+                        TransactionType.SELL -> {
+                            val consumed = consumeLotsFifo(assetLots, tx.quantity)
+                            if (tx.date in from..to) {
+                                val listing = listingMap[tx.listingId] ?: continue
+                                val costBasis = consumed.purchaseValue + consumed.buyFees
+                                val proceeds = tx.quantity * tx.price - fees
+                                entries += RealizedGainEntry(
+                                    assetId = tx.assetId,
+                                    ticker = listing.ticker,
+                                    currency = listing.currency,
+                                    date = tx.date,
+                                    quantity = tx.quantity,
+                                    proceeds = proceeds,
+                                    buyFees = consumed.buyFees,
+                                    sellFees = fees,
+                                    costBasis = costBasis,
+                                    gain = proceeds - costBasis,
+                                    tradeId = tx.tradeId,
+                                    receivedTicker = tx.tradeId?.let { tradeIndex[it] },
+                                    lots = consumed.lots,
+                                )
+                            }
+                        }
+                        TransactionType.SPLIT -> { /* no-op: consumed by splitIndex */ }
                     }
                 }
-                TransactionType.TRANSFER_OUT -> {
+                is TransferFeeEvent -> {
                     // Reduces the position/lots for subsequent SELLs, but recognizes no disposal.
-                    consumeLotsFifo(assetLots, tx.quantity)
+                    val assetLots = lots.getOrPut(event.assetId) { ArrayDeque() }
+                    consumeLotsFifo(assetLots, event.feeQuantity)
                 }
-                TransactionType.SPLIT -> { /* no-op: consumed by splitIndex */ }
             }
         }
 
@@ -139,8 +190,8 @@ object RealizedGainsCalculator {
 
     private data class ConsumedShare(val purchaseValue: BigDecimal, val buyFees: BigDecimal)
 
-    // Pure average-cost decrement — no gain/entry logic. Shared by SELL and TRANSFER_OUT for the
-    // same reason as consumeLotsFifo above: TRANSFER_OUT calls this and stops.
+    // Pure average-cost decrement — no gain/entry logic. Shared by SELL and transfer-fee handling
+    // for the same reason as consumeLotsFifo above.
     private fun decrementAverageCost(s: AssetState, quantity: BigDecimal): ConsumedShare? {
         if (s.totalQty <= BigDecimal.ZERO) return null
         val avgPrice = s.totalPurchaseValue.divide(s.totalQty, 10, RoundingMode.HALF_UP)
@@ -157,6 +208,7 @@ object RealizedGainsCalculator {
 
     private fun computeAverageCost(
         transactions: List<Transaction>,
+        transferFees: List<TransferFeeEvent>,
         listingMap: Map<Long, Listing>,
         from: LocalDate,
         to: LocalDate,
@@ -166,46 +218,52 @@ object RealizedGainsCalculator {
         val state = mutableMapOf<Long, AssetState>()
         val entries = mutableListOf<RealizedGainEntry>()
 
-        for (tx in transactions.sortedWith(compareBy({ it.date }, { it.id }))) {
-            val s = state.getOrPut(tx.assetId) { AssetState() }
-            val fees = tx.fees ?: BigDecimal.ZERO
+        for (event in mergeEvents(transactions, transferFees)) {
+            when (event) {
+                is TransactionEvent -> {
+                    val tx = event.transaction
+                    val s = state.getOrPut(tx.assetId) { AssetState() }
+                    val fees = tx.fees ?: BigDecimal.ZERO
 
-            when (tx.type) {
-                TransactionType.BUY, TransactionType.TRANSFER_IN -> {
-                    val adj = SplitAdjuster.adjustmentFor(tx.assetId, tx.date, splitIndex)
-                    val adjQty = tx.quantity * adj.multiplier
-                    val adjPrice = if (adj.multiplier == BigDecimal.ONE) tx.price
-                                   else tx.price.divide(adj.multiplier, 10, RoundingMode.HALF_UP)
-                    s.totalQty += adjQty
-                    s.totalPurchaseValue += adjQty * adjPrice
-                    s.totalBuyFees += fees
-                }
-                TransactionType.SELL -> {
-                    val consumed = decrementAverageCost(s, tx.quantity)
-                    if (consumed != null && tx.date in from..to) {
-                        val listing = listingMap[tx.listingId] ?: continue
-                        val costBasis = consumed.purchaseValue + consumed.buyFees
-                        val proceeds = tx.quantity * tx.price - fees
-                        entries += RealizedGainEntry(
-                            assetId = tx.assetId,
-                            ticker = listing.ticker,
-                            currency = listing.currency,
-                            date = tx.date,
-                            quantity = tx.quantity,
-                            proceeds = proceeds,
-                            buyFees = consumed.buyFees,
-                            sellFees = fees,
-                            costBasis = costBasis,
-                            gain = proceeds - costBasis,
-                            tradeId = tx.tradeId,
-                            receivedTicker = tx.tradeId?.let { tradeIndex[it] },
-                        )
+                    when (tx.type) {
+                        TransactionType.BUY -> {
+                            val adj = SplitAdjuster.adjustmentFor(tx.assetId, tx.date, splitIndex)
+                            val adjQty = tx.quantity * adj.multiplier
+                            val adjPrice = if (adj.multiplier == BigDecimal.ONE) tx.price
+                                           else tx.price.divide(adj.multiplier, 10, RoundingMode.HALF_UP)
+                            s.totalQty += adjQty
+                            s.totalPurchaseValue += adjQty * adjPrice
+                            s.totalBuyFees += fees
+                        }
+                        TransactionType.SELL -> {
+                            val consumed = decrementAverageCost(s, tx.quantity)
+                            if (consumed != null && tx.date in from..to) {
+                                val listing = listingMap[tx.listingId] ?: continue
+                                val costBasis = consumed.purchaseValue + consumed.buyFees
+                                val proceeds = tx.quantity * tx.price - fees
+                                entries += RealizedGainEntry(
+                                    assetId = tx.assetId,
+                                    ticker = listing.ticker,
+                                    currency = listing.currency,
+                                    date = tx.date,
+                                    quantity = tx.quantity,
+                                    proceeds = proceeds,
+                                    buyFees = consumed.buyFees,
+                                    sellFees = fees,
+                                    costBasis = costBasis,
+                                    gain = proceeds - costBasis,
+                                    tradeId = tx.tradeId,
+                                    receivedTicker = tx.tradeId?.let { tradeIndex[it] },
+                                )
+                            }
+                        }
+                        TransactionType.SPLIT -> { /* no-op: consumed by splitIndex */ }
                     }
                 }
-                TransactionType.TRANSFER_OUT -> {
-                    decrementAverageCost(s, tx.quantity)
+                is TransferFeeEvent -> {
+                    val s = state.getOrPut(event.assetId) { AssetState() }
+                    decrementAverageCost(s, event.feeQuantity)
                 }
-                TransactionType.SPLIT -> { /* no-op: consumed by splitIndex */ }
             }
         }
 

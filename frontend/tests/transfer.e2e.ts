@@ -37,16 +37,12 @@ test.describe('Transfers', () => {
 		await option.first().click();
 	}
 
-	async function createPortfolio(page: Page, name: string) {
+	async function createPortfolioAndNavigate(page: Page, name = uniqueName('Transfer Test')) {
 		await page.goto('/');
 		await page.getByRole('button', { name: '+ New portfolio' }).click();
 		await page.locator('dialog.modal-open .modal-box input[type="text"]').fill(name);
 		await page.getByRole('button', { name: 'Create', exact: true }).click();
 		await expect(page.getByRole('link', { name, exact: true })).toBeVisible();
-	}
-
-	async function createPortfolioAndNavigate(page: Page, name = uniqueName('Transfer Test')) {
-		await createPortfolio(page, name);
 		await page.getByRole('link', { name, exact: true }).click();
 		await expect(page).toHaveURL(/\/portfolios\/\d+/);
 		return name;
@@ -75,7 +71,7 @@ test.describe('Transfers', () => {
 		return dialog;
 	}
 
-	test('transfers an asset between accounts in the same portfolio', async ({ page }) => {
+	test('transfers an asset between accounts, no price recorded', async ({ page }) => {
 		await createPortfolioAndNavigate(page);
 		await buyAsset(page, 'AAPL', '10', sourceAccountName);
 
@@ -88,11 +84,16 @@ test.describe('Transfers', () => {
 		await dialog.getByRole('button', { name: 'Record transfer', exact: true }).click();
 
 		await expect(dialog).not.toBeVisible();
-		await expect(page.getByRole('cell', { name: 'TRANSFER_OUT' }).first()).toBeVisible();
-		await expect(page.getByRole('cell', { name: 'TRANSFER_IN' }).first()).toBeVisible();
+
+		const transferRow = page.getByRole('row', { name: /TRANSFER/ });
+		await expect(transferRow).toBeVisible();
+		await expect(transferRow).toContainText(sourceAccountName);
+		await expect(transferRow).toContainText(destinationAccountName);
+		await expect(transferRow.getByRole('cell').nth(3)).toHaveText('4.00');
+		await expect(transferRow.getByRole('cell').nth(4)).toHaveText('—');
 	});
 
-	test('in-kind fee reduces the quantity received', async ({ page }) => {
+	test('records an in-kind fee alongside the transfer', async ({ page }) => {
 		await createPortfolioAndNavigate(page);
 		await buyAsset(page, 'AAPL', '10', sourceAccountName);
 
@@ -104,40 +105,12 @@ test.describe('Transfers', () => {
 		await selectAccountByName(page, 'From account', sourceAccountName);
 		await selectAccountByName(page, 'To account', destinationAccountName);
 
-		await expect(dialog.getByText('Received at destination').locator('..')).toContainText('4');
-
 		await dialog.getByRole('button', { name: 'Record transfer', exact: true }).click();
 		await expect(dialog).not.toBeVisible();
 
-		const inRow = page.getByRole('row', { name: /TRANSFER_IN/ });
-		await expect(inRow.getByRole('cell').nth(3)).toHaveText('4.00');
-	});
-
-	test('transfers an asset to a different portfolio', async ({ page }) => {
-		const destinationPortfolioName = uniqueName('Transfer Dest');
-		await createPortfolio(page, destinationPortfolioName);
-
-		await createPortfolioAndNavigate(page);
-		await buyAsset(page, 'AAPL', '10', sourceAccountName);
-
-		const dialog = await openTransferDialog(page);
-		await selectAssetByTicker(page, 'AAPL');
-		await dialog.getByRole('group', { name: 'Quantity' }).getByRole('spinbutton').fill('3');
-		await dialog.getByRole('group', { name: 'Date' }).locator('input[type="date"]').fill('2024-02-01');
-		await selectAccountByName(page, 'From account', sourceAccountName);
-		await selectAccountByName(page, 'To account', destinationAccountName);
-
-		const portfolioSelect = dialog.getByRole('group', { name: 'To portfolio' }).getByRole('combobox');
-		await expect(portfolioSelect.locator('option', { hasText: destinationPortfolioName })).toHaveCount(1);
-		await portfolioSelect.selectOption({ label: destinationPortfolioName });
-
-		await dialog.getByRole('button', { name: 'Record transfer', exact: true }).click();
-		await expect(dialog).not.toBeVisible();
-
-		await page.goto('/');
-		await page.getByRole('link', { name: destinationPortfolioName, exact: true }).click();
-		await expect(page).toHaveURL(/\/portfolios\/\d+/);
-		await expect(page.getByRole('cell', { name: 'TRANSFER_IN' }).first()).toBeVisible();
+		const transferRow = page.getByRole('row', { name: /TRANSFER/ });
+		await expect(transferRow.getByRole('cell').nth(3)).toHaveText('5.00');
+		await expect(transferRow.getByRole('cell').nth(5)).toHaveText('1.00');
 	});
 
 	test('submit is disabled until required fields are filled', async ({ page }) => {

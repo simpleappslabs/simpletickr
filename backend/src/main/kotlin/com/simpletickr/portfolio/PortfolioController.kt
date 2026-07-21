@@ -4,6 +4,7 @@ import com.simpletickr.asset.persistence.AssetRepository
 import com.simpletickr.gains.RealizedGainsCalculator
 import com.simpletickr.gains.RealizationMethod
 import com.simpletickr.gains.RealizedGainEntry
+import com.simpletickr.gains.RealizedGainLot
 import com.simpletickr.gains.RealizedGainsReport
 import com.simpletickr.generated.api.PortfoliosApi
 import com.simpletickr.generated.model.PortfolioRequest
@@ -13,6 +14,7 @@ import com.simpletickr.portfolio.persistence.PortfolioRepository
 import com.simpletickr.price.usecase.BackfillPortfolioPricesUseCase
 import com.simpletickr.settings.UserSettingsRepository
 import com.simpletickr.transaction.persistence.TransactionRepository
+import com.simpletickr.transfer.TransferRepository
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.RestController
 import com.simpletickr.generated.model.SyncResult as SyncResultModel
@@ -25,6 +27,7 @@ import com.simpletickr.generated.model.ListingHolding as ListingHoldingModel
 import com.simpletickr.generated.model.Portfolio as PortfolioModel
 import com.simpletickr.generated.model.RealizationMethod as GeneratedRealizationMethod
 import com.simpletickr.generated.model.RealizedGainEntry as GeneratedRealizedGainEntry
+import com.simpletickr.generated.model.RealizedGainLot as GeneratedRealizedGainLot
 import com.simpletickr.generated.model.RealizedGainsReport as GeneratedRealizedGainsReport
 import com.simpletickr.generated.model.PortfolioValueHistory as PortfolioValueHistoryModel
 import com.simpletickr.generated.model.PortfolioValuePoint as PortfolioValuePointModel
@@ -34,6 +37,7 @@ class PortfolioController(
     private val portfolioRepository: PortfolioRepository,
     private val valuationService: ValuationService,
     private val transactionRepository: TransactionRepository,
+    private val transferRepository: TransferRepository,
     private val assetRepository: AssetRepository,
     private val userSettingsRepository: UserSettingsRepository,
     private val backfillPortfolioPricesUseCase: BackfillPortfolioPricesUseCase,
@@ -148,9 +152,14 @@ class PortfolioController(
     ): ResponseEntity<GeneratedRealizedGainsReport> {
         if (portfolioRepository.findById(id) == null) return ResponseEntity.notFound().build()
         val transactions = transactionRepository.findAllForPortfolio(id)
+        val transferFees = transferRepository.findAllForPortfolio(id)
+            .mapNotNull { t ->
+                t.assetFeeQuantity?.takeIf { it > BigDecimal.ZERO }
+                    ?.let { RealizedGainsCalculator.TransferFeeEvent(t.id, t.assetId, t.date, it) }
+            }
         val listingMap = assetRepository.findAll().flatMap { it.listings }.associateBy { it.id }
         val domainMethod = RealizationMethod.valueOf(method.value)
-        val report = RealizedGainsCalculator.compute(transactions, listingMap, domainMethod, from, to)
+        val report = RealizedGainsCalculator.compute(transactions, transferFees, listingMap, domainMethod, from, to)
         return ResponseEntity.ok(report.toModel())
     }
 
@@ -198,5 +207,14 @@ class PortfolioController(
         gain = gain.toDouble(),
         tradeId = tradeId,
         receivedTicker = receivedTicker,
+        lots = lots.map { it.toModel() },
+    )
+
+    private fun RealizedGainLot.toModel() = GeneratedRealizedGainLot(
+        acquisitionDate = acquisitionDate,
+        quantity = quantity.toDouble(),
+        pricePerUnit = pricePerUnit.toDouble(),
+        buyFees = buyFees.toDouble(),
+        costBasis = costBasis.toDouble(),
     )
 }

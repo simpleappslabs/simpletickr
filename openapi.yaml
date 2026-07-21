@@ -19,6 +19,7 @@ tags:
   - name: Assets
   - name: ListingSearch
   - name: Transactions
+  - name: Transfers
   - name: Accounts
   - name: Prices
   - name: FX
@@ -255,19 +256,31 @@ paths:
               schema:
                 $ref: "#/components/schemas/CryptoTradeResponse"
 
-  /portfolios/{portfolioId}/transactions/transfer:
+  /portfolios/{portfolioId}/transfers:
     parameters:
       - name: portfolioId
         in: path
         required: true
-        description: Source portfolio the transfer originates from
         schema:
           type: integer
           format: int64
+    get:
+      tags: [Transfers]
+      operationId: listTransfersForPortfolio
+      summary: List transfers recorded in a portfolio
+      responses:
+        "200":
+          description: List of transfers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Transfer"
     post:
-      tags: [Transactions]
+      tags: [Transfers]
       operationId: recordTransfer
-      summary: Record a transfer of an asset from one account to another (atomically records both legs)
+      summary: Record a transfer of an asset from one account to another, within this portfolio
       requestBody:
         required: true
         content:
@@ -280,7 +293,35 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/TransferResponse"
+                $ref: "#/components/schemas/Transfer"
+
+  /portfolios/{portfolioId}/transfers/{id}:
+    parameters:
+      - name: portfolioId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+    delete:
+      tags: [Transfers]
+      operationId: removeTransfer
+      summary: Remove a transfer
+      responses:
+        "204":
+          description: Transfer removed
+        "404":
+          description: Transfer not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
 
   /portfolios/{id}/realized-gains:
     parameters:
@@ -1762,16 +1803,6 @@ components:
           format: int64
           nullable: true
           description: "ID of the CryptoTrade this transaction belongs to, if it is a trade leg"
-        transferId:
-          type: integer
-          format: int64
-          nullable: true
-          description: "ID of the Transfer this transaction belongs to, if it is a transfer leg"
-        assetFeeQuantity:
-          type: number
-          format: double
-          nullable: true
-          description: "In-kind fee (e.g. crypto gas) deducted from the quantity received; set only on the TRANSFER_OUT leg. Fiat-denominated transfer fees are not modeled."
 
     TransactionRequest:
       type: object
@@ -1876,6 +1907,54 @@ components:
         buy:
           $ref: "#/components/schemas/Transaction"
 
+    Transfer:
+      type: object
+      description: "Moves custody of an asset between two accounts within a single portfolio. Has no price/cost-basis field — cost basis is always derived by replaying transaction/transfer history, never stored."
+      required:
+        - id
+        - portfolioId
+        - listingId
+        - quantity
+        - date
+        - sourceAccountId
+        - sourceAccount
+        - destinationAccountId
+        - destinationAccount
+      properties:
+        id:
+          type: integer
+          format: int64
+        portfolioId:
+          type: integer
+          format: int64
+        listingId:
+          type: integer
+          format: int64
+        quantity:
+          type: number
+          format: double
+        assetFeeQuantity:
+          type: number
+          format: double
+          nullable: true
+          description: "In-kind fee (e.g. crypto gas), consumed and never received anywhere. Fiat-denominated transfer fees are not modeled."
+        date:
+          type: string
+          format: date
+        sourceAccountId:
+          type: integer
+          format: int64
+        sourceAccount:
+          $ref: "#/components/schemas/Account"
+        destinationAccountId:
+          type: integer
+          format: int64
+        destinationAccount:
+          $ref: "#/components/schemas/Account"
+        notes:
+          type: string
+          nullable: true
+
     TransferRequest:
       type: object
       required:
@@ -1884,7 +1963,6 @@ components:
         - date
         - sourceAccountId
         - destinationAccountId
-        - destinationPortfolioId
       properties:
         listingId:
           type: integer
@@ -1896,7 +1974,7 @@ components:
           type: number
           format: double
           nullable: true
-          description: "In-kind fee (e.g. crypto gas) deducted from the quantity received at the destination. Fiat-denominated transfer fees are not modeled in v1."
+          description: "In-kind fee (e.g. crypto gas), consumed and never received anywhere. Fiat-denominated transfer fees are not modeled."
         date:
           type: string
           format: date
@@ -1906,26 +1984,9 @@ components:
         destinationAccountId:
           type: integer
           format: int64
-        destinationPortfolioId:
-          type: integer
-          format: int64
-          description: "May equal the path portfolioId for a same-portfolio transfer"
         notes:
           type: string
           nullable: true
-
-    TransferResponse:
-      type: object
-      required: [id, source, destination]
-      properties:
-        id:
-          type: integer
-          format: int64
-          description: "ID of the Transfer entity"
-        source:
-          $ref: "#/components/schemas/Transaction"
-        destination:
-          $ref: "#/components/schemas/Transaction"
 
     TransactionType:
       type: string
@@ -1933,8 +1994,6 @@ components:
         - BUY
         - SELL
         - SPLIT
-        - TRANSFER_OUT
-        - TRANSFER_IN
 
     FxRateSource:
       type: string
@@ -2020,6 +2079,7 @@ components:
         - sellFees
         - costBasis
         - gain
+        - lots
       properties:
         assetId:
           type: integer
@@ -2063,6 +2123,40 @@ components:
         receivedTicker:
           type: string
           description: Ticker of the asset received in the swap. Present when tradeId is set.
+        lots:
+          type: array
+          description: "Which acquisition lot(s) generated this gain. FIFO only — always empty for AVERAGE_COST, which has no discrete lots."
+          items:
+            $ref: "#/components/schemas/RealizedGainLot"
+
+    RealizedGainLot:
+      type: object
+      description: "One acquisition lot's contribution to a RealizedGainEntry. costBasis/buyFees/quantity sum across all lots on an entry to that entry's own fields."
+      required:
+        - acquisitionDate
+        - quantity
+        - pricePerUnit
+        - buyFees
+        - costBasis
+      properties:
+        acquisitionDate:
+          type: string
+          format: date
+        quantity:
+          type: number
+          format: double
+        pricePerUnit:
+          type: number
+          format: double
+          description: In local currency.
+        buyFees:
+          type: number
+          format: double
+          description: In local currency.
+        costBasis:
+          type: number
+          format: double
+          description: "In local currency. quantity * pricePerUnit + buyFees, for this lot's share only."
 
     RealizedGainsReport:
       type: object

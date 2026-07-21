@@ -8,19 +8,25 @@ import com.simpletickr.transaction.model.TransactionType
 import org.springframework.stereotype.Service
 import java.math.BigDecimal
 import java.math.RoundingMode
+import java.time.LocalDate
 
 @Service
 class HoldingService(private val holdingRepository: HoldingRepository) {
 
     // WAC holdings per (assetId, listingId). Closed positions (net qty ≤ 0) are excluded.
     // Split transactions are consumed to adjust prior BUY/SELL quantities and prices.
-    fun getHoldings(portfolioId: Long): List<Holding> {
+    // `asOf`, when given, computes holdings as they stood on that date — used by
+    // RecordTransferUseCase so a backdated transfer is validated against what was actually
+    // held then, not what's held "now".
+    fun getHoldings(portfolioId: Long, asOf: LocalDate? = null): List<Holding> {
         data class Key(
             val assetId: Long, val assetName: String,
             val listingId: Long, val exchange: String?, val ticker: String, val currency: CurrencyCode,
         )
 
-        return holdingRepository.findTransactionRows(portfolioId)
+        val transferFeesByListingId = holdingRepository.findTransferFeeRows(portfolioId, asOf).groupBy { it.listingId }
+
+        return holdingRepository.findTransactionRows(portfolioId, asOf)
             .groupBy { Key(it.assetId, it.assetName, it.listingId, it.exchange, it.ticker, it.currency) }
             .mapNotNull { (key, rows) ->
                 val splitIndex = rows
@@ -33,11 +39,18 @@ class HoldingService(private val holdingRepository: HoldingRepository) {
                 val netQty = regulars.fold(BigDecimal.ZERO) { acc, r ->
                     val adj = SplitAdjuster.adjustmentFor(r.listingId, r.date, splitIndex)
                     val adjQty = r.quantity * adj.multiplier
-                    if (r.type == TransactionType.BUY || r.type == TransactionType.TRANSFER_IN) acc + adjQty else acc - adjQty
+                    if (r.type == TransactionType.BUY) acc + adjQty else acc - adjQty
                 }
-                if (netQty <= BigDecimal.ZERO) return@mapNotNull null
+                // A transfer moves custody, not portfolio inventory — only its fee (if any) is a
+                // genuine reduction in what the portfolio holds.
+                val transferFeeQty = (transferFeesByListingId[key.listingId] ?: emptyList()).fold(BigDecimal.ZERO) { acc, feeRow ->
+                    val adj = SplitAdjuster.adjustmentFor(feeRow.listingId, feeRow.date, splitIndex)
+                    acc + feeRow.feeQuantity * adj.multiplier
+                }
+                val adjustedNetQty = netQty - transferFeeQty
+                if (adjustedNetQty <= BigDecimal.ZERO) return@mapNotNull null
 
-                val buys = regulars.filter { it.type == TransactionType.BUY || it.type == TransactionType.TRANSFER_IN }
+                val buys = regulars.filter { it.type == TransactionType.BUY }
                 val totalBuyQty = buys.sumOf { r ->
                     r.quantity * SplitAdjuster.adjustmentFor(r.listingId, r.date, splitIndex).multiplier
                 }
@@ -59,9 +72,9 @@ class HoldingService(private val holdingRepository: HoldingRepository) {
                     exchange = key.exchange,
                     ticker = key.ticker,
                     currency = key.currency,
-                    quantity = netQty,
+                    quantity = adjustedNetQty,
                     avgCostLocal = avgCostLocal,
-                    totalCostLocal = avgCostLocal.multiply(netQty).setScale(6, RoundingMode.HALF_UP),
+                    totalCostLocal = avgCostLocal.multiply(adjustedNetQty).setScale(6, RoundingMode.HALF_UP),
                 )
             }
     }

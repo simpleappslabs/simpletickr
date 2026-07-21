@@ -11,7 +11,6 @@ import com.simpletickr.trade.RecordCryptoTradeUseCase
 import com.simpletickr.transaction.usecase.AmendTransactionUseCase
 import com.simpletickr.transaction.usecase.DeleteTransactionUseCase
 import com.simpletickr.transaction.usecase.RecordTransactionUseCase
-import com.simpletickr.transfer.RecordTransferUseCase
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
@@ -42,7 +41,6 @@ class TransactionControllerTest {
     @MockitoBean private lateinit var amendTransactionUseCase: AmendTransactionUseCase
     @MockitoBean private lateinit var deleteTransactionUseCase: DeleteTransactionUseCase
     @MockitoBean private lateinit var recordCryptoTradeUseCase: RecordCryptoTradeUseCase
-    @MockitoBean private lateinit var recordTransferUseCase: RecordTransferUseCase
     @MockitoBean private lateinit var accountService: AccountService
 
     private val sampleAccount = Account(id = 1L, name = "Test Account", broker = null, accountType = AccountType.BROKERAGE, currency = null, accountNumber = null, institution = null)
