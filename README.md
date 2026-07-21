@@ -4,6 +4,8 @@ A simple portfolio tracker for ETFs, stocks, crypto, and other assets — built 
 
 simpletickr is intentionally **not** a trading tool. There are no intra-day charts, no real-time tickers, no alerts. The focus is on the long view: track what you own, at what cost, and how it's grown over time.
 
+simpletickr doesn't track you or phone home. It's self-hosted, and your portfolio data stays in your own database — it's never collected, transmitted to, or seen by us.
+
 ## Table of Contents
 
 <!-- TOC -->
