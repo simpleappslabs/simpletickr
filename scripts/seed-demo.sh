@@ -88,15 +88,16 @@ trade() {
     echo "    SWAP $sell_qty (sell @ $sell_price) → $buy_qty (buy @ $buy_price) on $date"
 }
 
-# Move a quantity of an asset from one account to another (optionally across portfolios),
-# preserving cost basis rather than recognizing a disposal. fee_qty is deducted, in the
-# transferred asset itself, from the quantity landing at the destination (e.g. network gas).
+# Move a quantity of an asset from one account to another, within the same portfolio.
+# Moves custody, not portfolio inventory — no price/cost-basis is recorded; cost basis is
+# always derived by replaying purchase history. fee_qty (in the transferred asset itself,
+# e.g. network gas) is the only part of a transfer that actually reduces holdings.
 transfer() {
-    local portfolio_id=$1 listing_id=$2 qty=$3 date=$4 from_account=$5 to_account=$6 fee_qty=${7:-} dest_portfolio_id=${8:-$1}
-    local body="{\"listingId\":$listing_id,\"quantity\":$qty,\"date\":\"$date\",\"sourceAccountId\":$from_account,\"destinationAccountId\":$to_account,\"destinationPortfolioId\":$dest_portfolio_id"
+    local portfolio_id=$1 listing_id=$2 qty=$3 date=$4 from_account=$5 to_account=$6 fee_qty=${7:-}
+    local body="{\"listingId\":$listing_id,\"quantity\":$qty,\"date\":\"$date\",\"sourceAccountId\":$from_account,\"destinationAccountId\":$to_account"
     [[ -n "$fee_qty" ]] && body="$body,\"assetFeeQuantity\":$fee_qty"
     body="$body}"
-    post "/portfolios/$portfolio_id/transactions/transfer" "$body" > /dev/null
+    post "/portfolios/$portfolio_id/transfers" "$body" > /dev/null
     echo "    TRANSFER $qty on $date${fee_qty:+ (fee=$fee_qty)}"
 }
 
