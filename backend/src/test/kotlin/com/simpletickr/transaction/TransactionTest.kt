@@ -43,4 +43,29 @@ class TransactionTest {
     fun `negative fees are rejected`() {
         assertFailsWith<IllegalArgumentException> { tx(BigDecimal("5"), BigDecimal("100"), BigDecimal("-1")) }
     }
+
+    private fun txWithAssetFee(quantity: BigDecimal, assetFeeQuantity: BigDecimal) = Transaction(
+        1L, 10L, 5L, 2L, TransactionType.TRANSFER_OUT, quantity, BigDecimal("100"), date, null,
+        accountId = 1L, assetFeeQuantity = assetFeeQuantity,
+    )
+
+    @Test
+    fun `zero asset fee quantity is allowed`() {
+        txWithAssetFee(BigDecimal("5"), BigDecimal.ZERO)
+    }
+
+    @Test
+    fun `negative asset fee quantity is rejected`() {
+        assertFailsWith<IllegalArgumentException> { txWithAssetFee(BigDecimal("5"), BigDecimal("-0.01")) }
+    }
+
+    @Test
+    fun `asset fee quantity equal to quantity is rejected`() {
+        assertFailsWith<IllegalArgumentException> { txWithAssetFee(BigDecimal("5"), BigDecimal("5")) }
+    }
+
+    @Test
+    fun `asset fee quantity greater than quantity is rejected`() {
+        assertFailsWith<IllegalArgumentException> { txWithAssetFee(BigDecimal("5"), BigDecimal("6")) }
+    }
 }

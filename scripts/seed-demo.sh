@@ -39,6 +39,19 @@ make_portfolio() {
     fi
 }
 
+# Create an account and return its id.
+# If an account with the same name already exists, return its id.
+make_account() {
+    local name="$1" body="$2"
+    local existing
+    existing=$(curl -sf "$API/accounts" | jq -r --arg n "$name" '.[] | select(.name == $n) | .id' | head -1)
+    if [[ -n "$existing" ]]; then
+        echo "$existing"
+    else
+        post /accounts "$body" | jq -r '.id'
+    fi
+}
+
 AAPL=$(make_asset '{"name":"Apple Inc.","type":"STOCK","listings":[{"exchange":"NASDAQ","ticker":"AAPL","currency":"USD","priceMappings":[{"provider":"YAHOO","externalId":"AAPL"}]}]}')
 MSFT=$(make_asset '{"name":"Microsoft Corporation","type":"STOCK","listings":[{"exchange":"NASDAQ","ticker":"MSFT","currency":"USD","priceMappings":[{"provider":"YAHOO","externalId":"MSFT"}]}]}')
 GOOGL=$(make_asset '{"name":"Alphabet Inc.","type":"STOCK","listings":[{"exchange":"NASDAQ","ticker":"GOOGL","currency":"USD","priceMappings":[{"provider":"YAHOO","externalId":"GOOGL"}]}]}')
@@ -52,9 +65,14 @@ VWCE=$(make_asset '{"name":"Vanguard FTSE All-World UCITS ETF","type":"ETF","lis
 BTC=$(make_asset '{"name":"Bitcoin","type":"CRYPTO","listings":[{"ticker":"BTC","currency":"EUR","priceMappings":[{"provider":"YAHOO","externalId":"BTC-EUR"}]}]}')
 ETH=$(make_asset '{"name":"Ethereum","type":"CRYPTO","listings":[{"ticker":"ETH","currency":"EUR","priceMappings":[{"provider":"YAHOO","externalId":"ETH-EUR"}]}]}')
 
+echo "Creating accounts..."
+ACC_DEFAULT=$(make_account "Default" '{"name":"Default","accountType":"BROKERAGE"}')
+ACC_BINANCE=$(make_account "Binance" '{"name":"Binance","accountType":"CRYPTO","broker":"Binance"}')
+ACC_LEDGER=$(make_account "Ledger Wallet" '{"name":"Ledger Wallet","accountType":"CRYPTO"}')
+
 txn() {
-    local portfolio_id=$1 listing_id=$2 type=$3 qty=$4 price=$5 date=$6 fx_rate=${7:-}
-    local body="{\"listingId\":$listing_id,\"type\":\"$type\",\"quantity\":$qty,\"price\":$price,\"date\":\"$date\""
+    local portfolio_id=$1 listing_id=$2 type=$3 qty=$4 price=$5 date=$6 fx_rate=${7:-} account_id=${8:-$ACC_DEFAULT}
+    local body="{\"listingId\":$listing_id,\"type\":\"$type\",\"quantity\":$qty,\"price\":$price,\"date\":\"$date\",\"accountId\":$account_id"
     [[ -n "$fx_rate" ]] && body="$body,\"fxRate\":$fx_rate"
     body="$body}"
     post "/portfolios/$portfolio_id/transactions" "$body" > /dev/null
@@ -62,12 +80,24 @@ txn() {
 }
 
 trade() {
-    local portfolio_id=$1 sell_id=$2 sell_qty=$3 sell_price=$4 buy_id=$5 buy_qty=$6 buy_price=$7 date=$8 fees=${9:-}
-    local body="{\"sellListingId\":$sell_id,\"sellQuantity\":$sell_qty,\"sellPrice\":$sell_price,\"buyListingId\":$buy_id,\"buyQuantity\":$buy_qty,\"buyPrice\":$buy_price,\"date\":\"$date\""
+    local portfolio_id=$1 sell_id=$2 sell_qty=$3 sell_price=$4 buy_id=$5 buy_qty=$6 buy_price=$7 date=$8 fees=${9:-} account_id=${10:-$ACC_BINANCE}
+    local body="{\"sellListingId\":$sell_id,\"sellQuantity\":$sell_qty,\"sellPrice\":$sell_price,\"buyListingId\":$buy_id,\"buyQuantity\":$buy_qty,\"buyPrice\":$buy_price,\"date\":\"$date\",\"accountId\":$account_id"
     [[ -n "$fees" ]] && body="$body,\"fees\":$fees"
     body="$body}"
     post "/portfolios/$portfolio_id/transactions/trade" "$body" > /dev/null
     echo "    SWAP $sell_qty (sell @ $sell_price) → $buy_qty (buy @ $buy_price) on $date"
+}
+
+# Move a quantity of an asset from one account to another (optionally across portfolios),
+# preserving cost basis rather than recognizing a disposal. fee_qty is deducted, in the
+# transferred asset itself, from the quantity landing at the destination (e.g. network gas).
+transfer() {
+    local portfolio_id=$1 listing_id=$2 qty=$3 date=$4 from_account=$5 to_account=$6 fee_qty=${7:-} dest_portfolio_id=${8:-$1}
+    local body="{\"listingId\":$listing_id,\"quantity\":$qty,\"date\":\"$date\",\"sourceAccountId\":$from_account,\"destinationAccountId\":$to_account,\"destinationPortfolioId\":$dest_portfolio_id"
+    [[ -n "$fee_qty" ]] && body="$body,\"assetFeeQuantity\":$fee_qty"
+    body="$body}"
+    post "/portfolios/$portfolio_id/transactions/transfer" "$body" > /dev/null
+    echo "    TRANSFER $qty on $date${fee_qty:+ (fee=$fee_qty)}"
 }
 
 # ─── Portfolio 1: Bogleheads Three-Fund ──────────────────────────────────────
@@ -258,43 +288,43 @@ P_CR=$(make_portfolio "Crypto DCA (demo)" '{"name":"Crypto DCA (demo)"}')
 echo "  id=$P_CR"
 
 echo "  BTC — systematic DCA with selective profit-taking"
-txn "$P_CR" "$BTC" BUY   0.2  17000 "$(d 1264)"  # ~3.5yr           1.0762
-txn "$P_CR" "$BTC" BUY   0.2  28000 "$(d 1174)"  # ~3yr 2mo         1.0986
-txn "$P_CR" "$BTC" BUY   0.1  29500 "$(d 1083)"  # ~3yr             1.1241
-txn "$P_CR" "$BTC" BUY   0.2  27000 "$(d  991)"  # ~2yr 9mo         1.0593
-txn "$P_CR" "$BTC" BUY   0.1  42000 "$(d  894)"  # ~2yr 6mo         1.0949
-txn "$P_CR" "$BTC" BUY   0.1  65000 "$(d  808)"  # ~2yr 2mo         1.0642
-txn "$P_CR" "$BTC" SELL  0.3  68000 "$(d  768)"  # ~2yr             1.0821
-txn "$P_CR" "$BTC" BUY   0.2  57000 "$(d  686)"  # ~22mo            1.0901
-txn "$P_CR" "$BTC" BUY   0.1  95000 "$(d  594)"  # ~19mo            1.0534
-txn "$P_CR" "$BTC" SELL  0.2  98000 "$(d  569)"  # ~18mo            1.0423
-txn "$P_CR" "$BTC" BUY   0.2  85000 "$(d  502)"  # ~16mo            1.0412
-txn "$P_CR" "$BTC" BUY   0.1  78000 "$(d  413)"  # ~13mo            1.1289
-txn "$P_CR" "$BTC" BUY   0.1  82000 "$(d  347)"  # ~11mo            1.1143
-txn "$P_CR" "$BTC" BUY   0.1  91000 "$(d  255)"  # ~8mo             1.0831
-txn "$P_CR" "$BTC" SELL  0.2  96000 "$(d  200)"  # ~6.5mo           1.0541
-txn "$P_CR" "$BTC" BUY   0.1  88000 "$(d  165)"  # ~5mo             1.0412
-txn "$P_CR" "$BTC" BUY   0.3  72000 "$(d   80)"  # ~3mo tariff dip  1.0952
-txn "$P_CR" "$BTC" BUY   0.1 102000 "$(d   15)"  # ~2wk             1.0821
-txn "$P_CR" "$BTC" SELL  0.2 106000 "$(d   28)"  # ~1mo             1.1354
+txn "$P_CR" "$BTC" BUY   0.2  17000 "$(d 1264)" "" "$ACC_BINANCE"  # ~3.5yr           1.0762
+txn "$P_CR" "$BTC" BUY   0.2  28000 "$(d 1174)" "" "$ACC_BINANCE"  # ~3yr 2mo         1.0986
+txn "$P_CR" "$BTC" BUY   0.1  29500 "$(d 1083)" "" "$ACC_BINANCE"  # ~3yr             1.1241
+txn "$P_CR" "$BTC" BUY   0.2  27000 "$(d  991)" "" "$ACC_BINANCE"  # ~2yr 9mo         1.0593
+txn "$P_CR" "$BTC" BUY   0.1  42000 "$(d  894)" "" "$ACC_BINANCE"  # ~2yr 6mo         1.0949
+txn "$P_CR" "$BTC" BUY   0.1  65000 "$(d  808)" "" "$ACC_BINANCE"  # ~2yr 2mo         1.0642
+txn "$P_CR" "$BTC" SELL  0.3  68000 "$(d  768)" "" "$ACC_BINANCE"  # ~2yr             1.0821
+txn "$P_CR" "$BTC" BUY   0.2  57000 "$(d  686)" "" "$ACC_BINANCE"  # ~22mo            1.0901
+txn "$P_CR" "$BTC" BUY   0.1  95000 "$(d  594)" "" "$ACC_BINANCE"  # ~19mo            1.0534
+txn "$P_CR" "$BTC" SELL  0.2  98000 "$(d  569)" "" "$ACC_BINANCE"  # ~18mo            1.0423
+txn "$P_CR" "$BTC" BUY   0.2  85000 "$(d  502)" "" "$ACC_BINANCE"  # ~16mo            1.0412
+txn "$P_CR" "$BTC" BUY   0.1  78000 "$(d  413)" "" "$ACC_BINANCE"  # ~13mo            1.1289
+txn "$P_CR" "$BTC" BUY   0.1  82000 "$(d  347)" "" "$ACC_BINANCE"  # ~11mo            1.1143
+txn "$P_CR" "$BTC" BUY   0.1  91000 "$(d  255)" "" "$ACC_BINANCE"  # ~8mo             1.0831
+txn "$P_CR" "$BTC" SELL  0.2  96000 "$(d  200)" "" "$ACC_BINANCE"  # ~6.5mo           1.0541
+txn "$P_CR" "$BTC" BUY   0.1  88000 "$(d  165)" "" "$ACC_BINANCE"  # ~5mo             1.0412
+txn "$P_CR" "$BTC" BUY   0.3  72000 "$(d   80)" "" "$ACC_BINANCE"  # ~3mo tariff dip  1.0952
+txn "$P_CR" "$BTC" BUY   0.1 102000 "$(d   15)" "" "$ACC_BINANCE"  # ~2wk             1.0821
+txn "$P_CR" "$BTC" SELL  0.2 106000 "$(d   28)" "" "$ACC_BINANCE"  # ~1mo             1.1354
 
 echo "  ETH"
-txn "$P_CR" "$ETH" BUY   2.0  1200 "$(d 1264)"  # ~3.5yr            1.0762
-txn "$P_CR" "$ETH" BUY   1.0  1800 "$(d 1174)"  # ~3yr 2mo          1.0986
-txn "$P_CR" "$ETH" BUY   1.0  1900 "$(d 1083)"  # ~3yr              1.1241
-txn "$P_CR" "$ETH" BUY   1.0  1600 "$(d  991)"  # ~2yr 9mo          1.0593
-txn "$P_CR" "$ETH" BUY   0.5  2500 "$(d  899)"  # ~2yr 6mo          1.0949
-txn "$P_CR" "$ETH" SELL  2.0  3500 "$(d  834)"  # ~2yr 4mo          1.0921
-txn "$P_CR" "$ETH" BUY   1.0  3100 "$(d  747)"  # ~2yr              1.0821
-txn "$P_CR" "$ETH" BUY   1.0  2400 "$(d  655)"  # ~21mo             1.0901
-txn "$P_CR" "$ETH" SELL  1.0  3800 "$(d  584)"  # ~19mo             1.0534
-txn "$P_CR" "$ETH" BUY   2.0  2800 "$(d  502)"  # ~16mo             1.0412
-txn "$P_CR" "$ETH" BUY   1.0  2600 "$(d  347)"  # ~11mo             1.1143
-txn "$P_CR" "$ETH" BUY   1.0  3200 "$(d  255)"  # ~8mo              1.0831
-txn "$P_CR" "$ETH" SELL  2.0  3600 "$(d  200)"  # ~6.5mo            1.0541
-txn "$P_CR" "$ETH" BUY   1.0  2900 "$(d  165)"  # ~5mo              1.0412
-txn "$P_CR" "$ETH" BUY   3.0  1600 "$(d   80)"  # ~3mo tariff dip   1.0952
-txn "$P_CR" "$ETH" BUY   1.0  2500 "$(d   15)"  # ~2wk              1.0821
+txn "$P_CR" "$ETH" BUY   2.0  1200 "$(d 1264)" "" "$ACC_BINANCE"  # ~3.5yr            1.0762
+txn "$P_CR" "$ETH" BUY   1.0  1800 "$(d 1174)" "" "$ACC_BINANCE"  # ~3yr 2mo          1.0986
+txn "$P_CR" "$ETH" BUY   1.0  1900 "$(d 1083)" "" "$ACC_BINANCE"  # ~3yr              1.1241
+txn "$P_CR" "$ETH" BUY   1.0  1600 "$(d  991)" "" "$ACC_BINANCE"  # ~2yr 9mo          1.0593
+txn "$P_CR" "$ETH" BUY   0.5  2500 "$(d  899)" "" "$ACC_BINANCE"  # ~2yr 6mo          1.0949
+txn "$P_CR" "$ETH" SELL  2.0  3500 "$(d  834)" "" "$ACC_BINANCE"  # ~2yr 4mo          1.0921
+txn "$P_CR" "$ETH" BUY   1.0  3100 "$(d  747)" "" "$ACC_BINANCE"  # ~2yr              1.0821
+txn "$P_CR" "$ETH" BUY   1.0  2400 "$(d  655)" "" "$ACC_BINANCE"  # ~21mo             1.0901
+txn "$P_CR" "$ETH" SELL  1.0  3800 "$(d  584)" "" "$ACC_BINANCE"  # ~19mo             1.0534
+txn "$P_CR" "$ETH" BUY   2.0  2800 "$(d  502)" "" "$ACC_BINANCE"  # ~16mo             1.0412
+txn "$P_CR" "$ETH" BUY   1.0  2600 "$(d  347)" "" "$ACC_BINANCE"  # ~11mo             1.1143
+txn "$P_CR" "$ETH" BUY   1.0  3200 "$(d  255)" "" "$ACC_BINANCE"  # ~8mo              1.0831
+txn "$P_CR" "$ETH" SELL  2.0  3600 "$(d  200)" "" "$ACC_BINANCE"  # ~6.5mo            1.0541
+txn "$P_CR" "$ETH" BUY   1.0  2900 "$(d  165)" "" "$ACC_BINANCE"  # ~5mo              1.0412
+txn "$P_CR" "$ETH" BUY   3.0  1600 "$(d   80)" "" "$ACC_BINANCE"  # ~3mo tariff dip   1.0952
+txn "$P_CR" "$ETH" BUY   1.0  2500 "$(d   15)" "" "$ACC_BINANCE"  # ~2wk              1.0821
 
 echo "  BTC↔ETH swaps"
 # ~2yr ago: rotate 0.1 BTC into ETH (ETH looked cheap vs BTC at ~16.8x ratio)
@@ -305,6 +335,12 @@ trade "$P_CR" "$ETH" 2.0   3400 "$BTC"  0.1 68000 "$(d  480)"  5
 trade "$P_CR" "$BTC" 0.1  88000 "$ETH"  2.8  3100 "$(d  180)"
 # ~2mo ago: swap 3 ETH back to BTC after ETH drawdown (ratio ~48x, BTC dominance peak)
 trade "$P_CR" "$ETH" 3.0   1700 "$BTC"  0.063 81000 "$(d   60)"  3
+
+echo "  Account transfers — moving crypto off the exchange into self-custody"
+# ~9mo ago: move 0.4 BTC to cold storage, paying the on-chain network fee in BTC
+transfer "$P_CR" "$BTC" 0.4 "$(d  270)" "$ACC_BINANCE" "$ACC_LEDGER" 0.0004
+# ~1mo ago: move 3 ETH to cold storage, paying gas in ETH
+transfer "$P_CR" "$ETH" 3.0 "$(d   30)" "$ACC_BINANCE" "$ACC_LEDGER" 0.01
 
 echo "  Done."
 

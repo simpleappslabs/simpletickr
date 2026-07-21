@@ -1,20 +1,23 @@
 <script lang="ts">
-    import type { Account, Asset, Holding, Transaction } from '$lib/api/types.gen';
+    import type { Account, Asset, Holding, Portfolio, Transaction } from '$lib/api/types.gen';
     import { removeTransaction } from '$lib/api/sdk.gen';
     import TransactionDialog from './TransactionDialog.svelte';
     import CryptoTradeDialog from './CryptoTradeDialog.svelte';
+    import TransferDialog from './TransferDialog.svelte';
     import TransactionsTable from '$lib/transaction/TransactionsTable.svelte';
     import ConfirmModal from '$lib/ConfirmModal.svelte';
 
-    let { portfolioId, assets, accounts, holdings, transactions, onchange, createOpen = $bindable(false), tradeOpen = $bindable(false) }: {
+    let { portfolioId, assets, accounts, portfolios, holdings, transactions, onchange, createOpen = $bindable(false), tradeOpen = $bindable(false), transferOpen = $bindable(false) }: {
         portfolioId: number;
         assets: Asset[];
         accounts: Account[];
+        portfolios: Portfolio[];
         holdings: Holding[];
         transactions: Transaction[];
         onchange: () => void;
         createOpen?: boolean;
         tradeOpen?: boolean;
+        transferOpen?: boolean;
     } = $props();
 
     let editingTransaction = $state<Transaction | null>(null);
@@ -31,6 +34,7 @@
     function closeModal() {
         createOpen = false;
         tradeOpen = false;
+        transferOpen = false;
         editingTransaction = null;
     }
 
@@ -87,6 +91,16 @@
     oncancel={() => { tradeOpen = false; }}
 />
 
+<TransferDialog
+    open={transferOpen}
+    {portfolioId}
+    {assets}
+    {accounts}
+    {portfolios}
+    onsuccess={() => { transferOpen = false; onchange(); }}
+    oncancel={() => { transferOpen = false; }}
+/>
+
 <ConfirmModal
     open={deletingTransaction !== null}
     title="Delete transaction"
@@ -97,6 +111,8 @@
 >
     {#if deletingTransaction?.tradeId != null}
         This transaction is part of a crypto trade. Deleting it will remove <strong>both legs</strong> of the trade and affect your holdings.
+    {:else if deletingTransaction?.transferId != null}
+        This transaction is part of an account transfer. Deleting it will remove <strong>both legs</strong> of the transfer and affect your holdings.
     {:else}
         Are you sure you want to delete this transaction? This will affect your holdings.
     {/if}

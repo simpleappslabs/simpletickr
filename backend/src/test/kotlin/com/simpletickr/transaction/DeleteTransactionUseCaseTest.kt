@@ -5,6 +5,7 @@ import com.simpletickr.transaction.model.Transaction
 import com.simpletickr.transaction.model.TransactionType
 import com.simpletickr.transaction.persistence.TransactionRepository
 import com.simpletickr.transaction.usecase.DeleteTransactionUseCase
+import com.simpletickr.transfer.TransferRepository
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
 import org.mockito.kotlin.mock
@@ -20,7 +21,8 @@ class DeleteTransactionUseCaseTest {
 
     private val transactionRepository = mock<TransactionRepository>()
     private val cryptoTradeRepository = mock<CryptoTradeRepository>()
-    private val useCase = DeleteTransactionUseCase(transactionRepository, cryptoTradeRepository)
+    private val transferRepository = mock<TransferRepository>()
+    private val useCase = DeleteTransactionUseCase(transactionRepository, cryptoTradeRepository, transferRepository)
 
     private val existing = Transaction(1L, 10L, 5L, 2L, TransactionType.BUY, BigDecimal("5"), BigDecimal("100"), LocalDate.of(2024, 1, 15), null, accountId = 1L)
 
@@ -57,5 +59,16 @@ class DeleteTransactionUseCaseTest {
         assertTrue(useCase.execute(10L, 1L))
         verify(cryptoTradeRepository).delete(55L)
         verify(transactionRepository, never()).delete(any())
+    }
+
+    @Test
+    fun `execute deletes entire transfer when transaction is a transfer leg`() {
+        val transferLeg = existing.copy(transferId = 77L)
+        whenever(transactionRepository.findById(1L)).thenReturn(transferLeg)
+
+        assertTrue(useCase.execute(10L, 1L))
+        verify(transferRepository).delete(77L)
+        verify(transactionRepository, never()).delete(any())
+        verify(cryptoTradeRepository, never()).delete(any())
     }
 }

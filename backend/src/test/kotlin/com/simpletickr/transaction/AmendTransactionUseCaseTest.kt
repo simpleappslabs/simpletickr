@@ -12,6 +12,7 @@ import com.simpletickr.transaction.model.TransactionType
 import com.simpletickr.transaction.persistence.TransactionRepository
 import com.simpletickr.transaction.usecase.AmendTransactionUseCase
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.mockito.kotlin.any
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.never
@@ -81,5 +82,21 @@ class AmendTransactionUseCaseTest {
         val result = useCase.execute(10L, 1L, command)
 
         assertEquals(amended, result)
+    }
+
+    @Test
+    fun `execute throws when transaction is part of a trade`() {
+        whenever(transactionRepository.findById(1L)).thenReturn(existing.copy(tradeId = 55L))
+
+        assertThrows<IllegalArgumentException> { useCase.execute(10L, 1L, amendCommand()) }
+        verify(transactionRepository, never()).update(any())
+    }
+
+    @Test
+    fun `execute throws when transaction is part of a transfer`() {
+        whenever(transactionRepository.findById(1L)).thenReturn(existing.copy(transferId = 77L))
+
+        assertThrows<IllegalArgumentException> { useCase.execute(10L, 1L, amendCommand()) }
+        verify(transactionRepository, never()).update(any())
     }
 }

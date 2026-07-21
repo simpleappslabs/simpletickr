@@ -60,6 +60,9 @@
                     {#if t.tradeId != null}
                         <span class="badge badge-outline badge-xs ml-1 text-base-content/50" title="Part of a crypto trade">↔</span>
                     {/if}
+                    {#if t.transferId != null}
+                        <span class="badge badge-outline badge-xs ml-1 text-base-content/50" title="Part of an account transfer">⇄</span>
+                    {/if}
                 </td>
                 <td class="text-right tabular-nums">{t.type === 'SPLIT' ? `${t.quantity}×` : fmt(t.quantity)}</td>
                 <td class="text-right tabular-nums">{t.type === 'SPLIT' ? '—' : fmt(t.price)}</td>
@@ -82,7 +85,7 @@
                 </td>
                 {#if onedit || ondelete}
                     <td class="text-right">
-                        {#if onedit && t.tradeId == null}
+                        {#if onedit && t.tradeId == null && t.transferId == null}
                             <button
                                 class="btn btn-ghost btn-xs"
                                 title="Edit"

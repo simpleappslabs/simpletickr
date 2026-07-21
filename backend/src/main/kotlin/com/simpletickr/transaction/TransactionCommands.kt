@@ -30,6 +30,19 @@ data class RecordCryptoTradeCommand(
     val notes: String? = null,
 )
 
+data class RecordTransferCommand(
+    val listingId: Long,
+    val quantity: BigDecimal,
+    // In-kind fee (e.g. crypto gas), deducted from the quantity received at the destination.
+    // Fiat/cash transfer fees are not modeled — see Transaction.assetFeeQuantity.
+    val assetFeeQuantity: BigDecimal? = null,
+    val date: LocalDate,
+    val sourceAccountId: Long,
+    val destinationAccountId: Long,
+    val destinationPortfolioId: Long,
+    val notes: String? = null,
+)
+
 data class AmendTransactionCommand(
     val listingId: Long,
     val type: TransactionType,

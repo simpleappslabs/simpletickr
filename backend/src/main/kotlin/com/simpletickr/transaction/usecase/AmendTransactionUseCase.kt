@@ -25,6 +25,9 @@ class AmendTransactionUseCase(
         log.info("Amending transaction id={} in portfolio {}", id, portfolioId)
         val existing = transactionRepository.findById(id) ?: return null
         if (existing.portfolioId != portfolioId) return null
+        require(existing.tradeId == null && existing.transferId == null) {
+            "Cannot amend a transaction that is part of a trade or transfer"
+        }
         val listing = listingRepository.findById(command.listingId)
             ?: throw IllegalArgumentException("Listing ${command.listingId} not found")
         val baseCurrency = userSettingsRepository.find().baseCurrency

@@ -42,13 +42,15 @@ class TransactionRepository(private val jdbcTemplate: JdbcTemplate) {
             accountId = rs.getLong("account_id"),
             notes = rs.getString("notes"),
             tradeId = rs.getLong("trade_id").takeIf { !rs.wasNull() },
+            transferId = rs.getLong("transfer_id").takeIf { !rs.wasNull() },
+            assetFeeQuantity = rs.getBigDecimal("asset_fee_quantity"),
         )
     }
 
     private val baseSelect = """
         SELECT t.id, t.portfolio_id, t.listing_id, l.asset_id,
                t.type, t.quantity, t.price, t.date, t.fees, t.fx_rate, t.fx_rate_source, t.external_id,
-               t.account_id, t.notes, t.trade_id
+               t.account_id, t.notes, t.trade_id, t.transfer_id, t.asset_fee_quantity
         FROM transactions t
         JOIN listings l ON l.id = t.listing_id
         JOIN assets a ON a.id = l.asset_id
@@ -113,7 +115,7 @@ class TransactionRepository(private val jdbcTemplate: JdbcTemplate) {
         val keyHolder = GeneratedKeyHolder()
         jdbcTemplate.update({ con ->
             con.prepareStatement(
-                "INSERT INTO transactions (portfolio_id, listing_id, type, quantity, price, date, fees, fx_rate, fx_rate_source, external_id, account_id, notes, trade_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "INSERT INTO transactions (portfolio_id, listing_id, type, quantity, price, date, fees, fx_rate, fx_rate_source, external_id, account_id, notes, trade_id, transfer_id, asset_fee_quantity) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 arrayOf("id")
             ).apply {
                 setLong(1, transaction.portfolioId)
@@ -129,6 +131,8 @@ class TransactionRepository(private val jdbcTemplate: JdbcTemplate) {
                 setLong(11, transaction.accountId)
                 setString(12, transaction.notes)
                 if (transaction.tradeId != null) setLong(13, transaction.tradeId) else setNull(13, java.sql.Types.BIGINT)
+                if (transaction.transferId != null) setLong(14, transaction.transferId) else setNull(14, java.sql.Types.BIGINT)
+                setBigDecimal(15, transaction.assetFeeQuantity)
             }
         }, keyHolder)
         return transaction.copy(id = keyHolder.key!!.toLong())

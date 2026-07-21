@@ -2,7 +2,7 @@
     import {onMount} from 'svelte';
     import {page} from '$app/state';
     import {goto} from '$app/navigation';
-    import {getPortfolio, getHoldings, listAssets, listTransactions, deletePortfolio, syncPortfolioPrices, listAccounts} from '$lib/api/sdk.gen';
+    import {getPortfolio, getHoldings, listAssets, listTransactions, deletePortfolio, syncPortfolioPrices, listAccounts, listPortfolios} from '$lib/api/sdk.gen';
     import type {Account, Asset, Holding, Portfolio, Transaction, TransactionPage} from '$lib/api/types.gen';
     import PortfolioSummary from './components/PortfolioSummary.svelte';
     import PortfolioChart from './components/PortfolioChart.svelte';
@@ -21,6 +21,7 @@
     let transactions = $state<Transaction[]>([]);
     let assets = $state<Asset[]>([]);
     let accounts = $state<Account[]>([]);
+    let portfolios = $state<Portfolio[]>([]);
     let loading = $state(true);
     let notFound = $state(false);
     let chartListing = $state<{ id: number; ticker: string; currency: string } | null>(null);
@@ -28,6 +29,7 @@
 
     let createTransactionOpen = $state(false);
     let cryptoTradeOpen = $state(false);
+    let transferOpen = $state(false);
     let brokerSelectOpen = $state(false);
     let boleroImportOpen = $state(false);
     let syncingPrices = $state(false);
@@ -107,8 +109,9 @@
         transactions = transactionsRes.data?.items ?? [];
         loading = false;
 
-        // Fire-and-forget: accounts are needed only when the dialog opens, not on initial render
+        // Fire-and-forget: accounts/portfolios are needed only when a dialog opens, not on initial render
         listAccounts().then(res => { accounts = res.data ?? []; }).catch(() => {});
+        listPortfolios().then(res => { portfolios = res.data ?? []; }).catch(() => {});
     });
 </script>
 
@@ -133,6 +136,7 @@
             </button>
             <button class="btn btn-primary btn-sm shrink-0" onclick={() => createTransactionOpen = true}>+ Record transaction</button>
             <button class="btn btn-ghost btn-sm shrink-0" onclick={() => cryptoTradeOpen = true}>↔ Trade</button>
+            <button class="btn btn-ghost btn-sm shrink-0" onclick={() => transferOpen = true}>⇄ Transfer</button>
             <button class="btn btn-ghost btn-sm hidden sm:inline-flex" onclick={handleSyncPrices} disabled={syncingPrices}>
                 {#if syncingPrices}
                     <span class="loading loading-spinner loading-xs"></span> Syncing…
@@ -192,11 +196,13 @@
             portfolioId={portfolio!.id}
             {assets}
             {accounts}
+            {portfolios}
             {holdings}
             {transactions}
             onchange={refreshData}
             bind:createOpen={createTransactionOpen}
             bind:tradeOpen={cryptoTradeOpen}
+            bind:transferOpen
         />
     {/if}
 </div>

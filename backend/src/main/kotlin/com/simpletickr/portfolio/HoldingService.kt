@@ -33,11 +33,11 @@ class HoldingService(private val holdingRepository: HoldingRepository) {
                 val netQty = regulars.fold(BigDecimal.ZERO) { acc, r ->
                     val adj = SplitAdjuster.adjustmentFor(r.listingId, r.date, splitIndex)
                     val adjQty = r.quantity * adj.multiplier
-                    if (r.type == TransactionType.BUY) acc + adjQty else acc - adjQty
+                    if (r.type == TransactionType.BUY || r.type == TransactionType.TRANSFER_IN) acc + adjQty else acc - adjQty
                 }
                 if (netQty <= BigDecimal.ZERO) return@mapNotNull null
 
-                val buys = regulars.filter { it.type == TransactionType.BUY }
+                val buys = regulars.filter { it.type == TransactionType.BUY || it.type == TransactionType.TRANSFER_IN }
                 val totalBuyQty = buys.sumOf { r ->
                     r.quantity * SplitAdjuster.adjustmentFor(r.listingId, r.date, splitIndex).multiplier
                 }

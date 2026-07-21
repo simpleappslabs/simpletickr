@@ -12,6 +12,7 @@ import com.simpletickr.transaction.model.Transaction
 import com.simpletickr.transaction.model.TransactionType
 import com.simpletickr.transaction.persistence.TransactionFilter
 import com.simpletickr.transaction.persistence.TransactionRepository
+import com.simpletickr.transfer.TransferRepository
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -33,7 +34,7 @@ import kotlin.test.assertTrue
 @JdbcTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Testcontainers
-@Import(TransactionRepository::class, PortfolioRepository::class, AssetRepository::class, ListingRepository::class, AccountRepository::class)
+@Import(TransactionRepository::class, PortfolioRepository::class, AssetRepository::class, ListingRepository::class, AccountRepository::class, TransferRepository::class)
 class TransactionRepositoryTest {
 
     companion object {
@@ -47,6 +48,7 @@ class TransactionRepositoryTest {
     @Autowired private lateinit var assetRepository: AssetRepository
     @Autowired private lateinit var listingRepository: ListingRepository
     @Autowired private lateinit var accountRepository: AccountRepository
+    @Autowired private lateinit var transferRepository: TransferRepository
 
     private var portfolioId: Long = 0
     private var listingId: Long = 0
@@ -103,6 +105,31 @@ class TransactionRepositoryTest {
     fun `save stores fees when provided`() {
         val tx = repository.save(Transaction(0L, portfolioId, listingId, assetId, TransactionType.BUY, BigDecimal("5"), BigDecimal("100"), LocalDate.now(), BigDecimal("1.99"), accountId = accountId))
         assertEquals(0, BigDecimal("1.99").compareTo(tx.fees))
+    }
+
+    @Test
+    fun `save and findById round-trip transferId and assetFeeQuantity`() {
+        val transferId = transferRepository.create()
+        val saved = repository.save(Transaction(
+            0L, portfolioId, listingId, assetId, TransactionType.TRANSFER_OUT,
+            BigDecimal("1.0"), BigDecimal("30000"), LocalDate.of(2024, 1, 15), null,
+            accountId = accountId, transferId = transferId, assetFeeQuantity = BigDecimal("0.005"),
+        ))
+
+        assertEquals(transferId, saved.transferId)
+        assertEquals(0, BigDecimal("0.005").compareTo(saved.assetFeeQuantity))
+
+        val found = repository.findById(saved.id)!!
+        assertEquals(transferId, found.transferId)
+        assertEquals(0, BigDecimal("0.005").compareTo(found.assetFeeQuantity))
+        assertEquals(TransactionType.TRANSFER_OUT, found.type)
+    }
+
+    @Test
+    fun `save without transferId or assetFeeQuantity leaves them null`() {
+        val tx = saveTransaction()
+        assertNull(tx.transferId)
+        assertNull(tx.assetFeeQuantity)
     }
 
     // --- portfolioId filter ---
