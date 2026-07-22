@@ -43,4 +43,16 @@ class AssetPriceHistoryRepository(private val jdbcTemplate: JdbcTemplate) {
             "SELECT date, close_price FROM asset_price_history WHERE listing_id = ? AND date BETWEEN ? AND ? ORDER BY date",
             rowMapper, listingId, from, to
         )
+
+    // The single most recent point strictly before `date` — combined with findByListingId(from, to),
+    // this is everything a forward-fill over [from, to] needs: one boundary row to seed day one,
+    // plus every point actually inside the window. Deliberately not "from inception to `to`" — a
+    // long-lived listing (years of daily prices) would have every short window (e.g. "1M") refetch
+    // its entire history for no benefit, since only the day-one boundary and the in-window points
+    // ever get used.
+    fun findLatestBefore(listingId: Long, date: LocalDate): PricePoint? =
+        jdbcTemplate.query(
+            "SELECT date, close_price FROM asset_price_history WHERE listing_id = ? AND date < ? ORDER BY date DESC LIMIT 1",
+            rowMapper, listingId, date
+        ).firstOrNull()
 }
