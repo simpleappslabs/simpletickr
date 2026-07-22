@@ -1,5 +1,6 @@
 package com.simpletickr.portfolio
 
+import com.simpletickr.portfolio.model.AccountHolding
 import com.simpletickr.portfolio.model.Holding
 import com.simpletickr.portfolio.persistence.HoldingRepository
 import com.simpletickr.shared.CurrencyCode
@@ -75,6 +76,53 @@ class HoldingService(private val holdingRepository: HoldingRepository) {
                     quantity = adjustedNetQty,
                     avgCostLocal = avgCostLocal,
                     totalCostLocal = avgCostLocal.multiply(adjustedNetQty).setScale(6, RoundingMode.HALF_UP),
+                )
+            }
+    }
+
+    // Quantity held per (accountId, listingId) — no cost basis, since a transfer carries no price
+    // and moving cost basis between accounts would require a lot-carry-over policy that doesn't
+    // exist yet. A transfer moves its full quantity out of the source account and, minus its fee
+    // (if any), into the destination account. Splits apply uniformly regardless of which account
+    // holds the listing.
+    fun getHoldingsByAccount(portfolioId: Long, asOf: LocalDate? = null): List<AccountHolding> {
+        data class Key(val accountId: Long, val listingId: Long)
+
+        val transactionRows = holdingRepository.findTransactionRows(portfolioId, asOf)
+        val transferRows = holdingRepository.findTransferRows(portfolioId, asOf)
+
+        val splitIndex = transactionRows
+            .filter { it.type == TransactionType.SPLIT }
+            .groupBy { it.listingId }
+            .mapValues { (_, splits) -> splits.map { it.date to it.quantity } }
+
+        val currencyByListingId = mutableMapOf<Long, CurrencyCode>()
+        val quantities = mutableMapOf<Key, BigDecimal>()
+
+        transactionRows.filter { it.type != TransactionType.SPLIT }.forEach { r ->
+            currencyByListingId.putIfAbsent(r.listingId, r.currency)
+            val adjQty = r.quantity * SplitAdjuster.adjustmentFor(r.listingId, r.date, splitIndex).multiplier
+            val delta = if (r.type == TransactionType.BUY) adjQty else -adjQty
+            quantities.merge(Key(r.accountId, r.listingId), delta, BigDecimal::add)
+        }
+
+        transferRows.forEach { t ->
+            currencyByListingId.putIfAbsent(t.listingId, t.currency)
+            val adj = SplitAdjuster.adjustmentFor(t.listingId, t.date, splitIndex).multiplier
+            val adjQty = t.quantity * adj
+            val adjFee = (t.feeQuantity ?: BigDecimal.ZERO) * adj
+            quantities.merge(Key(t.sourceAccountId, t.listingId), -adjQty, BigDecimal::add)
+            quantities.merge(Key(t.destinationAccountId, t.listingId), adjQty - adjFee, BigDecimal::add)
+        }
+
+        return quantities
+            .filterValues { it > BigDecimal.ZERO }
+            .map { (key, qty) ->
+                AccountHolding(
+                    accountId = key.accountId,
+                    listingId = key.listingId,
+                    currency = currencyByListingId.getValue(key.listingId),
+                    quantity = qty,
                 )
             }
     }

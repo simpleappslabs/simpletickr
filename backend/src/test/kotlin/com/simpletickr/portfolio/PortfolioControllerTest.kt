@@ -1,11 +1,15 @@
 package com.simpletickr.portfolio
 
+import com.simpletickr.account.AccountService
+import com.simpletickr.account.model.Account
+import com.simpletickr.account.model.AccountType
 import com.simpletickr.asset.persistence.AssetRepository
 import com.simpletickr.price.usecase.BackfillPortfolioPricesUseCase
 import com.simpletickr.price.usecase.SyncResult
 import com.simpletickr.settings.UserSettings
 import com.simpletickr.settings.UserSettingsRepository
 import com.simpletickr.shared.CurrencyCode
+import com.simpletickr.portfolio.model.AccountValuation
 import com.simpletickr.portfolio.model.AssetHolding
 import com.simpletickr.portfolio.model.HoldingWithValuation
 import com.simpletickr.portfolio.model.Portfolio
@@ -53,6 +57,9 @@ class PortfolioControllerTest {
 
     @MockitoBean
     private lateinit var assetRepository: AssetRepository
+
+    @MockitoBean
+    private lateinit var accountService: AccountService
 
     @MockitoBean
     private lateinit var userSettingsRepository: UserSettingsRepository
@@ -190,6 +197,50 @@ class PortfolioControllerTest {
             .andExpect(jsonPath("$[0].baseCurrency").value("EUR"))
             .andExpect(jsonPath("$[0].totalCostBase").value(63.70))
             .andExpect(jsonPath("$[0].marketValueBase").doesNotExist())
+    }
+
+    @Test
+    fun `GET account-allocation returns 404 when portfolio not found`() {
+        whenever(portfolioRepository.findById(99L)).thenReturn(null)
+
+        mockMvc.perform(get("/portfolios/99/account-allocation"))
+            .andExpect(status().isNotFound)
+    }
+
+    @Test
+    fun `GET account-allocation returns 200 with market value per account`() {
+        whenever(portfolioRepository.findById(1L)).thenReturn(Portfolio(1L, UUID(0, 1), "My Portfolio"))
+        whenever(userSettingsRepository.find()).thenReturn(UserSettings(CurrencyCode("EUR")))
+        whenever(accountService.listAccounts()).thenReturn(listOf(
+            Account(id = 10L, name = "Fidelity Roth IRA", broker = null, accountType = AccountType.BROKERAGE, currency = null, accountNumber = null, institution = null),
+        ))
+        whenever(valuationService.getAccountValuations(1L)).thenReturn(listOf(
+            AccountValuation(accountId = 10L, marketValueBase = BigDecimal("1234.56")),
+        ))
+
+        mockMvc.perform(get("/portfolios/1/account-allocation"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.length()").value(1))
+            .andExpect(jsonPath("$[0].accountId").value(10))
+            .andExpect(jsonPath("$[0].accountName").value("Fidelity Roth IRA"))
+            .andExpect(jsonPath("$[0].accountType").value("BROKERAGE"))
+            .andExpect(jsonPath("$[0].baseCurrency").value("EUR"))
+            .andExpect(jsonPath("$[0].marketValueBase").value(1234.56))
+    }
+
+    @Test
+    fun `GET account-allocation omits an account that no longer exists`() {
+        whenever(portfolioRepository.findById(1L)).thenReturn(Portfolio(1L, UUID(0, 1), "My Portfolio"))
+        whenever(userSettingsRepository.find()).thenReturn(UserSettings(CurrencyCode("EUR")))
+        whenever(accountService.listAccounts()).thenReturn(emptyList())
+        whenever(valuationService.getAccountValuations(1L)).thenReturn(listOf(
+            AccountValuation(accountId = 99L, marketValueBase = BigDecimal("100")),
+        ))
+
+        mockMvc.perform(get("/portfolios/1/account-allocation"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$").isArray)
+            .andExpect(jsonPath("$").isEmpty)
     }
 
     @Test

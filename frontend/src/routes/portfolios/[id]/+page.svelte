@@ -2,10 +2,11 @@
     import {onMount} from 'svelte';
     import {page} from '$app/state';
     import {goto} from '$app/navigation';
-    import {getPortfolio, getHoldings, getPortfolioValuationSummary, listAssets, listTransactions, listTransfersForPortfolio, deletePortfolio, syncPortfolioPrices, listAccounts} from '$lib/api/sdk.gen';
-    import type {Account, Asset, Holding, Portfolio, PortfolioValuationSummary, Transaction, TransactionPage, Transfer} from '$lib/api/types.gen';
+    import {getPortfolio, getHoldings, getPortfolioValuationSummary, getAccountAllocation, listAssets, listTransactions, listTransfersForPortfolio, deletePortfolio, syncPortfolioPrices, listAccounts} from '$lib/api/sdk.gen';
+    import type {Account, AccountAllocation, Asset, Holding, Portfolio, PortfolioValuationSummary, Transaction, TransactionPage, Transfer} from '$lib/api/types.gen';
     import PortfolioSummary from './components/PortfolioSummary.svelte';
     import PortfolioChart from './components/PortfolioChart.svelte';
+    import AccountAllocationChart from './components/AccountAllocationChart.svelte';
     import HoldingsTable from './components/HoldingsTable.svelte';
     import TransactionsContainer from './components/TransactionsContainer.svelte';
     import ValueHistoryContainer from './components/ValueHistoryContainer.svelte';
@@ -19,6 +20,7 @@
     let portfolio = $state<Portfolio | null>(null);
     let holdings = $state<Holding[]>([]);
     let valuationSummary = $state<PortfolioValuationSummary | null>(null);
+    let accountAllocation = $state<AccountAllocation[]>([]);
     let transactions = $state<Transaction[]>([]);
     let transfers = $state<Transfer[]>([]);
     let assets = $state<Asset[]>([]);
@@ -67,16 +69,18 @@
 
     async function refreshData() {
         if (!portfolio) return;
-        const [holdingsRes, summaryRes, transactionsRes, transfersRes] = await Promise.all([
+        const [holdingsRes, summaryRes, transactionsRes, transfersRes, accountAllocationRes] = await Promise.all([
             getHoldings({path: {id: portfolio.id}}),
             getPortfolioValuationSummary({path: {id: portfolio.id}}),
             listTransactions({query: {portfolioId: portfolio.id, page: 0, size: 20}}),
             listTransfersForPortfolio({path: {portfolioId: portfolio.id}}),
+            getAccountAllocation({path: {id: portfolio.id}}),
         ]);
         holdings = holdingsRes.data ?? [];
         valuationSummary = summaryRes.data ?? null;
         transactions = transactionsRes.data?.items ?? [];
         transfers = transfersRes.data ?? [];
+        accountAllocation = accountAllocationRes.data ?? [];
     }
 
     async function handleDeletePortfolio() {
@@ -95,13 +99,14 @@
     onMount(async () => {
         const id = Number(page.params.id);
 
-        const [portfolioRes, holdingsRes, summaryRes, assetsRes, transactionsRes, transfersRes] = await Promise.all([
+        const [portfolioRes, holdingsRes, summaryRes, assetsRes, transactionsRes, transfersRes, accountAllocationRes] = await Promise.all([
             getPortfolio({path: {id}}),
             getHoldings({path: {id}}),
             getPortfolioValuationSummary({path: {id}}),
             listAssets(),
             listTransactions({query: {portfolioId: id, page: 0, size: 20}}),
             listTransfersForPortfolio({path: {portfolioId: id}}),
+            getAccountAllocation({path: {id}}),
         ]);
 
         if (portfolioRes.error) {
@@ -116,6 +121,7 @@
         assets = assetsRes.data ?? [];
         transactions = transactionsRes.data?.items ?? [];
         transfers = transfersRes.data ?? [];
+        accountAllocation = accountAllocationRes.data ?? [];
         loading = false;
 
         // Fire-and-forget: accounts are needed only when a dialog opens, not on initial render
@@ -195,8 +201,21 @@
             </section>
 
             <section class="space-y-3">
-                <h2 class="text-lg font-semibold">Allocation</h2>
-                <PortfolioChart {holdings} />
+                <h2 class="text-lg font-semibold">
+                    Allocation <span class="text-sm font-normal text-base-content/40">by market value</span>
+                </h2>
+                <div class="grid sm:grid-cols-2 gap-4">
+                    <div class="space-y-2">
+                        <h3 class="text-sm font-medium text-base-content/60">By asset</h3>
+                        <PortfolioChart {holdings} />
+                    </div>
+                    {#if accountAllocation.length > 0}
+                        <div class="space-y-2">
+                            <h3 class="text-sm font-medium text-base-content/60">By account</h3>
+                            <AccountAllocationChart allocations={accountAllocation} />
+                        </div>
+                    {/if}
+                </div>
             </section>
         {/if}
 

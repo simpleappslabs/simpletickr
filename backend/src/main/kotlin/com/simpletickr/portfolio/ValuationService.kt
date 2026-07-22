@@ -1,6 +1,7 @@
 package com.simpletickr.portfolio
 
 import com.simpletickr.fx.persistence.FxRateRepository
+import com.simpletickr.portfolio.model.AccountValuation
 import com.simpletickr.portfolio.model.AssetHolding
 import com.simpletickr.portfolio.model.Holding
 import com.simpletickr.portfolio.model.HoldingWithValuation
@@ -37,6 +38,32 @@ class ValuationService(
 
     fun getValuationSummary(portfolioId: Long): PortfolioValuationSummary =
         PortfolioValuationCalculator.summarize(getAssetHoldings(portfolioId))
+
+    // Current market value per account, in baseCurrency. Price/FX lookups are shared across
+    // accounts holding the same listing, since HoldingService.getHoldingsByAccount doesn't
+    // carry cost basis for accounts to roll up separately.
+    fun getAccountValuations(portfolioId: Long): List<AccountValuation> {
+        val baseCurrency = userSettingsRepository.find().baseCurrency
+        val accountHoldings = holdingService.getHoldingsByAccount(portfolioId)
+
+        val priceAndFxByListingId = accountHoldings
+            .distinctBy { it.listingId }
+            .associate { h ->
+                val price = priceHistoryRepository.findLatestByListingId(h.listingId)?.price
+                val fxRate = if (h.currency == baseCurrency) null else fxRateRepository.findLatest(baseCurrency, h.currency)
+                h.listingId to (price to fxRate)
+            }
+
+        return accountHoldings
+            .groupBy { it.accountId }
+            .map { (accountId, holdings) ->
+                val values = holdings.map { h ->
+                    val (price, fxRate) = priceAndFxByListingId.getValue(h.listingId)
+                    price?.let { toBase(it * h.quantity, fxRate) }
+                }
+                AccountValuation(accountId = accountId, marketValueBase = PortfolioValuationCalculator.partialSum(values))
+            }
+    }
 
     private fun valuate(holding: Holding, baseCurrency: CurrencyCode): HoldingWithValuation {
         val latestPrice = priceHistoryRepository.findLatestByListingId(holding.listingId)?.price

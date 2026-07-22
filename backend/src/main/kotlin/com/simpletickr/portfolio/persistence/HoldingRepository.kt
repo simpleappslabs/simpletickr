@@ -25,6 +25,7 @@ class HoldingRepository(private val jdbcTemplate: JdbcTemplate) {
         val fees: BigDecimal?,
         val fxRate: BigDecimal?,
         val date: LocalDate,
+        val accountId: Long,
     )
 
     // Returns raw transaction rows with listing/asset context. No aggregation.
@@ -46,7 +47,8 @@ class HoldingRepository(private val jdbcTemplate: JdbcTemplate) {
                 t.price,
                 t.fees,
                 t.fx_rate,
-                t.date
+                t.date,
+                t.account_id
             FROM transactions t
             JOIN listings l ON l.id = t.listing_id
             JOIN assets a ON a.id = l.asset_id
@@ -67,6 +69,7 @@ class HoldingRepository(private val jdbcTemplate: JdbcTemplate) {
                 fees = rs.getBigDecimal("fees"),
                 fxRate = rs.getBigDecimal("fx_rate"),
                 date = rs.getDate("date").toLocalDate(),
+                accountId = rs.getLong("account_id"),
             )
         }, *params)
     }
@@ -99,6 +102,44 @@ class HoldingRepository(private val jdbcTemplate: JdbcTemplate) {
                 assetId = rs.getLong("asset_id"),
                 date = rs.getDate("date").toLocalDate(),
                 feeQuantity = rs.getBigDecimal("asset_fee_quantity"),
+            )
+        }, *params)
+    }
+
+    data class TransferRow(
+        val listingId: Long,
+        val assetId: Long,
+        val currency: CurrencyCode,
+        val date: LocalDate,
+        val quantity: BigDecimal,
+        val feeQuantity: BigDecimal?,
+        val sourceAccountId: Long,
+        val destinationAccountId: Long,
+    )
+
+    // Every transfer, not just fee-bearing ones — needed to move quantity between accounts for
+    // per-account holdings. Portfolio-level holdings only care about the fee (see
+    // findTransferFeeRows above); this one carries the full picture.
+    fun findTransferRows(portfolioId: Long, asOf: LocalDate? = null): List<TransferRow> {
+        val dateClause = if (asOf != null) "AND tr.date <= ?" else ""
+        val params = if (asOf != null) arrayOf<Any>(portfolioId, asOf) else arrayOf<Any>(portfolioId)
+        return jdbcTemplate.query("""
+            SELECT tr.listing_id, l.asset_id, l.currency, tr.date, tr.quantity, tr.asset_fee_quantity,
+                   tr.source_account_id, tr.destination_account_id
+            FROM transfers tr
+            JOIN listings l ON l.id = tr.listing_id
+            WHERE tr.portfolio_id = ? $dateClause
+            ORDER BY l.id ASC, tr.date ASC, tr.id ASC
+        """.trimIndent(), { rs, _ ->
+            TransferRow(
+                listingId = rs.getLong("listing_id"),
+                assetId = rs.getLong("asset_id"),
+                currency = CurrencyCode(rs.getString("currency")),
+                date = rs.getDate("date").toLocalDate(),
+                quantity = rs.getBigDecimal("quantity"),
+                feeQuantity = rs.getBigDecimal("asset_fee_quantity"),
+                sourceAccountId = rs.getLong("source_account_id"),
+                destinationAccountId = rs.getLong("destination_account_id"),
             )
         }, *params)
     }

@@ -395,6 +395,34 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
 
+  /portfolios/{id}/account-allocation:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+    get:
+      tags: [Portfolios]
+      operationId: getAccountAllocation
+      summary: Get current market value per account holding assets in this portfolio
+      responses:
+        "200":
+          description: Account allocation for the portfolio
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AccountAllocation"
+        "404":
+          description: Portfolio not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
   /portfolios/{id}/valuation-summary:
     parameters:
       - name: id
@@ -2325,6 +2353,31 @@ components:
           items:
             type: string
           description: Asset names excluded from totalMarketValueBase/totalUnrealizedPnl* because no listing of that asset has a price.
+
+    AccountAllocation:
+      type: object
+      description: Current market value held in one account, in baseCurrency. No cost basis — transfers move custody with no price, so cost can't be attributed to a specific account.
+      required:
+        - accountId
+        - accountName
+        - accountType
+        - baseCurrency
+      properties:
+        accountId:
+          type: integer
+          format: int64
+        accountName:
+          type: string
+        accountType:
+          $ref: "#/components/schemas/AccountType"
+        baseCurrency:
+          type: string
+          example: EUR
+        marketValueBase:
+          type: number
+          format: double
+          nullable: true
+          description: Summed across whichever holdings in this account have a price. Null when none do.
 
     ListingHolding:
       type: object

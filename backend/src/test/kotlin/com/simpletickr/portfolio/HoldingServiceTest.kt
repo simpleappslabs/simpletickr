@@ -27,6 +27,7 @@ class HoldingServiceTest {
         date: LocalDate,
         listingId: Long = 1L,
         assetId: Long = 1L,
+        accountId: Long = 1L,
     ) = HoldingRepository.TransactionRow(
         transactionId = id,
         assetId = assetId,
@@ -41,6 +42,7 @@ class HoldingServiceTest {
         fees = null,
         fxRate = null,
         date = date,
+        accountId = accountId,
     )
 
     @Test
@@ -169,4 +171,111 @@ class HoldingServiceTest {
 
     private fun assertBd(expected: String, actual: BigDecimal) =
         assertEquals(0, BigDecimal(expected).compareTo(actual), "Expected $expected but got $actual")
+
+    // ── getHoldingsByAccount ───────────────────────────────────────────────────
+
+    private fun transferRow(
+        listingId: Long = 1L,
+        assetId: Long = 1L,
+        date: LocalDate,
+        quantity: String,
+        feeQuantity: String? = null,
+        sourceAccountId: Long,
+        destinationAccountId: Long,
+    ) = HoldingRepository.TransferRow(
+        listingId = listingId,
+        assetId = assetId,
+        currency = usd,
+        date = date,
+        quantity = BigDecimal(quantity),
+        feeQuantity = feeQuantity?.let { BigDecimal(it) },
+        sourceAccountId = sourceAccountId,
+        destinationAccountId = destinationAccountId,
+    )
+
+    @Test
+    fun `getHoldingsByAccount - buys in different accounts stay separate`() {
+        val rows = listOf(
+            row(1, TransactionType.BUY, "100", "10", LocalDate.of(2024, 1, 1), accountId = 1L),
+            row(2, TransactionType.BUY, "50", "20", LocalDate.of(2024, 1, 2), accountId = 2L),
+        )
+        whenever(repo.findTransactionRows(1L)).thenReturn(rows)
+        whenever(repo.findTransferRows(1L)).thenReturn(emptyList())
+
+        val holdings = service.getHoldingsByAccount(1L)
+
+        assertEquals(2, holdings.size)
+        assertBd("100", holdings.first { it.accountId == 1L }.quantity)
+        assertBd("50", holdings.first { it.accountId == 2L }.quantity)
+    }
+
+    @Test
+    fun `getHoldingsByAccount - transfer moves quantity from source to destination account`() {
+        val rows = listOf(
+            row(1, TransactionType.BUY, "100", "10", LocalDate.of(2024, 1, 1), accountId = 1L),
+        )
+        whenever(repo.findTransactionRows(1L)).thenReturn(rows)
+        whenever(repo.findTransferRows(1L)).thenReturn(listOf(
+            transferRow(date = LocalDate.of(2024, 2, 1), quantity = "40", sourceAccountId = 1L, destinationAccountId = 2L),
+        ))
+
+        val holdings = service.getHoldingsByAccount(1L)
+
+        assertEquals(2, holdings.size)
+        assertBd("60", holdings.first { it.accountId == 1L }.quantity)
+        assertBd("40", holdings.first { it.accountId == 2L }.quantity)
+    }
+
+    @Test
+    fun `getHoldingsByAccount - transfer fee is lost in transit, not credited to destination`() {
+        val rows = listOf(
+            row(1, TransactionType.BUY, "100", "10", LocalDate.of(2024, 1, 1), accountId = 1L),
+        )
+        whenever(repo.findTransactionRows(1L)).thenReturn(rows)
+        whenever(repo.findTransferRows(1L)).thenReturn(listOf(
+            transferRow(date = LocalDate.of(2024, 2, 1), quantity = "40", feeQuantity = "1", sourceAccountId = 1L, destinationAccountId = 2L),
+        ))
+
+        val holdings = service.getHoldingsByAccount(1L)
+
+        assertBd("60", holdings.first { it.accountId == 1L }.quantity)
+        assertBd("39", holdings.first { it.accountId == 2L }.quantity)
+    }
+
+    @Test
+    fun `getHoldingsByAccount - account fully emptied by transfer is excluded`() {
+        val rows = listOf(
+            row(1, TransactionType.BUY, "100", "10", LocalDate.of(2024, 1, 1), accountId = 1L),
+        )
+        whenever(repo.findTransactionRows(1L)).thenReturn(rows)
+        whenever(repo.findTransferRows(1L)).thenReturn(listOf(
+            transferRow(date = LocalDate.of(2024, 2, 1), quantity = "100", sourceAccountId = 1L, destinationAccountId = 2L),
+        ))
+
+        val holdings = service.getHoldingsByAccount(1L)
+
+        assertEquals(1, holdings.size)
+        assertEquals(2L, holdings[0].accountId)
+        assertBd("100", holdings[0].quantity)
+    }
+
+    @Test
+    fun `getHoldingsByAccount - split applies to both a pre-split buy and a pre-split transfer`() {
+        // BUY 100 @ $10 in account 1, transfer 50 (pre-split) to account 2, then 2:1 split.
+        // Account 1 ends up with (100-50)*2 = 100, account 2 with 50*2 = 100.
+        val rows = listOf(
+            row(1, TransactionType.BUY, "100", "10", LocalDate.of(2024, 1, 1), accountId = 1L),
+            row(2, TransactionType.SPLIT, "2", "0", LocalDate.of(2024, 3, 1), accountId = 1L),
+        )
+        whenever(repo.findTransactionRows(1L)).thenReturn(rows)
+        whenever(repo.findTransferRows(1L)).thenReturn(listOf(
+            transferRow(date = LocalDate.of(2024, 2, 1), quantity = "50", sourceAccountId = 1L, destinationAccountId = 2L),
+        ))
+
+        val holdings = service.getHoldingsByAccount(1L)
+
+        assertEquals(2, holdings.size)
+        assertBd("100", holdings.first { it.accountId == 1L }.quantity)
+        assertBd("100", holdings.first { it.accountId == 2L }.quantity)
+    }
 }

@@ -1,5 +1,7 @@
 package com.simpletickr.portfolio
 
+import com.simpletickr.account.AccountService
+import com.simpletickr.account.model.Account
 import com.simpletickr.asset.persistence.AssetRepository
 import com.simpletickr.gains.RealizedGainsCalculator
 import com.simpletickr.gains.RealizationMethod
@@ -8,6 +10,7 @@ import com.simpletickr.gains.RealizedGainLot
 import com.simpletickr.gains.RealizedGainsReport
 import com.simpletickr.generated.api.PortfoliosApi
 import com.simpletickr.generated.model.PortfolioRequest
+import com.simpletickr.portfolio.model.AccountValuation
 import com.simpletickr.portfolio.model.AssetHolding
 import com.simpletickr.portfolio.model.HoldingWithValuation
 import com.simpletickr.portfolio.model.Portfolio
@@ -23,6 +26,8 @@ import com.simpletickr.generated.model.SyncResult as SyncResultModel
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.LocalDate
+import com.simpletickr.generated.model.AccountAllocation as AccountAllocationModel
+import com.simpletickr.generated.model.AccountType as GeneratedAccountType
 import com.simpletickr.generated.model.CurrencyTotal as GeneratedCurrencyTotal
 import com.simpletickr.generated.model.Holding as HoldingModel
 import com.simpletickr.generated.model.ListingHolding as ListingHoldingModel
@@ -42,6 +47,7 @@ class PortfolioController(
     private val transactionRepository: TransactionRepository,
     private val transferRepository: TransferRepository,
     private val assetRepository: AssetRepository,
+    private val accountService: AccountService,
     private val userSettingsRepository: UserSettingsRepository,
     private val backfillPortfolioPricesUseCase: BackfillPortfolioPricesUseCase,
     private val portfolioValueHistoryService: PortfolioValueHistoryService,
@@ -83,6 +89,14 @@ class PortfolioController(
         val baseCurrency = userSettingsRepository.find().baseCurrency
         val assetHoldings = valuationService.getAssetHoldings(id)
         return ResponseEntity.ok(assetHoldings.map { it.toModel(baseCurrency.value) })
+    }
+
+    override fun getAccountAllocation(id: Long): ResponseEntity<List<AccountAllocationModel>> {
+        if (portfolioRepository.findById(id) == null) return ResponseEntity.notFound().build()
+        val baseCurrency = userSettingsRepository.find().baseCurrency
+        val accountsById = accountService.listAccounts().associateBy { it.id }
+        val allocations = valuationService.getAccountValuations(id)
+        return ResponseEntity.ok(allocations.mapNotNull { it.toModel(baseCurrency.value, accountsById) })
     }
 
     override fun getPortfolioValuationSummary(id: Long): ResponseEntity<PortfolioValuationSummaryModel> {
@@ -149,6 +163,17 @@ class PortfolioController(
         unrealizedPnlPct = unrealizedPnlPct?.toDouble(),
         listings = listings.map { it.toListingModel() },
     )
+
+    private fun AccountValuation.toModel(baseCurrency: String, accountsById: Map<Long, Account>): AccountAllocationModel? {
+        val account = accountsById[accountId] ?: return null
+        return AccountAllocationModel(
+            accountId = accountId,
+            accountName = account.name,
+            accountType = GeneratedAccountType.valueOf(account.accountType.name),
+            baseCurrency = baseCurrency,
+            marketValueBase = marketValueBase?.toDouble(),
+        )
+    }
 
     private fun PortfolioValuationSummary.toModel() = PortfolioValuationSummaryModel(
         totalCostBase = totalCostBase.toDouble(),

@@ -1,28 +1,28 @@
 <script lang="ts">
-    import type { Holding } from '$lib/api/types.gen';
+    import type { AccountAllocation } from '$lib/api/types.gen';
     import { Chart, ArcElement, Tooltip, Legend, DoughnutController } from 'chart.js';
     import { CHART_COLORS } from './chartColors';
 
     Chart.register(ArcElement, Tooltip, Legend, DoughnutController);
 
-    let { holdings }: { holdings: Holding[] } = $props();
+    let { allocations }: { allocations: AccountAllocation[] } = $props();
 
     let chartCanvas = $state<HTMLCanvasElement | null>(null);
 
-    const totalMarketValue = $derived(holdings.reduce((sum, h) => sum + (h.marketValueBase ?? 0), 0));
+    const total = $derived(allocations.reduce((sum, a) => sum + (a.marketValueBase ?? 0), 0));
 
     $effect(() => {
-        if (!chartCanvas || holdings.length === 0) return;
+        if (!chartCanvas || allocations.length === 0) return;
 
         const textColor = getComputedStyle(chartCanvas).color;
 
         const chart = new Chart(chartCanvas, {
             type: 'doughnut',
             data: {
-                labels: holdings.map((h) => h.listings[0]?.ticker ?? '—'),
+                labels: allocations.map((a) => a.accountName),
                 datasets: [{
-                    data: holdings.map((h) => h.marketValueBase ?? 0),
-                    backgroundColor: holdings.map((_, i) => CHART_COLORS[i % CHART_COLORS.length]),
+                    data: allocations.map((a) => a.marketValueBase ?? 0),
+                    backgroundColor: allocations.map((_, i) => CHART_COLORS[i % CHART_COLORS.length]),
                     borderWidth: 0,
                 }],
             },
@@ -38,9 +38,9 @@
                             generateLabels: (chart) => {
                                 const dataset = chart.data.datasets[0];
                                 const values = dataset.data as number[];
-                                const total = values.reduce((s, v) => s + v, 0);
+                                const sum = values.reduce((s, v) => s + v, 0);
                                 return (chart.data.labels as string[]).map((label, i) => ({
-                                    text: `${label}  ${total > 0 ? Math.round((values[i] / total) * 100) : 0}%`,
+                                    text: `${label}  ${sum > 0 ? Math.round((values[i] / sum) * 100) : 0}%`,
                                     fillStyle: (dataset.backgroundColor as string[])[i],
                                     fontColor: textColor,
                                     strokeStyle: 'transparent',
@@ -54,7 +54,7 @@
                     tooltip: {
                         callbacks: {
                             label: (ctx) => {
-                                const pct = totalMarketValue > 0 ? ((ctx.parsed / totalMarketValue) * 100).toFixed(1) : '0';
+                                const pct = total > 0 ? ((ctx.parsed / total) * 100).toFixed(1) : '0';
                                 return ` ${ctx.label}: ${pct}%`;
                             },
                         },
@@ -68,5 +68,5 @@
 </script>
 
 <div class="bg-base-200 rounded-box p-4 flex items-center justify-center h-full">
-    <canvas bind:this={chartCanvas} width="220" height="220"></canvas>
+    <canvas bind:this={chartCanvas} width="300" height="220"></canvas>
 </div>

@@ -11,7 +11,7 @@ object PortfolioValuationCalculator {
 
     // Sums whatever values are present; null only if the list is empty or every value is null —
     // one listing/asset missing data never nulls out the contribution of the others.
-    private fun partialSum(values: List<BigDecimal?>): BigDecimal? =
+    fun partialSum(values: List<BigDecimal?>): BigDecimal? =
         values.filterNotNull().takeIf { it.isNotEmpty() }
             ?.fold(BigDecimal.ZERO) { acc, v -> acc + v }
 
