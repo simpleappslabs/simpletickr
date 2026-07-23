@@ -10,19 +10,23 @@
     let chartCanvas = $state<HTMLCanvasElement | null>(null);
 
     const totalMarketValue = $derived(holdings.reduce((sum, h) => sum + (h.marketValueBase ?? 0), 0));
+    const sortedHoldings = $derived(
+        [...holdings].sort((a, b) => (b.marketValueBase ?? 0) - (a.marketValueBase ?? 0)),
+    );
+    const chartHeight = $derived(Math.max(220, sortedHoldings.length * 24));
 
     $effect(() => {
-        if (!chartCanvas || holdings.length === 0) return;
+        if (!chartCanvas || sortedHoldings.length === 0) return;
 
         const textColor = getComputedStyle(chartCanvas).color;
 
         const chart = new Chart(chartCanvas, {
             type: 'doughnut',
             data: {
-                labels: holdings.map((h) => h.listings[0]?.ticker ?? '—'),
+                labels: sortedHoldings.map((h) => h.listings[0]?.ticker ?? '—'),
                 datasets: [{
-                    data: holdings.map((h) => h.marketValueBase ?? 0),
-                    backgroundColor: holdings.map((_, i) => CHART_COLORS[i % CHART_COLORS.length]),
+                    data: sortedHoldings.map((h) => h.marketValueBase ?? 0),
+                    backgroundColor: sortedHoldings.map((_, i) => CHART_COLORS[i % CHART_COLORS.length]),
                     borderWidth: 0,
                 }],
             },
@@ -68,5 +72,5 @@
 </script>
 
 <div class="bg-base-200 rounded-box p-4 flex items-center justify-center h-full">
-    <canvas bind:this={chartCanvas} width="220" height="220"></canvas>
+    <canvas bind:this={chartCanvas} width="220" height={chartHeight}></canvas>
 </div>
