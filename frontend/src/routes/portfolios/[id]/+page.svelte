@@ -130,48 +130,55 @@
 </script>
 
 <div class="max-w-4xl mx-auto p-4 sm:p-6 space-y-8">
-    <div class="flex items-center gap-2 flex-wrap">
-        <a href="/" class="btn btn-ghost btn-sm shrink-0">← Portfolios</a>
-        {#if portfolio}
-            <h1 class="text-xl sm:text-2xl font-bold flex-1 min-w-0 truncate">{portfolio.name}</h1>
-            <button class="btn btn-ghost btn-sm" title="Rename" onclick={() => { renamePortfolio = portfolio; renameModalOpen = true; }}>
-                <svg xmlns="http://www.w3.org/2000/svg" class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                </svg>
-            </button>
-            <button class="btn btn-ghost btn-sm text-error" title="Delete portfolio" onclick={() => { deletePortfolioError = null; deletePortfolioOpen = true; }}>
-                <svg xmlns="http://www.w3.org/2000/svg" class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="3 6 5 6 21 6"/>
-                    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
-                    <path d="M10 11v6M14 11v6"/>
-                    <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
-                </svg>
-            </button>
-            <button class="btn btn-primary btn-sm shrink-0" onclick={() => createTransactionOpen = true}>+ Record transaction</button>
-            <button class="btn btn-ghost btn-sm shrink-0" onclick={() => cryptoTradeOpen = true}>↔ Trade</button>
-            <button class="btn btn-ghost btn-sm shrink-0" onclick={() => transferOpen = true}>⇄ Transfer</button>
-            <button class="btn btn-ghost btn-sm hidden sm:inline-flex" onclick={handleSyncPrices} disabled={syncingPrices}>
-                {#if syncingPrices}
-                    <span class="loading loading-spinner loading-xs"></span> Syncing…
-                {:else}
-                    Sync prices
-                {/if}
-            </button>
-            <button class="btn btn-ghost btn-sm hidden sm:inline-flex" onclick={() => brokerSelectOpen = true}>Import</button>
-            <a href="/portfolios/{portfolio.id}/realized-gains" class="btn btn-ghost btn-sm hidden sm:inline-flex">Realized gains</a>
-            <details class="sm:hidden dropdown dropdown-end">
-                <summary class="btn btn-ghost btn-sm list-none" aria-label="More actions">
+    <div class="space-y-2">
+        <div class="flex items-center gap-2">
+            <a href="/" class="btn btn-ghost btn-sm shrink-0">← Portfolios</a>
+            {#if portfolio}
+                <h1 class="text-xl sm:text-2xl font-bold flex-1 min-w-0 truncate">{portfolio.name}</h1>
+                <button class="btn btn-ghost btn-sm" title="Rename" onclick={() => { renamePortfolio = portfolio; renameModalOpen = true; }}>
                     <svg xmlns="http://www.w3.org/2000/svg" class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/>
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
                     </svg>
-                </summary>
-                <ul class="dropdown-content menu bg-base-200 rounded-box shadow-lg z-[1] w-48 p-2 mt-1">
-                    <li><button onclick={handleSyncPrices} disabled={syncingPrices}>{syncingPrices ? 'Syncing…' : 'Sync prices'}</button></li>
-                    <li><button onclick={() => brokerSelectOpen = true}>Import</button></li>
-                    <li><a href="/portfolios/{portfolio.id}/realized-gains">Realized gains</a></li>
-                </ul>
-            </details>
+                </button>
+                <button class="btn btn-ghost btn-sm text-error" title="Delete portfolio" onclick={() => { deletePortfolioError = null; deletePortfolioOpen = true; }}>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="3 6 5 6 21 6"/>
+                        <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                        <path d="M10 11v6M14 11v6"/>
+                        <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+                    </svg>
+                </button>
+            {/if}
+        </div>
+
+        {#if portfolio}
+            <div class="flex items-center gap-2 flex-wrap">
+                <button class="btn btn-primary btn-sm shrink-0" onclick={() => createTransactionOpen = true}>+ Record transaction</button>
+                <button class="btn btn-ghost btn-sm shrink-0" onclick={() => cryptoTradeOpen = true}>↔ Trade</button>
+                <button class="btn btn-ghost btn-sm shrink-0" onclick={() => transferOpen = true}>⇄ Transfer</button>
+                <button class="btn btn-ghost btn-sm hidden sm:inline-flex" onclick={handleSyncPrices} disabled={syncingPrices}>
+                    {#if syncingPrices}
+                        <span class="loading loading-spinner loading-xs"></span> Syncing…
+                    {:else}
+                        Sync prices
+                    {/if}
+                </button>
+                <button class="btn btn-ghost btn-sm hidden sm:inline-flex" onclick={() => brokerSelectOpen = true}>Import</button>
+                <a href="/portfolios/{portfolio.id}/realized-gains" class="btn btn-ghost btn-sm hidden sm:inline-flex">Realized gains</a>
+                <details class="sm:hidden dropdown dropdown-end">
+                    <summary class="btn btn-ghost btn-sm list-none" aria-label="More actions">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/>
+                        </svg>
+                    </summary>
+                    <ul class="dropdown-content menu bg-base-200 rounded-box shadow-lg z-[1] w-48 p-2 mt-1">
+                        <li><button onclick={handleSyncPrices} disabled={syncingPrices}>{syncingPrices ? 'Syncing…' : 'Sync prices'}</button></li>
+                        <li><button onclick={() => brokerSelectOpen = true}>Import</button></li>
+                        <li><a href="/portfolios/{portfolio.id}/realized-gains">Realized gains</a></li>
+                    </ul>
+                </details>
+            </div>
         {/if}
     </div>
 
