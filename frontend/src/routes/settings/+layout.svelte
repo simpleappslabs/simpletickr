@@ -17,7 +17,7 @@
 	}
 </script>
 
-<div class="max-w-4xl mx-auto px-4 sm:px-6 pt-6">
+<div class="max-w-5xl mx-auto px-4 sm:px-6 pt-6">
 	<div role="tablist" class="tabs tabs-border">
 		{#each tabs as tab}
 			<a

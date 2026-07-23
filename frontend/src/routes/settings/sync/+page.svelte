@@ -55,7 +55,7 @@
   }
 </script>
 
-<div class="max-w-4xl mx-auto p-4 sm:p-6 space-y-8">
+<div class="max-w-5xl mx-auto p-4 sm:p-6 space-y-8">
   <h1 class="text-2xl font-bold">Sync</h1>
 
   <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">

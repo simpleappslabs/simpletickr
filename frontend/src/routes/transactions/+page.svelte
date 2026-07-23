@@ -152,7 +152,7 @@
     });
 </script>
 
-<div class="max-w-4xl mx-auto p-4 sm:p-6 space-y-6">
+<div class="max-w-5xl mx-auto p-4 sm:p-6 space-y-6">
     <div class="flex items-center justify-between">
         <h1 class="text-xl sm:text-2xl font-bold">Transactions</h1>
         <button class="btn btn-primary btn-sm" onclick={() => createOpen = true}>+ Add transaction</button>

@@ -129,7 +129,7 @@
     });
 </script>
 
-<div class="max-w-4xl mx-auto p-4 sm:p-6 space-y-8">
+<div class="max-w-5xl mx-auto p-4 sm:p-6 space-y-8">
     <div class="space-y-2">
         <div class="flex items-center gap-2">
             <a href="/" class="btn btn-ghost btn-sm shrink-0">← Portfolios</a>
