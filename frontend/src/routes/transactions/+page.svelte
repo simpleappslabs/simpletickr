@@ -158,66 +158,69 @@
         <button class="btn btn-primary btn-sm" onclick={() => createOpen = true}>+ Add transaction</button>
     </div>
 
-    <div class="flex flex-wrap gap-3 items-end">
-        <label class="flex flex-col gap-1">
-            <span class="text-xs font-semibold uppercase tracking-widest text-base-content/50">Portfolio</span>
-            <select class="select select-bordered select-sm" bind:value={portfolioId} onchange={applyFilters}>
-                <option value={undefined}>All portfolios</option>
-                {#each portfolios as p}
-                    <option value={p.id}>{p.name}</option>
-                {/each}
-            </select>
-        </label>
-
-        <div class="flex flex-col gap-1">
-            <span class="text-xs font-semibold uppercase tracking-widest text-base-content/50">Listing</span>
-            <div class="w-64">
-                <AssetAutocomplete {assets} bind:value={listingId} onselect={applyFilters} clearable />
-            </div>
+    <div class="card bg-base-200/50 border border-base-300 p-4 space-y-3">
+        <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold uppercase tracking-widest text-base-content/50">Filters</span>
+            <button class="btn btn-ghost btn-xs" onclick={resetFilters}>Reset filters</button>
         </div>
 
-        <label class="flex flex-col gap-1">
-            <span class="text-xs font-semibold uppercase tracking-widest text-base-content/50">Type</span>
-            <select class="select select-bordered select-sm" bind:value={selectedType} onchange={applyFilters}>
-                <option value="">All types</option>
-                <option value="BUY">BUY</option>
-                <option value="SELL">SELL</option>
-                <option value="SPLIT">SPLIT</option>
-            </select>
-        </label>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 items-end">
+            <label class="flex flex-col gap-1">
+                <span class="text-xs font-semibold uppercase tracking-widest text-base-content/50">Portfolio</span>
+                <select class="select select-bordered select-sm" bind:value={portfolioId} onchange={applyFilters}>
+                    <option value={undefined}>All portfolios</option>
+                    {#each portfolios as p}
+                        <option value={p.id}>{p.name}</option>
+                    {/each}
+                </select>
+            </label>
 
-        <label class="flex flex-col gap-1">
-            <span class="text-xs font-semibold uppercase tracking-widest text-base-content/50">Asset type</span>
-            <select class="select select-bordered select-sm" bind:value={selectedAssetType} onchange={applyFilters}>
-                <option value="">All asset types</option>
-                <option value="STOCK">Stock</option>
-                <option value="ETF">ETF</option>
-                <option value="CRYPTO">Crypto</option>
-                <option value="OTHER">Other</option>
-            </select>
-        </label>
+            <div class="flex flex-col gap-1">
+                <span class="text-xs font-semibold uppercase tracking-widest text-base-content/50">Listing</span>
+                <AssetAutocomplete {assets} bind:value={listingId} onselect={applyFilters} clearable />
+            </div>
 
-        <label class="flex flex-col gap-1">
-            <span class="text-xs font-semibold uppercase tracking-widest text-base-content/50">Account</span>
-            <select class="select select-bordered select-sm" bind:value={selectedAccountId} onchange={applyFilters}>
-                <option value={undefined}>All accounts</option>
-                {#each accounts as a}
-                    <option value={a.id}>{a.name}</option>
-                {/each}
-            </select>
-        </label>
+            <label class="flex flex-col gap-1">
+                <span class="text-xs font-semibold uppercase tracking-widest text-base-content/50">Type</span>
+                <select class="select select-bordered select-sm" bind:value={selectedType} onchange={applyFilters}>
+                    <option value="">All types</option>
+                    <option value="BUY">BUY</option>
+                    <option value="SELL">SELL</option>
+                    <option value="SPLIT">SPLIT</option>
+                </select>
+            </label>
 
-        <label class="flex flex-col gap-1">
-            <span class="text-xs font-semibold uppercase tracking-widest text-base-content/50">From</span>
-            <input type="date" class="input input-bordered input-sm" bind:value={dateFrom} onchange={applyFilters} />
-        </label>
+            <label class="flex flex-col gap-1">
+                <span class="text-xs font-semibold uppercase tracking-widest text-base-content/50">Asset type</span>
+                <select class="select select-bordered select-sm" bind:value={selectedAssetType} onchange={applyFilters}>
+                    <option value="">All asset types</option>
+                    <option value="STOCK">Stock</option>
+                    <option value="ETF">ETF</option>
+                    <option value="CRYPTO">Crypto</option>
+                    <option value="OTHER">Other</option>
+                </select>
+            </label>
 
-        <label class="flex flex-col gap-1">
-            <span class="text-xs font-semibold uppercase tracking-widest text-base-content/50">To</span>
-            <input type="date" class="input input-bordered input-sm" bind:value={dateTo} onchange={applyFilters} />
-        </label>
+            <label class="flex flex-col gap-1">
+                <span class="text-xs font-semibold uppercase tracking-widest text-base-content/50">Account</span>
+                <select class="select select-bordered select-sm" bind:value={selectedAccountId} onchange={applyFilters}>
+                    <option value={undefined}>All accounts</option>
+                    {#each accounts as a}
+                        <option value={a.id}>{a.name}</option>
+                    {/each}
+                </select>
+            </label>
 
-        <button class="btn btn-ghost btn-sm" onclick={resetFilters}>Reset</button>
+            <label class="flex flex-col gap-1">
+                <span class="text-xs font-semibold uppercase tracking-widest text-base-content/50">From</span>
+                <input type="date" class="input input-bordered input-sm" bind:value={dateFrom} onchange={applyFilters} />
+            </label>
+
+            <label class="flex flex-col gap-1">
+                <span class="text-xs font-semibold uppercase tracking-widest text-base-content/50">To</span>
+                <input type="date" class="input input-bordered input-sm" bind:value={dateTo} onchange={applyFilters} />
+            </label>
+        </div>
     </div>
 
     {#if loading}
