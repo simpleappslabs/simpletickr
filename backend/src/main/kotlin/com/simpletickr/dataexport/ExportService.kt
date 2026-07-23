@@ -10,10 +10,12 @@ import com.simpletickr.dataexport.model.PriceMappingExport
 import com.simpletickr.dataexport.model.SettingsExport
 import com.simpletickr.dataexport.model.SimpletickrExport
 import com.simpletickr.dataexport.model.TransactionExport
+import com.simpletickr.dataexport.model.TransferExport
 import com.simpletickr.portfolio.persistence.PortfolioRepository
 import com.simpletickr.price.persistence.PriceProviderMappingRepository
 import com.simpletickr.settings.UserSettingsRepository
 import com.simpletickr.transaction.persistence.TransactionRepository
+import com.simpletickr.transfer.TransferRepository
 import org.springframework.stereotype.Service
 import java.time.Instant
 
@@ -24,6 +26,7 @@ class ExportService(
     private val mappingRepository: PriceProviderMappingRepository,
     private val portfolioRepository: PortfolioRepository,
     private val transactionRepository: TransactionRepository,
+    private val transferRepository: TransferRepository,
     private val settingsRepository: UserSettingsRepository,
 ) {
 
@@ -36,7 +39,7 @@ class ExportService(
         val accountsById = accounts.associateBy { it.id }
 
         return SimpletickrExport(
-            schemaVersion = 2,
+            schemaVersion = 3,
             exportedAt = Instant.now(),
             settings = SettingsExport(settings.baseCurrency.value),
             assets = assets.map { asset ->
@@ -86,6 +89,17 @@ class ExportService(
                             externalId = tx.externalId,
                             accountName = accountsById[tx.accountId]?.name,
                             notes = tx.notes,
+                        )
+                    },
+                    transfers = transferRepository.findAllForPortfolio(portfolio.id).map { tr ->
+                        TransferExport(
+                            listingId = tr.listingId,
+                            quantity = tr.quantity,
+                            assetFeeQuantity = tr.assetFeeQuantity,
+                            date = tr.date,
+                            sourceAccountName = accountsById[tr.sourceAccountId]?.name,
+                            destinationAccountName = accountsById[tr.destinationAccountId]?.name,
+                            notes = tr.notes,
                         )
                     },
                 )

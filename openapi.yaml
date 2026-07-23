@@ -2648,6 +2648,8 @@ components:
         - portfoliosExisting
         - transactionsToImport
         - transactionsSkipped
+        - transfersToImport
+        - transfersSkipped
       properties:
         errors:
           type: array
@@ -2669,6 +2671,10 @@ components:
           type: integer
         transactionsSkipped:
           type: integer
+        transfersToImport:
+          type: integer
+        transfersSkipped:
+          type: integer
 
     DataImportResult:
       type: object
@@ -2677,6 +2683,7 @@ components:
         - listingsCreated
         - portfoliosCreated
         - transactionsImported
+        - transfersImported
       properties:
         assetsCreated:
           type: integer
@@ -2685,6 +2692,8 @@ components:
         portfoliosCreated:
           type: integer
         transactionsImported:
+          type: integer
+        transfersImported:
           type: integer
 
     DashboardWidgetType:

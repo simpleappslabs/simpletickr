@@ -75,7 +75,8 @@
     const hasErrors = $derived(analysis !== null && analysis.errors.length > 0);
     const totalCreating = $derived(
         analysis
-            ? analysis.assetsToCreate + analysis.listingsToCreate + analysis.portfoliosToCreate + analysis.transactionsToImport
+            ? analysis.assetsToCreate + analysis.listingsToCreate + analysis.portfoliosToCreate
+                + analysis.transactionsToImport + analysis.transfersToImport
             : 0
     );
 </script>
@@ -176,6 +177,11 @@
                                 <td class="text-right">{analysis.transactionsToImport}</td>
                                 <td class="text-right text-base-content/50">{analysis.transactionsSkipped} skipped (duplicates)</td>
                             </tr>
+                            <tr>
+                                <td>Transfers</td>
+                                <td class="text-right">{analysis.transfersToImport}</td>
+                                <td class="text-right text-base-content/50">{analysis.transfersSkipped} skipped (duplicates)</td>
+                            </tr>
                         </tbody>
                     </table>
                 </div>
@@ -219,6 +225,10 @@
                 <div class="stat bg-base-200 rounded-box p-4">
                     <div class="stat-title text-xs">Transactions imported</div>
                     <div class="stat-value text-2xl text-success">{result.transactionsImported}</div>
+                </div>
+                <div class="stat bg-base-200 rounded-box p-4">
+                    <div class="stat-title text-xs">Transfers imported</div>
+                    <div class="stat-value text-2xl text-success">{result.transfersImported}</div>
                 </div>
             </div>
             <div class="modal-action">

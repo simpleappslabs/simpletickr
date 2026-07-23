@@ -21,6 +21,8 @@ import com.simpletickr.shared.CurrencyCode
 import com.simpletickr.transaction.model.Transaction
 import com.simpletickr.transaction.model.TransactionType
 import com.simpletickr.transaction.persistence.TransactionRepository
+import com.simpletickr.transfer.Transfer
+import com.simpletickr.transfer.TransferRepository
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -35,6 +37,7 @@ class ImportDataUseCase(
     private val mappingRepository: PriceProviderMappingRepository,
     private val portfolioRepository: PortfolioRepository,
     private val transactionRepository: TransactionRepository,
+    private val transferRepository: TransferRepository,
     private val settingsRepository: UserSettingsRepository,
     private val objectMapper: ObjectMapper,
 ) {
@@ -67,6 +70,8 @@ class ImportDataUseCase(
         val resolvedPortfolios: List<ResolvedPortfolio>,
         val transactionsToInsert: Int,
         val transactionsSkipped: Int,
+        val transfersToInsert: Int = 0,
+        val transfersSkipped: Int = 0,
     ) {
         val isValid get() = errors.isEmpty()
 
@@ -80,6 +85,8 @@ class ImportDataUseCase(
             portfoliosExisting = resolvedPortfolios.count { !it.needsCreate },
             transactionsToImport = transactionsToInsert,
             transactionsSkipped = transactionsSkipped,
+            transfersToImport = transfersToInsert,
+            transfersSkipped = transfersSkipped,
         )
     }
 
@@ -106,8 +113,8 @@ class ImportDataUseCase(
     private fun buildPlan(export: SimpletickrExport): ImportPlan {
         val errors = mutableListOf<String>()
 
-        if (export.schemaVersion !in 1..2) {
-            errors.add("Unsupported schema version: ${export.schemaVersion}. Supported versions: 1, 2.")
+        if (export.schemaVersion !in 1..3) {
+            errors.add("Unsupported schema version: ${export.schemaVersion}. Supported versions: 1, 2, 3.")
             return ImportPlan(errors, emptyList(), emptyList(), 0, 0)
         }
 
@@ -128,6 +135,11 @@ class ImportDataUseCase(
             .map { it.listingId }.filter { it !in exportListingIds }.toSet()
         if (badListingRefs.isNotEmpty())
             errors.add("Transactions reference listing IDs not present in export: $badListingRefs")
+
+        val badTransferListingRefs = export.portfolios.flatMap { it.transfers }
+            .map { it.listingId }.filter { it !in exportListingIds }.toSet()
+        if (badTransferListingRefs.isNotEmpty())
+            errors.add("Transfers reference listing IDs not present in export: $badTransferListingRefs")
 
         if (errors.isNotEmpty()) return ImportPlan(errors, emptyList(), emptyList(), 0, 0)
 
@@ -221,7 +233,33 @@ class ImportDataUseCase(
             }
         }
 
-        return ImportPlan(errors, resolvedAssets, resolvedPortfolios, toInsert, skipped)
+        // Count transfers: dedup only when portfolio, listing and both accounts already exist
+        val existingAccountsByName = accountRepository.findAll().associateBy { it.name }
+        var transfersToInsert = 0
+        var transfersSkipped = 0
+
+        for (rp in resolvedPortfolios) {
+            val realPortfolioId = rp.existingId
+            for (tr in rp.exported.transfers) {
+                val realListingId = existingListingMap[tr.listingId]
+                val realSourceAccountId = existingAccountsByName[tr.sourceAccountName ?: "Default"]?.id
+                val realDestinationAccountId = existingAccountsByName[tr.destinationAccountName ?: "Default"]?.id
+                if (realPortfolioId != null && realListingId != null &&
+                    realSourceAccountId != null && realDestinationAccountId != null &&
+                    transferRepository.existsIdentical(
+                        realPortfolioId, realListingId, tr.date,
+                        tr.quantity, tr.assetFeeQuantity,
+                        realSourceAccountId, realDestinationAccountId,
+                    )
+                ) {
+                    transfersSkipped++
+                } else {
+                    transfersToInsert++
+                }
+            }
+        }
+
+        return ImportPlan(errors, resolvedAssets, resolvedPortfolios, toInsert, skipped, transfersToInsert, transfersSkipped)
     }
 
     private fun executePlan(export: SimpletickrExport, plan: ImportPlan): ImportResult {
@@ -333,6 +371,40 @@ class ImportDataUseCase(
             }
         }
 
-        return ImportResult(assetsCreated, listingsCreated, portfoliosCreated, transactionsImported)
+        // Insert transfers (dedup)
+        var transfersImported = 0
+
+        for (rp in plan.resolvedPortfolios) {
+            val realPortfolioId = portfolioIdMap[rp.exported.id] ?: continue
+            for (tr in rp.exported.transfers) {
+                val realListingId = listingIdMap[tr.listingId] ?: continue
+                val sourceAccountId = resolveAccount(tr.sourceAccountName)
+                val destinationAccountId = resolveAccount(tr.destinationAccountName)
+                if (!transferRepository.existsIdentical(
+                        realPortfolioId, realListingId, tr.date,
+                        tr.quantity, tr.assetFeeQuantity,
+                        sourceAccountId, destinationAccountId,
+                    )
+                ) {
+                    transferRepository.create(
+                        Transfer(
+                            id = 0,
+                            portfolioId = realPortfolioId,
+                            listingId = realListingId,
+                            assetId = 0, // not used on create
+                            quantity = tr.quantity,
+                            assetFeeQuantity = tr.assetFeeQuantity,
+                            date = tr.date,
+                            sourceAccountId = sourceAccountId,
+                            destinationAccountId = destinationAccountId,
+                            notes = tr.notes,
+                        )
+                    )
+                    transfersImported++
+                }
+            }
+        }
+
+        return ImportResult(assetsCreated, listingsCreated, portfoliosCreated, transactionsImported, transfersImported)
     }
 }

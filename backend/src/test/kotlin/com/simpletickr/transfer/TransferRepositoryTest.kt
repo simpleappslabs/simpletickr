@@ -132,4 +132,22 @@ class TransferRepositoryTest {
         val unrelatedAccountId = accountRepository.save(Account(0L, "Unrelated", null, AccountType.CRYPTO, null, null, null)).id
         assertEquals(false, repository.existsForAccountInPortfolio(unrelatedAccountId, portfolioId))
     }
+
+    @Test
+    fun `existsIdentical is true for a matching transfer and false when any field differs`() {
+        saveTransfer(quantity = BigDecimal("2.0"), assetFeeQuantity = BigDecimal("0.01"), date = LocalDate.of(2024, 3, 1))
+
+        assertTrue(repository.existsIdentical(
+            portfolioId, listingId, LocalDate.of(2024, 3, 1),
+            BigDecimal("2.0"), BigDecimal("0.01"), sourceAccountId, destinationAccountId,
+        ))
+        assertEquals(false, repository.existsIdentical(
+            portfolioId, listingId, LocalDate.of(2024, 3, 1),
+            BigDecimal("3.0"), BigDecimal("0.01"), sourceAccountId, destinationAccountId,
+        ))
+        assertEquals(false, repository.existsIdentical(
+            portfolioId, listingId, LocalDate.of(2024, 3, 2),
+            BigDecimal("2.0"), BigDecimal("0.01"), sourceAccountId, destinationAccountId,
+        ))
+    }
 }

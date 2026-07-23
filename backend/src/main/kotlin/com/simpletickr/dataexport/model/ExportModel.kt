@@ -40,6 +40,7 @@ data class PortfolioExport(
     val uuid: UUID,
     val name: String,
     val transactions: List<TransactionExport>,
+    val transfers: List<TransferExport> = emptyList(),
 )
 
 data class AccountExport(
@@ -64,6 +65,16 @@ data class TransactionExport(
     val notes: String? = null,
 )
 
+data class TransferExport(
+    val listingId: Long,
+    val quantity: BigDecimal,
+    val assetFeeQuantity: BigDecimal?,
+    val date: LocalDate,
+    val sourceAccountName: String?,
+    val destinationAccountName: String?,
+    val notes: String? = null,
+)
+
 data class ImportAnalysis(
     val errors: List<String>,
     val assetsToCreate: Int,
@@ -74,6 +85,8 @@ data class ImportAnalysis(
     val portfoliosExisting: Int,
     val transactionsToImport: Int,
     val transactionsSkipped: Int,
+    val transfersToImport: Int = 0,
+    val transfersSkipped: Int = 0,
 )
 
 data class ImportResult(
@@ -81,4 +94,5 @@ data class ImportResult(
     val listingsCreated: Int,
     val portfoliosCreated: Int,
     val transactionsImported: Int,
+    val transfersImported: Int = 0,
 )

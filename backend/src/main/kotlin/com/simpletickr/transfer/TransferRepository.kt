@@ -5,6 +5,8 @@ import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.jdbc.core.RowMapper
 import org.springframework.jdbc.support.GeneratedKeyHolder
 import org.springframework.stereotype.Repository
+import java.math.BigDecimal
+import java.time.LocalDate
 
 @Repository
 class TransferRepository(private val jdbcTemplate: JdbcTemplate) {
@@ -67,4 +69,18 @@ class TransferRepository(private val jdbcTemplate: JdbcTemplate) {
             "SELECT COUNT(*) FROM transfers WHERE portfolio_id = ? AND (source_account_id = ? OR destination_account_id = ?)",
             Int::class.java, portfolioId, accountId, accountId,
         )!! > 0
+
+    fun existsIdentical(
+        portfolioId: Long, listingId: Long, date: LocalDate,
+        quantity: BigDecimal, assetFeeQuantity: BigDecimal?,
+        sourceAccountId: Long, destinationAccountId: Long,
+    ): Boolean = jdbcTemplate.queryForObject(
+        """SELECT COUNT(*) FROM transfers
+           WHERE portfolio_id = ? AND listing_id = ? AND date = ?
+           AND quantity = ?
+           AND asset_fee_quantity IS NOT DISTINCT FROM ?
+           AND source_account_id = ? AND destination_account_id = ?""",
+        Int::class.java,
+        portfolioId, listingId, date, quantity, assetFeeQuantity, sourceAccountId, destinationAccountId,
+    )!! > 0
 }
