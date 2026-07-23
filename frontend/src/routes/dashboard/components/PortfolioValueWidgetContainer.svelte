@@ -84,7 +84,7 @@
 {/snippet}
 
 {#snippet chart()}
-    <ValueHistoryChart points={valuePoints} {baseCurrency} />
+    <ValueHistoryChart points={valuePoints} {baseCurrency} compact />
 {/snippet}
 
 <DashboardWidgetCard title={widget.label} {loading} {error} {onremove} {summary} {rangeSelector} {chart} />

@@ -7,9 +7,10 @@
 
     Chart.register(LineController, LineElement, PointElement, CategoryScale, LinearScale, Filler, Tooltip, Legend);
 
-    let { points, baseCurrency }: {
+    let { points, baseCurrency, compact = false }: {
         points: PortfolioValuePoint[];
         baseCurrency: string;
+        compact?: boolean;
     } = $props();
 
     let chartCanvas = $state<HTMLCanvasElement | null>(null);
@@ -47,6 +48,7 @@
             },
             options: {
                 responsive: true,
+                maintainAspectRatio: false,
                 interaction: { mode: 'index', intersect: false },
                 scales: {
                     x: {
@@ -80,7 +82,9 @@
 
 <div class="bg-base-200 rounded-box p-4 w-full">
     {#if points.length === 0}
-        <p class="text-base-content/40 italic text-sm text-center py-8">No value history available.</p>
+        <div class="{compact ? 'h-40' : 'h-96'} flex items-center justify-center">
+            <p class="text-base-content/40 italic text-sm">No value history available.</p>
+        </div>
     {:else}
         <div class="flex gap-3 mb-2">
             <span class="flex items-center gap-1 text-xs text-base-content/60">
@@ -90,6 +94,8 @@
                 <span class="inline-block w-3 h-0.5 rounded" style="background:#22d3ee"></span> Invested
             </span>
         </div>
-        <canvas bind:this={chartCanvas}></canvas>
+        <div class={compact ? 'h-40' : 'h-96'}>
+            <canvas bind:this={chartCanvas}></canvas>
+        </div>
     {/if}
 </div>

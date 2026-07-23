@@ -7,9 +7,10 @@
 
     Chart.register(LineController, LineElement, PointElement, CategoryScale, LinearScale, Filler, Tooltip);
 
-    let { points, currency }: {
+    let { points, currency, compact = false }: {
         points: PricePoint[];
         currency: string;
+        compact?: boolean;
     } = $props();
 
     let chartCanvas = $state<HTMLCanvasElement | null>(null);
@@ -35,6 +36,7 @@
             },
             options: {
                 responsive: true,
+                maintainAspectRatio: false,
                 interaction: { mode: 'index', intersect: false },
                 scales: {
                     x: {
@@ -69,8 +71,12 @@
 
 <div class="bg-base-200 rounded-box p-4 w-full">
     {#if points.length === 0}
-        <p class="text-base-content/40 italic text-sm text-center py-8">No price data available for this listing.</p>
+        <div class="{compact ? 'h-40' : 'h-96'} flex items-center justify-center">
+            <p class="text-base-content/40 italic text-sm">No price data available for this listing.</p>
+        </div>
     {:else}
-        <canvas bind:this={chartCanvas}></canvas>
+        <div class={compact ? 'h-40' : 'h-96'}>
+            <canvas bind:this={chartCanvas}></canvas>
+        </div>
     {/if}
 </div>

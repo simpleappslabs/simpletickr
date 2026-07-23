@@ -83,7 +83,7 @@
 {/snippet}
 
 {#snippet chart()}
-    <PriceHistoryChart points={pricePoints} currency={widget.currency ?? ''} />
+    <PriceHistoryChart points={pricePoints} currency={widget.currency ?? ''} compact />
 {/snippet}
 
 <DashboardWidgetCard title={widget.label} {loading} {error} {onremove} {summary} {rangeSelector} {chart} />

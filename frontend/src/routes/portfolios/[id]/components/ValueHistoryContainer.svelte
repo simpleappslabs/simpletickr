@@ -68,11 +68,17 @@
     </div>
 
     {#if loading}
-        <div class="flex justify-center py-8">
-            <span class="loading loading-spinner loading-sm"></span>
+        <div class="bg-base-200 rounded-box p-4 w-full">
+            <div class="h-96 flex items-center justify-center">
+                <span class="loading loading-spinner loading-sm"></span>
+            </div>
         </div>
     {:else if error}
-        <div class="alert alert-error py-2"><span>{error}</span></div>
+        <div class="bg-base-200 rounded-box p-4 w-full">
+            <div class="h-96 flex items-center justify-center">
+                <div class="alert alert-error py-2"><span>{error}</span></div>
+            </div>
+        </div>
     {:else}
         <ValueHistoryChart {points} {baseCurrency} />
         {#if summary && summary.excludedHoldingCount > 0}
