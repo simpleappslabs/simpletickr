@@ -204,7 +204,7 @@
         {:else}
             <section class="space-y-3">
                 <h2 class="text-lg font-semibold">Holdings</h2>
-                <HoldingsTable {holdings} onchartclick={(l) => chartListing = l} />
+                <HoldingsTable {holdings} portfolioId={portfolio!.id} onchartclick={(l) => chartListing = l} />
             </section>
 
             <section class="space-y-3">

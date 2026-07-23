@@ -1,8 +1,9 @@
 <script lang="ts">
     import type { Holding } from '$lib/api/types.gen';
 
-    let { holdings, onchartclick }: {
+    let { holdings, portfolioId, onchartclick }: {
         holdings: Holding[];
+        portfolioId: number;
         onchartclick?: (listing: { id: number; ticker: string; currency: string }) => void;
     } = $props();
 
@@ -23,6 +24,55 @@
         if (n == null) return '—';
         return `${fmt(n)} ${ccy}`;
     }
+
+    type SortColumn = 'assetName' | 'marketValueBase' | 'unrealizedPnlBase';
+    type SortDirection = 'asc' | 'desc';
+
+    const storageKey = $derived(`holdings-sort-${portfolioId}`);
+
+    let sortColumn = $state<SortColumn>('marketValueBase');
+    let sortDirection = $state<SortDirection>('desc');
+
+    $effect(() => {
+        const raw = localStorage.getItem(storageKey);
+        if (!raw) return;
+        try {
+            const parsed = JSON.parse(raw);
+            if (parsed.column === 'assetName' || parsed.column === 'marketValueBase' || parsed.column === 'unrealizedPnlBase') {
+                sortColumn = parsed.column;
+            }
+            if (parsed.direction === 'asc' || parsed.direction === 'desc') {
+                sortDirection = parsed.direction;
+            }
+        } catch {
+            // ignore malformed stored value
+        }
+    });
+
+    $effect(() => {
+        localStorage.setItem(storageKey, JSON.stringify({ column: sortColumn, direction: sortDirection }));
+    });
+
+    function toggleSort(column: SortColumn) {
+        if (sortColumn === column) {
+            sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+        } else {
+            sortColumn = column;
+            sortDirection = column === 'assetName' ? 'asc' : 'desc';
+        }
+    }
+
+    const sortedHoldings = $derived.by(() => {
+        const dir = sortDirection === 'asc' ? 1 : -1;
+        return [...holdings].sort((a, b) => {
+            if (sortColumn === 'assetName') {
+                return a.assetName.localeCompare(b.assetName) * dir;
+            }
+            const aVal = a[sortColumn] ?? -Infinity;
+            const bVal = b[sortColumn] ?? -Infinity;
+            return (aVal - bVal) * dir;
+        });
+    });
 </script>
 
 <div class="overflow-x-auto">
@@ -30,18 +80,24 @@
         <thead>
         <tr>
             <th></th>
-            <th>Asset</th>
+            <th class="cursor-pointer select-none" onclick={() => toggleSort('assetName')}>
+                Asset{sortColumn === 'assetName' ? (sortDirection === 'asc' ? ' ▲' : ' ▼') : ''}
+            </th>
             <th class="text-right">Qty</th>
             <th class="text-right">Avg cost</th>
             <th class="text-right">Price</th>
             <th class="text-right">Total cost</th>
-            <th class="text-right">Market value</th>
-            <th class="text-right">Gain</th>
+            <th class="text-right cursor-pointer select-none" onclick={() => toggleSort('marketValueBase')}>
+                Market value{sortColumn === 'marketValueBase' ? (sortDirection === 'asc' ? ' ▲' : ' ▼') : ''}
+            </th>
+            <th class="text-right cursor-pointer select-none" onclick={() => toggleSort('unrealizedPnlBase')}>
+                Gain{sortColumn === 'unrealizedPnlBase' ? (sortDirection === 'asc' ? ' ▲' : ' ▼') : ''}
+            </th>
             <th></th>
         </tr>
         </thead>
         <tbody>
-        {#each holdings as h}
+        {#each sortedHoldings as h}
             <tr class="cursor-pointer hover" onclick={() => toggleExpand(h.assetId)}>
                 <td class="w-6 text-base-content/40">
                     {#if h.listings.length > 1}
