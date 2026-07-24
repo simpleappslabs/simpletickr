@@ -1354,7 +1354,20 @@ paths:
     get:
       tags: [DataExport]
       operationId: exportData
-      summary: Export all portfolio data as a JSON file
+      summary: Export portfolio data as a JSON file
+      description: >
+        Exports all portfolios, or only the given portfolios (with only the assets and accounts they reference)
+        when portfolioIds is provided.
+      parameters:
+        - name: portfolioIds
+          in: query
+          required: false
+          explode: true
+          schema:
+            type: array
+            items:
+              type: integer
+              format: int64
       responses:
         "200":
           description: JSON export file

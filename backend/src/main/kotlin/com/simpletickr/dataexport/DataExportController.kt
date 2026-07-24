@@ -20,8 +20,10 @@ class DataExportController(
 ) {
 
     @GetMapping("/data-export")
-    fun exportData(): ResponseEntity<ByteArray> {
-        val export = exportService.buildExport()
+    fun exportData(
+        @RequestParam("portfolioIds", required = false) portfolioIds: List<Long>?,
+    ): ResponseEntity<ByteArray> {
+        val export = exportService.buildExport(portfolioIds)
         val json = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsBytes(export)
         val filename = "simpletickr-export-${LocalDate.now()}.json"
         return ResponseEntity.ok()

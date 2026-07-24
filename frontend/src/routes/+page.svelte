@@ -4,6 +4,7 @@
   import type { Portfolio } from '$lib/api/types.gen';
   import PortfolioModal from '$lib/PortfolioModal.svelte';
   import DataImportDialog from '$lib/DataImportDialog.svelte';
+  import ExportDialog from '$lib/ExportDialog.svelte';
   import '$lib/client';
 
   let portfolios = $state<Portfolio[]>([]);
@@ -18,11 +19,12 @@
   let deleteError = $state<string | null>(null);
 
   let importOpen = $state(false);
+  let exportOpen = $state(false);
   let exportError = $state<string | null>(null);
 
-  async function handleExport() {
+  async function doExport(portfolioIds?: number[]) {
     exportError = null;
-    const { data, error: err } = await exportData();
+    const { data, error: err } = await exportData({ query: portfolioIds ? { portfolioIds } : undefined });
     if (err || !data) {
       exportError = 'Export failed.';
       return;
@@ -36,6 +38,7 @@
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+    exportOpen = false;
   }
 
   async function load() {
@@ -71,7 +74,7 @@
   <div class="flex items-center gap-3">
     <h1 class="text-2xl font-bold flex-1">Portfolios</h1>
     <button class="btn btn-ghost btn-sm" onclick={() => importOpen = true}>Import</button>
-    <button class="btn btn-ghost btn-sm" onclick={handleExport}>Export</button>
+    <button class="btn btn-ghost btn-sm" onclick={() => exportOpen = true}>Export</button>
     <button class="btn btn-primary btn-sm" onclick={() => { editingPortfolio = null; modalOpen = true; }}>+ New portfolio</button>
   </div>
 
@@ -137,6 +140,13 @@
   open={importOpen}
   onsuccess={() => { importOpen = false; load(); }}
   oncancel={() => importOpen = false}
+/>
+
+<ExportDialog
+  open={exportOpen}
+  portfolios={portfolios}
+  onexport={doExport}
+  oncancel={() => exportOpen = false}
 />
 
 <!-- Delete confirmation modal -->

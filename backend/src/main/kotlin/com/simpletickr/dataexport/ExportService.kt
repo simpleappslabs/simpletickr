@@ -1,6 +1,8 @@
 package com.simpletickr.dataexport
 
+import com.simpletickr.account.model.Account
 import com.simpletickr.account.persistence.AccountRepository
+import com.simpletickr.asset.model.Asset
 import com.simpletickr.asset.persistence.AssetRepository
 import com.simpletickr.dataexport.model.AccountExport
 import com.simpletickr.dataexport.model.AssetExport
@@ -30,12 +32,33 @@ class ExportService(
     private val settingsRepository: UserSettingsRepository,
 ) {
 
-    fun buildExport(): SimpletickrExport {
+    fun buildExport(portfolioIds: List<Long>? = null): SimpletickrExport {
         val settings = settingsRepository.find()
-        val assets = assetRepository.findAll()
+        val portfolios = if (portfolioIds == null) portfolioRepository.findAll()
+            else portfolioRepository.findByIds(portfolioIds.toSet())
+
+        val transactionsByPortfolio = portfolios.associate { it.id to transactionRepository.findAllForPortfolio(it.id) }
+        val transfersByPortfolio = portfolios.associate { it.id to transferRepository.findAllForPortfolio(it.id) }
+
+        val allAssets = assetRepository.findAll()
+        val allAccounts = accountRepository.findAll()
+
+        val assets: List<Asset>
+        val accounts: List<Account>
+        if (portfolioIds == null) {
+            assets = allAssets
+            accounts = allAccounts
+        } else {
+            val referencedListingIds = (transactionsByPortfolio.values.flatten().map { it.listingId } +
+                transfersByPortfolio.values.flatten().map { it.listingId }).toSet()
+            assets = allAssets.filter { asset -> asset.listings.any { it.id in referencedListingIds } }
+
+            val referencedAccountIds = (transactionsByPortfolio.values.flatten().map { it.accountId } +
+                transfersByPortfolio.values.flatten().flatMap { listOf(it.sourceAccountId, it.destinationAccountId) }).toSet()
+            accounts = allAccounts.filter { it.id in referencedAccountIds }
+        }
+
         val allMappings = mappingRepository.findAll().groupBy { it.listingId }
-        val portfolios = portfolioRepository.findAll()
-        val accounts = accountRepository.findAll()
         val accountsById = accounts.associateBy { it.id }
 
         return SimpletickrExport(
@@ -77,7 +100,7 @@ class ExportService(
                     id = portfolio.id,
                     uuid = portfolio.uuid,
                     name = portfolio.name,
-                    transactions = transactionRepository.findAllForPortfolio(portfolio.id).map { tx ->
+                    transactions = transactionsByPortfolio.getValue(portfolio.id).map { tx ->
                         TransactionExport(
                             listingId = tx.listingId,
                             type = tx.type.name,
@@ -91,7 +114,7 @@ class ExportService(
                             notes = tx.notes,
                         )
                     },
-                    transfers = transferRepository.findAllForPortfolio(portfolio.id).map { tr ->
+                    transfers = transfersByPortfolio.getValue(portfolio.id).map { tr ->
                         TransferExport(
                             listingId = tr.listingId,
                             quantity = tr.quantity,
