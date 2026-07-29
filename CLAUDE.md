@@ -188,7 +188,7 @@ Labels used: `feature`, `bug`, `chore`, `infra`, `frontend`, `backend`, `api`
 GitHub Project board: https://github.com/orgs/simpleappslabs/projects/2 (project #2, owner `simpleappslabs`)
 - Project ID: `PVT_kwDOCTgvzs4BVhCw`
 - Status field ID: `PVTSSF_lADOCTgvzs4BVhCwzhQ8U5U`
-- Status option IDs: Backlog `57f4641b` · Todo `1b978f2c` · In Progress `3a2722f3` · Done `acffd51b`
+- Status option IDs: Backlog `57f4641b` · Ready `1b978f2c` · In progress `3a2722f3` · In review `85d7c126` · Done `acffd51b`
 
 When logging a new issue, always add it to the project board in the **Backlog** status (`57f4641b`) immediately after creation:
 ```bash
