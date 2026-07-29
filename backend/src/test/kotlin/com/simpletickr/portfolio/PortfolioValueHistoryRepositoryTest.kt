@@ -53,11 +53,11 @@ class PortfolioValueHistoryRepositoryTest {
 
     @BeforeEach
     fun setup() {
-        portfolioId = portfolioRepository.save("Test Portfolio").id
+        portfolioId = portfolioRepository.save("Test Portfolio", 1L).id
         val asset = assetRepository.save(null, "Test Asset", AssetType.STOCK)
         listingId = listingRepository.save(asset.id, null, "TST", eur).id
         accountId = jdbcTemplate.queryForObject(
-            "INSERT INTO accounts (name, account_type) VALUES ('Test', 'BROKERAGE') RETURNING id",
+            "INSERT INTO accounts (user_id, name, account_type) VALUES (1, 'Test', 'BROKERAGE') RETURNING id",
             Long::class.java,
         )!!
     }

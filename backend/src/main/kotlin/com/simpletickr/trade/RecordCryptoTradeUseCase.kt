@@ -1,5 +1,6 @@
 package com.simpletickr.trade
 
+import com.simpletickr.account.persistence.AccountRepository
 import com.simpletickr.asset.model.AssetType
 import com.simpletickr.asset.persistence.AssetRepository
 import com.simpletickr.asset.persistence.ListingRepository
@@ -20,6 +21,7 @@ class RecordCryptoTradeUseCase(
     private val transactionRepository: TransactionRepository,
     private val listingRepository: ListingRepository,
     private val assetRepository: AssetRepository,
+    private val accountRepository: AccountRepository,
     private val fxRateService: FxRateService,
     private val userSettingsRepository: UserSettingsRepository,
 ) {
@@ -27,7 +29,7 @@ class RecordCryptoTradeUseCase(
     private val log = LoggerFactory.getLogger(javaClass)
 
     @Transactional
-    fun execute(portfolioId: Long, command: RecordCryptoTradeCommand): CryptoTrade {
+    fun execute(portfolioId: Long, command: RecordCryptoTradeCommand, userId: Long): CryptoTrade {
         log.info("Recording crypto trade: portfolioId={}, sellListing={}, buyListing={}, date={}",
             portfolioId, command.sellListingId, command.buyListingId, command.date)
 
@@ -39,6 +41,9 @@ class RecordCryptoTradeUseCase(
             ?: throw IllegalArgumentException("Listing ${command.sellListingId} not found")
         val buyListing = listingRepository.findById(command.buyListingId)
             ?: throw IllegalArgumentException("Listing ${command.buyListingId} not found")
+        require(accountRepository.isOwnedBy(command.accountId, userId)) {
+            "Account ${command.accountId} not found"
+        }
 
         val sellAsset = assetRepository.findById(sellListing.assetId)
             ?: throw IllegalArgumentException("Asset for listing ${command.sellListingId} not found")
@@ -52,7 +57,7 @@ class RecordCryptoTradeUseCase(
             "Buy listing must belong to a CRYPTO asset (got ${buyAsset.type})"
         }
 
-        val baseCurrency = userSettingsRepository.find().baseCurrency
+        val baseCurrency = userSettingsRepository.find(userId).baseCurrency
 
         val (sellFxRate, sellFxRateSource) = resolveFxRate(baseCurrency, sellListing.currency.value, command.date, fxRateService)
         val (buyFxRate, buyFxRateSource) = resolveFxRate(baseCurrency, buyListing.currency.value, command.date, fxRateService)

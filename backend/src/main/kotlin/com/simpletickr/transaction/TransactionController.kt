@@ -3,12 +3,14 @@ package com.simpletickr.transaction
 import com.simpletickr.account.AccountService
 import com.simpletickr.account.model.Account
 import com.simpletickr.asset.model.AssetType
+import com.simpletickr.auth.currentUser
 import com.simpletickr.fx.model.FxRateSource
 import com.simpletickr.generated.api.TransactionsApi
 import com.simpletickr.generated.model.CryptoTradeRequest
 import com.simpletickr.generated.model.CryptoTradeResponse
 import com.simpletickr.generated.model.TransactionPage
 import com.simpletickr.generated.model.TransactionRequest
+import com.simpletickr.portfolio.persistence.PortfolioRepository
 import com.simpletickr.trade.RecordCryptoTradeUseCase
 import com.simpletickr.transaction.model.Transaction
 import com.simpletickr.transaction.model.TransactionType
@@ -30,6 +32,7 @@ import com.simpletickr.generated.model.TransactionType as GeneratedTransactionTy
 @RestController
 class TransactionController(
     private val transactionRepository: TransactionRepository,
+    private val portfolioRepository: PortfolioRepository,
     private val accountService: AccountService,
     private val recordTransactionUseCase: RecordTransactionUseCase,
     private val amendTransactionUseCase: AmendTransactionUseCase,
@@ -51,8 +54,15 @@ class TransactionController(
         if (page < 0 || size <= 0 || size > 200) return ResponseEntity.badRequest().build()
         if (dateFrom != null && dateTo != null && dateFrom > dateTo) return ResponseEntity.badRequest().build()
 
+        val userId = currentUser().id
+        if (portfolioId != null && !portfolioRepository.isOwnedBy(portfolioId, userId)) {
+            return ResponseEntity.notFound().build()
+        }
+        val portfolioIds = if (portfolioId == null) portfolioRepository.findAllForUser(userId).map { it.id }.toSet() else null
+
         val filter = TransactionFilter(
             portfolioId = portfolioId,
+            portfolioIds = portfolioIds,
             type = type?.let { TransactionType.valueOf(it.value) },
             listingId = listingId,
             assetType = assetType?.let { AssetType.valueOf(it.value) },
@@ -63,7 +73,7 @@ class TransactionController(
         val items = transactionRepository.findAll(filter, page, size)
         val total = transactionRepository.count(filter)
         val totalPages = ((total + size - 1) / size).toInt()
-        val accountsById = accountService.listAccounts().associateBy { it.id }
+        val accountsById = accountService.listAccounts(currentUser().id).associateBy { it.id }
         return ResponseEntity.ok(TransactionPage(
             items = items.map { it.toModel(accountsById) },
             page = page,
@@ -75,11 +85,13 @@ class TransactionController(
 
     override fun getTransaction(id: Long): ResponseEntity<TransactionModel> {
         val transaction = transactionRepository.findById(id) ?: return ResponseEntity.notFound().build()
-        val account = accountService.getAccount(transaction.accountId)!!
+        if (!portfolioRepository.isOwnedBy(transaction.portfolioId, currentUser().id)) return ResponseEntity.notFound().build()
+        val account = accountService.getAccount(transaction.accountId, currentUser().id)!!
         return ResponseEntity.ok(transaction.toModel(mapOf(account.id to account)))
     }
 
     override fun recordTransaction(portfolioId: Long, transactionRequest: TransactionRequest): ResponseEntity<TransactionModel> {
+        if (!portfolioRepository.isOwnedBy(portfolioId, currentUser().id)) return ResponseEntity.notFound().build()
         val command = RecordTransactionCommand(
             listingId = transactionRequest.listingId,
             type = TransactionType.valueOf(transactionRequest.type.value),
@@ -91,12 +103,13 @@ class TransactionController(
             accountId = transactionRequest.accountId,
             notes = transactionRequest.notes,
         )
-        val transaction = recordTransactionUseCase.execute(portfolioId, command)
-        val account = accountService.getAccount(transaction.accountId)!!
+        val transaction = recordTransactionUseCase.execute(portfolioId, command, currentUser().id)
+        val account = accountService.getAccount(transaction.accountId, currentUser().id)!!
         return ResponseEntity.status(201).body(transaction.toModel(mapOf(account.id to account)))
     }
 
     override fun amendTransaction(portfolioId: Long, id: Long, transactionRequest: TransactionRequest): ResponseEntity<TransactionModel> {
+        if (!portfolioRepository.isOwnedBy(portfolioId, currentUser().id)) return ResponseEntity.notFound().build()
         val command = AmendTransactionCommand(
             listingId = transactionRequest.listingId,
             type = TransactionType.valueOf(transactionRequest.type.value),
@@ -108,18 +121,20 @@ class TransactionController(
             accountId = transactionRequest.accountId,
             notes = transactionRequest.notes,
         )
-        val transaction = amendTransactionUseCase.execute(portfolioId, id, command)
+        val transaction = amendTransactionUseCase.execute(portfolioId, id, command, currentUser().id)
             ?: return ResponseEntity.notFound().build()
-        val account = accountService.getAccount(transaction.accountId)!!
+        val account = accountService.getAccount(transaction.accountId, currentUser().id)!!
         return ResponseEntity.ok(transaction.toModel(mapOf(account.id to account)))
     }
 
     override fun removeTransaction(portfolioId: Long, id: Long): ResponseEntity<Unit> {
+        if (!portfolioRepository.isOwnedBy(portfolioId, currentUser().id)) return ResponseEntity.notFound().build()
         if (!deleteTransactionUseCase.execute(portfolioId, id)) return ResponseEntity.notFound().build()
         return ResponseEntity.noContent().build()
     }
 
     override fun recordCryptoTrade(portfolioId: Long, cryptoTradeRequest: CryptoTradeRequest): ResponseEntity<CryptoTradeResponse> {
+        if (!portfolioRepository.isOwnedBy(portfolioId, currentUser().id)) return ResponseEntity.notFound().build()
         val command = RecordCryptoTradeCommand(
             sellListingId = cryptoTradeRequest.sellListingId,
             sellQuantity = BigDecimal.valueOf(cryptoTradeRequest.sellQuantity),
@@ -132,8 +147,8 @@ class TransactionController(
             accountId = cryptoTradeRequest.accountId,
             notes = cryptoTradeRequest.notes,
         )
-        val trade = recordCryptoTradeUseCase.execute(portfolioId, command)
-        val account = accountService.getAccount(trade.sell.accountId)!!
+        val trade = recordCryptoTradeUseCase.execute(portfolioId, command, currentUser().id)
+        val account = accountService.getAccount(trade.sell.accountId, currentUser().id)!!
         val accountsById = mapOf(account.id to account)
         return ResponseEntity.status(201).body(CryptoTradeResponse(
             id = trade.id,

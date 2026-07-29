@@ -33,7 +33,7 @@ class ValuationServiceTest {
 
     @Test
     fun `getAccountValuations - sums market value per account, same currency as base`() {
-        whenever(userSettingsRepository.find()).thenReturn(UserSettings(eur))
+        whenever(userSettingsRepository.find(1L)).thenReturn(UserSettings(eur))
         whenever(holdingService.getHoldingsByAccount(1L)).thenReturn(listOf(
             accountHolding(accountId = 10L, listingId = 100L, currency = eur, qty = "10"),
             accountHolding(accountId = 10L, listingId = 101L, currency = eur, qty = "5"),
@@ -42,7 +42,7 @@ class ValuationServiceTest {
         whenever(priceHistoryRepository.findLatestByListingId(100L)).thenReturn(PricePoint(LocalDate.now(), BigDecimal("50")))
         whenever(priceHistoryRepository.findLatestByListingId(101L)).thenReturn(PricePoint(LocalDate.now(), BigDecimal("20")))
 
-        val valuations = service.getAccountValuations(1L)
+        val valuations = service.getAccountValuations(1L, 1L)
 
         assertEquals(2, valuations.size)
         assertBd("600", valuations.first { it.accountId == 10L }.marketValueBase) // 10*50 + 5*20
@@ -51,21 +51,21 @@ class ValuationServiceTest {
 
     @Test
     fun `getAccountValuations - FX-normalizes a listing priced in a non-base currency`() {
-        whenever(userSettingsRepository.find()).thenReturn(UserSettings(eur))
+        whenever(userSettingsRepository.find(1L)).thenReturn(UserSettings(eur))
         whenever(holdingService.getHoldingsByAccount(1L)).thenReturn(listOf(
             accountHolding(accountId = 10L, listingId = 100L, currency = usd, qty = "10"),
         ))
         whenever(priceHistoryRepository.findLatestByListingId(100L)).thenReturn(PricePoint(LocalDate.now(), BigDecimal("100")))
         whenever(fxRateRepository.findLatest(eur, usd)).thenReturn(BigDecimal("2")) // 1 EUR = 2 USD
 
-        val valuations = service.getAccountValuations(1L)
+        val valuations = service.getAccountValuations(1L, 1L)
 
         assertBd("500", valuations[0].marketValueBase) // (10*100) / 2
     }
 
     @Test
     fun `getAccountValuations - a listing missing a price does not null out the rest of the account`() {
-        whenever(userSettingsRepository.find()).thenReturn(UserSettings(eur))
+        whenever(userSettingsRepository.find(1L)).thenReturn(UserSettings(eur))
         whenever(holdingService.getHoldingsByAccount(1L)).thenReturn(listOf(
             accountHolding(accountId = 10L, listingId = 100L, currency = eur, qty = "10"),
             accountHolding(accountId = 10L, listingId = 101L, currency = eur, qty = "5"),
@@ -73,20 +73,20 @@ class ValuationServiceTest {
         whenever(priceHistoryRepository.findLatestByListingId(100L)).thenReturn(PricePoint(LocalDate.now(), BigDecimal("50")))
         whenever(priceHistoryRepository.findLatestByListingId(101L)).thenReturn(null)
 
-        val valuations = service.getAccountValuations(1L)
+        val valuations = service.getAccountValuations(1L, 1L)
 
         assertBd("500", valuations[0].marketValueBase)
     }
 
     @Test
     fun `getAccountValuations - an account with no priced holdings reports a null market value`() {
-        whenever(userSettingsRepository.find()).thenReturn(UserSettings(eur))
+        whenever(userSettingsRepository.find(1L)).thenReturn(UserSettings(eur))
         whenever(holdingService.getHoldingsByAccount(1L)).thenReturn(listOf(
             accountHolding(accountId = 10L, listingId = 100L, currency = eur, qty = "10"),
         ))
         whenever(priceHistoryRepository.findLatestByListingId(100L)).thenReturn(null)
 
-        val valuations = service.getAccountValuations(1L)
+        val valuations = service.getAccountValuations(1L, 1L)
 
         assertEquals(1, valuations.size)
         assertEquals(null, valuations[0].marketValueBase)

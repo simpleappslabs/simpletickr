@@ -11,9 +11,9 @@ class UpdateAccountUseCase(private val accountRepository: AccountRepository) {
 
     private val log = LoggerFactory.getLogger(javaClass)
 
-    fun execute(id: Long, command: UpdateAccountCommand): Account? {
+    fun execute(id: Long, command: UpdateAccountCommand, userId: Long): Account? {
         log.info("Updating account id={}", id)
-        val existing = accountRepository.findById(id) ?: return null
+        val existing = accountRepository.findById(id)?.takeIf { it.userId == userId } ?: return null
         return accountRepository.update(existing.copy(
             name = command.name,
             broker = command.broker,

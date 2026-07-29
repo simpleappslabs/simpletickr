@@ -1,8 +1,5 @@
 package com.simpletickr.brokerimport.bolero
 
-import com.simpletickr.account.model.Account
-import com.simpletickr.account.model.AccountType
-import com.simpletickr.account.persistence.AccountRepository
 import com.simpletickr.asset.model.Listing
 import com.simpletickr.asset.persistence.ListingRepository
 import com.simpletickr.brokerimport.AssetImportMapping
@@ -31,18 +28,16 @@ import kotlin.test.assertEquals
 class ImportBoleroTransactionsUseCaseTest {
 
     private val mappingRepository = mock<AssetImportMappingRepository>()
-    private val accountRepository = mock<AccountRepository>()
     private val listingRepository = mock<ListingRepository>()
     private val transactionRepository = mock<TransactionRepository>()
     private val recordTransactionUseCase = mock<RecordTransactionUseCase>()
 
-    private val boleroAccount = Account(id = 1L, name = "Bolero", broker = "Bolero", accountType = AccountType.BROKERAGE, currency = null, accountNumber = null, institution = null)
-
     private val useCase = ImportBoleroTransactionsUseCase(
-        mappingRepository, accountRepository, listingRepository, transactionRepository, recordTransactionUseCase
+        mappingRepository, listingRepository, transactionRepository, recordTransactionUseCase
     )
 
     private val portfolioId = 1L
+    private val accountId = 1L
     private val assetId = 10L
     private val listingId = 20L
     private val date = LocalDate.of(2025, 3, 15)
@@ -79,20 +74,19 @@ class ImportBoleroTransactionsUseCaseTest {
 
     @BeforeEach
     fun setup() {
-        whenever(accountRepository.findAll()).thenReturn(listOf(boleroAccount))
         whenever(transactionRepository.existsByExternalId(any(), any())).thenReturn(false)
         whenever(mappingRepository.findByBrokerAndName("bolero", instrumentName))
             .thenReturn(AssetImportMapping(1L, "bolero", instrumentName, assetId))
         whenever(listingRepository.findByAssetId(assetId))
             .thenReturn(listOf(Listing(listingId, assetId, null, "IWDA", CurrencyCode("EUR"))))
-        whenever(recordTransactionUseCase.execute(any(), any())).thenReturn(savedTransaction())
+        whenever(recordTransactionUseCase.execute(any(), any(), any())).thenReturn(savedTransaction())
     }
 
     @Test
     fun `recognized and mapped row is imported`() {
         val file = multipartFile(buildMinimalXlsx("Achat Online $instrumentName"))
 
-        val result = useCase.execute(portfolioId, file)
+        val result = useCase.execute(portfolioId, accountId, file, 1L)
 
         assertEquals(1, result.imported)
         assertEquals(0, result.skipped)
@@ -104,12 +98,12 @@ class ImportBoleroTransactionsUseCaseTest {
     fun `deposit row is passed through as skipped`() {
         val file = multipartFile(buildMinimalXlsx("Versement sur compte client"))
 
-        val result = useCase.execute(portfolioId, file)
+        val result = useCase.execute(portfolioId, accountId, file, 1L)
 
         assertEquals(0, result.imported)
         assertEquals(1, result.skipped)
         assertEquals(ImportStatus.SKIPPED, result.rows[0].status)
-        verify(recordTransactionUseCase, never()).execute(any(), any())
+        verify(recordTransactionUseCase, never()).execute(any(), any(), any())
     }
 
     @Test
@@ -117,7 +111,7 @@ class ImportBoleroTransactionsUseCaseTest {
         whenever(mappingRepository.findByBrokerAndName("bolero", instrumentName)).thenReturn(null)
         val file = multipartFile(buildMinimalXlsx("Achat Online $instrumentName"))
 
-        val result = useCase.execute(portfolioId, file)
+        val result = useCase.execute(portfolioId, accountId, file, 1L)
 
         assertEquals(0, result.imported)
         assertEquals(1, result.skipped)
@@ -129,12 +123,12 @@ class ImportBoleroTransactionsUseCaseTest {
         whenever(transactionRepository.existsByExternalId(any(), any())).thenReturn(true)
         val file = multipartFile(buildMinimalXlsx("Achat Online $instrumentName"))
 
-        val result = useCase.execute(portfolioId, file)
+        val result = useCase.execute(portfolioId, accountId, file, 1L)
 
         assertEquals(0, result.imported)
         assertEquals(1, result.skipped)
         assertEquals("already imported", result.rows[0].reason)
-        verify(recordTransactionUseCase, never()).execute(any(), any())
+        verify(recordTransactionUseCase, never()).execute(any(), any(), any())
     }
 
     @Test
@@ -143,7 +137,7 @@ class ImportBoleroTransactionsUseCaseTest {
             .thenReturn(listOf(Listing(listingId, assetId, null, "IWDA", CurrencyCode("USD"))))
         val file = multipartFile(buildMinimalXlsx("Achat Online $instrumentName"))
 
-        val result = useCase.execute(portfolioId, file)
+        val result = useCase.execute(portfolioId, accountId, file, 1L)
 
         assertEquals(0, result.imported)
         assertEquals(1, result.skipped)
@@ -152,11 +146,11 @@ class ImportBoleroTransactionsUseCaseTest {
 
     @Test
     fun `recordTransaction exception skips row with message`() {
-        whenever(recordTransactionUseCase.execute(any(), any()))
+        whenever(recordTransactionUseCase.execute(any(), any(), any()))
             .thenThrow(IllegalArgumentException("No FX rate available"))
         val file = multipartFile(buildMinimalXlsx("Achat Online $instrumentName"))
 
-        val result = useCase.execute(portfolioId, file)
+        val result = useCase.execute(portfolioId, accountId, file, 1L)
 
         assertEquals(0, result.imported)
         assertEquals(1, result.skipped)

@@ -12,9 +12,11 @@ servers:
   - url: http://localhost:8080
     description: Local development
 
-security: []
+security:
+  - cookieAuth: []
 
 tags:
+  - name: Auth
   - name: Portfolios
   - name: Assets
   - name: ListingSearch
@@ -32,6 +34,7 @@ paths:
   /health:
     get:
       operationId: getHealth
+      security: []
       summary: Health check
       responses:
         "200":
@@ -54,6 +57,81 @@ paths:
                 $ref: "#/components/schemas/Error"
         "5XX":
           description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      operationId: login
+      security: []
+      summary: Log in with username and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Logged in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CurrentUser"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      operationId: logout
+      summary: Log out and clear the session
+      responses:
+        "204":
+          description: Logged out
+
+  /auth/change-password:
+    post:
+      tags: [Auth]
+      operationId: changePassword
+      summary: Change the current user's password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChangePasswordRequest"
+      responses:
+        "204":
+          description: Password changed
+        "400":
+          description: Current password incorrect
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /auth/me:
+    get:
+      tags: [Auth]
+      operationId: getCurrentUser
+      summary: Get the currently authenticated user
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CurrentUser"
+        "401":
+          description: Not authenticated
           content:
             application/json:
               schema:
@@ -1227,11 +1305,14 @@ paths:
           multipart/form-data:
             schema:
               type: object
-              required: [file]
+              required: [file, accountId]
               properties:
                 file:
                   type: string
                   format: binary
+                accountId:
+                  type: integer
+                  format: int64
       responses:
         "200":
           description: Import completed (best-effort; check rows for skipped entries)
@@ -1486,6 +1567,12 @@ paths:
           description: Widget not found
 
 components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: SESSION
+
   schemas:
     Error:
       type: object
@@ -1493,6 +1580,40 @@ components:
         - message
       properties:
         message:
+          type: string
+
+    LoginRequest:
+      type: object
+      required:
+        - username
+        - password
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+
+    ChangePasswordRequest:
+      type: object
+      required:
+        - currentPassword
+        - newPassword
+      properties:
+        currentPassword:
+          type: string
+        newPassword:
+          type: string
+
+    CurrentUser:
+      type: object
+      required:
+        - id
+        - username
+      properties:
+        id:
+          type: integer
+          format: int64
+        username:
           type: string
 
     AccountType:

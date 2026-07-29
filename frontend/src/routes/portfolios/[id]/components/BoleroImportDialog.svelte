@@ -5,12 +5,14 @@
         createAssetImportMapping,
         deleteAssetImportMapping,
     } from '$lib/api/sdk.gen';
-    import type { Asset, BoleroAnalysisResult, ImportResult } from '$lib/api/types.gen';
+    import type { Account, Asset, BoleroAnalysisResult, ImportResult } from '$lib/api/types.gen';
     import AssetAutocomplete from '$lib/AssetAutocomplete.svelte';
+    import AccountAutocomplete from '$lib/AccountAutocomplete.svelte';
 
-    let { portfolioId, assets, open, onclose, onimported }: {
+    let { portfolioId, assets, accounts, open, onclose, onimported }: {
         portfolioId: number;
         assets: Asset[];
+        accounts: Account[];
         open: boolean;
         onclose: () => void;
         onimported: () => void;
@@ -27,6 +29,7 @@
 
     let step = $state<1 | 2 | 3>(1);
     let file = $state<File | null>(null);
+    let accountId = $state(0);
     let analysisResult = $state<BoleroAnalysisResult | null>(null);
     let importResult = $state<ImportResult | null>(null);
     let loading = $state(false);
@@ -114,13 +117,13 @@
     }
 
     async function handleImport() {
-        if (!file) return;
+        if (!file || !accountId) return;
         loading = true;
         error = null;
 
         const { data, error: err } = await importBoleroTransactions({
             path: { portfolioId },
-            body: { file },
+            body: { file, accountId },
         });
         loading = false;
 
@@ -137,6 +140,7 @@
     function handleClose() {
         step = 1;
         file = null;
+        accountId = 0;
         analysisResult = null;
         importResult = null;
         error = null;
@@ -205,6 +209,11 @@
                 <p class="text-sm text-success mb-4">All instruments mapped.</p>
             {/if}
 
+            <label class="form-control mb-4">
+                <div class="label"><span class="label-text">Import into account</span></div>
+                <AccountAutocomplete {accounts} bind:value={accountId} />
+            </label>
+
             <div class="space-y-2">
                 {#each analysisResult.instruments as inst}
                     {@const state = instrumentStates[inst.externalName]}
@@ -250,7 +259,7 @@
                 <button class="btn" onclick={handleClose}>Cancel</button>
                 <button
                     class="btn btn-primary"
-                    disabled={loading}
+                    disabled={loading || !accountId}
                     onclick={handleImport}
                 >
                     {#if loading}

@@ -1,5 +1,6 @@
 package com.simpletickr.brokerimport
 
+import com.simpletickr.auth.currentUser
 import com.simpletickr.generated.api.ImportApi
 import com.simpletickr.generated.model.AssetImportMapping as GeneratedMapping
 import com.simpletickr.generated.model.AssetImportMappingRef as GeneratedMappingRef
@@ -8,8 +9,10 @@ import com.simpletickr.generated.model.BoleroInstrumentInfo as GeneratedInstrume
 import com.simpletickr.generated.model.CreateAssetImportMappingRequest
 import com.simpletickr.generated.model.ImportResult as GeneratedImportResult
 import com.simpletickr.generated.model.ImportRowResult as GeneratedRowResult
+import com.simpletickr.account.persistence.AccountRepository
 import com.simpletickr.brokerimport.bolero.AnalyzeBoleroImportUseCase
 import com.simpletickr.brokerimport.bolero.ImportBoleroTransactionsUseCase
+import com.simpletickr.portfolio.persistence.PortfolioRepository
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.multipart.MultipartFile
@@ -21,6 +24,8 @@ class ImportController(
     private val assetImportMappingService: AssetImportMappingService,
     private val createAssetImportMappingUseCase: CreateAssetImportMappingUseCase,
     private val deleteAssetImportMappingUseCase: DeleteAssetImportMappingUseCase,
+    private val portfolioRepository: PortfolioRepository,
+    private val accountRepository: AccountRepository,
 ) : ImportApi {
 
     override fun analyzeBoleroImport(file: MultipartFile): ResponseEntity<GeneratedAnalysisResult> {
@@ -40,8 +45,10 @@ class ImportController(
         ))
     }
 
-    override fun importBoleroTransactions(portfolioId: Long, file: MultipartFile): ResponseEntity<GeneratedImportResult> {
-        val result = importBoleroTransactionsUseCase.execute(portfolioId, file)
+    override fun importBoleroTransactions(portfolioId: Long, file: MultipartFile, accountId: Long): ResponseEntity<GeneratedImportResult> {
+        if (!portfolioRepository.isOwnedBy(portfolioId, currentUser().id)) return ResponseEntity.notFound().build()
+        if (!accountRepository.isOwnedBy(accountId, currentUser().id)) return ResponseEntity.notFound().build()
+        val result = importBoleroTransactionsUseCase.execute(portfolioId, accountId, file, currentUser().id)
         return ResponseEntity.ok(GeneratedImportResult(
             imported = result.imported,
             skipped = result.skipped,

@@ -12,6 +12,17 @@ spring:
     password: ${DB_PASSWORD}
   flyway:
     enabled: true
+  session:
+    store-type: jdbc
+    jdbc:
+      initialize-schema: never
+
+server:
+  servlet:
+    session:
+      cookie:
+        same-site: lax
+        secure: ${SESSION_COOKIE_SECURE:true}
 
 management:
   endpoints:

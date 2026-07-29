@@ -3,6 +3,7 @@ package com.simpletickr.portfolio
 import com.simpletickr.account.AccountService
 import com.simpletickr.account.model.Account
 import com.simpletickr.asset.persistence.AssetRepository
+import com.simpletickr.auth.currentUser
 import com.simpletickr.gains.RealizedGainsCalculator
 import com.simpletickr.gains.RealizationMethod
 import com.simpletickr.gains.RealizedGainEntry
@@ -54,59 +55,61 @@ class PortfolioController(
 ) : PortfoliosApi {
 
     override fun listPortfolios(): ResponseEntity<List<PortfolioModel>> =
-        ResponseEntity.ok(portfolioRepository.findAll().map { it.toModel() })
+        ResponseEntity.ok(portfolioRepository.findAllForUser(currentUser().id).map { it.toModel() })
 
     override fun getPortfolio(id: Long): ResponseEntity<PortfolioModel> {
-        val portfolio = portfolioRepository.findById(id) ?: return ResponseEntity.notFound().build()
+        val portfolio = ownedPortfolioOrNull(id) ?: return ResponseEntity.notFound().build()
         return ResponseEntity.ok(portfolio.toModel())
     }
 
     override fun createPortfolio(portfolioRequest: PortfolioRequest): ResponseEntity<PortfolioModel> {
-        val portfolio = portfolioRepository.save(portfolioRequest.name)
+        val portfolio = portfolioRepository.save(portfolioRequest.name, currentUser().id)
         return ResponseEntity.status(201).body(portfolio.toModel())
     }
 
     override fun updatePortfolio(id: Long, portfolioRequest: PortfolioRequest): ResponseEntity<PortfolioModel> {
+        if (ownedPortfolioOrNull(id) == null) return ResponseEntity.notFound().build()
         val portfolio = portfolioRepository.update(id, portfolioRequest.name)
             ?: return ResponseEntity.notFound().build()
         return ResponseEntity.ok(portfolio.toModel())
     }
 
     override fun deletePortfolio(id: Long): ResponseEntity<Unit> {
-        if (portfolioRepository.findById(id) == null) return ResponseEntity.notFound().build()
+        if (ownedPortfolioOrNull(id) == null) return ResponseEntity.notFound().build()
         portfolioRepository.delete(id)
         return ResponseEntity.noContent().build()
     }
 
     override fun syncPortfolioPrices(id: Long): ResponseEntity<SyncResultModel> {
+        if (ownedPortfolioOrNull(id) == null) return ResponseEntity.notFound().build()
         val result = backfillPortfolioPricesUseCase.execute(id)
             ?: return ResponseEntity.notFound().build()
         return ResponseEntity.ok(SyncResultModel(synced = result.synced, failed = result.failed))
     }
 
     override fun getHoldings(id: Long): ResponseEntity<List<HoldingModel>> {
-        if (portfolioRepository.findById(id) == null) return ResponseEntity.notFound().build()
-        val baseCurrency = userSettingsRepository.find().baseCurrency
-        val assetHoldings = valuationService.getAssetHoldings(id)
+        if (ownedPortfolioOrNull(id) == null) return ResponseEntity.notFound().build()
+        val baseCurrency = userSettingsRepository.find(currentUser().id).baseCurrency
+        val assetHoldings = valuationService.getAssetHoldings(id, currentUser().id)
         return ResponseEntity.ok(assetHoldings.map { it.toModel(baseCurrency.value) })
     }
 
     override fun getAccountAllocation(id: Long): ResponseEntity<List<AccountAllocationModel>> {
-        if (portfolioRepository.findById(id) == null) return ResponseEntity.notFound().build()
-        val baseCurrency = userSettingsRepository.find().baseCurrency
-        val accountsById = accountService.listAccounts().associateBy { it.id }
-        val allocations = valuationService.getAccountValuations(id)
+        if (ownedPortfolioOrNull(id) == null) return ResponseEntity.notFound().build()
+        val baseCurrency = userSettingsRepository.find(currentUser().id).baseCurrency
+        val accountsById = accountService.listAccounts(currentUser().id).associateBy { it.id }
+        val allocations = valuationService.getAccountValuations(id, currentUser().id)
         return ResponseEntity.ok(allocations.mapNotNull { it.toModel(baseCurrency.value, accountsById) })
     }
 
     override fun getPortfolioValuationSummary(id: Long): ResponseEntity<PortfolioValuationSummaryModel> {
-        if (portfolioRepository.findById(id) == null) return ResponseEntity.notFound().build()
-        return ResponseEntity.ok(valuationService.getValuationSummary(id).toModel())
+        if (ownedPortfolioOrNull(id) == null) return ResponseEntity.notFound().build()
+        return ResponseEntity.ok(valuationService.getValuationSummary(id, currentUser().id).toModel())
     }
 
     override fun getPortfolioValueHistory(to: LocalDate, id: Long, from: LocalDate?): ResponseEntity<PortfolioValueHistoryModel> {
-        if (portfolioRepository.findById(id) == null) return ResponseEntity.notFound().build()
-        val (baseCurrency, points) = portfolioValueHistoryService.getValueHistory(id, from, to)
+        if (ownedPortfolioOrNull(id) == null) return ResponseEntity.notFound().build()
+        val (baseCurrency, points) = portfolioValueHistoryService.getValueHistory(id, from, to, currentUser().id)
         return ResponseEntity.ok(
             PortfolioValueHistoryModel(
                 baseCurrency = baseCurrency.value,
@@ -123,7 +126,7 @@ class PortfolioController(
         to: LocalDate,
         id: Long,
     ): ResponseEntity<GeneratedRealizedGainsReport> {
-        if (portfolioRepository.findById(id) == null) return ResponseEntity.notFound().build()
+        if (ownedPortfolioOrNull(id) == null) return ResponseEntity.notFound().build()
         val transactions = transactionRepository.findAllForPortfolio(id)
         val transferFees = transferRepository.findAllForPortfolio(id)
             .mapNotNull { t ->
@@ -135,6 +138,9 @@ class PortfolioController(
         val report = RealizedGainsCalculator.compute(transactions, transferFees, listingMap, domainMethod, from, to)
         return ResponseEntity.ok(report.toModel())
     }
+
+    private fun ownedPortfolioOrNull(id: Long): Portfolio? =
+        portfolioRepository.findById(id)?.takeIf { it.userId == currentUser().id }
 
     private fun Portfolio.toModel() = PortfolioModel(id = id, name = name)
 

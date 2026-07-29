@@ -1,5 +1,6 @@
 package com.simpletickr.transaction.usecase
 
+import com.simpletickr.account.persistence.AccountRepository
 import com.simpletickr.asset.persistence.ListingRepository
 import com.simpletickr.fx.FxRateService
 import com.simpletickr.fx.model.FxRateSource
@@ -15,13 +16,14 @@ import org.springframework.stereotype.Service
 class AmendTransactionUseCase(
     private val transactionRepository: TransactionRepository,
     private val listingRepository: ListingRepository,
+    private val accountRepository: AccountRepository,
     private val fxRateService: FxRateService,
     private val userSettingsRepository: UserSettingsRepository,
 ) {
 
     private val log = LoggerFactory.getLogger(javaClass)
 
-    fun execute(portfolioId: Long, id: Long, command: AmendTransactionCommand): Transaction? {
+    fun execute(portfolioId: Long, id: Long, command: AmendTransactionCommand, userId: Long): Transaction? {
         log.info("Amending transaction id={} in portfolio {}", id, portfolioId)
         val existing = transactionRepository.findById(id) ?: return null
         if (existing.portfolioId != portfolioId) return null
@@ -30,7 +32,10 @@ class AmendTransactionUseCase(
         }
         val listing = listingRepository.findById(command.listingId)
             ?: throw IllegalArgumentException("Listing ${command.listingId} not found")
-        val baseCurrency = userSettingsRepository.find().baseCurrency
+        require(accountRepository.isOwnedBy(command.accountId, userId)) {
+            "Account ${command.accountId} not found"
+        }
+        val baseCurrency = userSettingsRepository.find(userId).baseCurrency
 
         val (fxRate, fxRateSource) = when {
             command.type == TransactionType.SPLIT -> null to null

@@ -21,8 +21,8 @@ class ValuationService(
     private val userSettingsRepository: UserSettingsRepository,
 ) {
 
-    fun getHoldingsWithValuation(portfolioId: Long): List<HoldingWithValuation> {
-        val baseCurrency = userSettingsRepository.find().baseCurrency
+    fun getHoldingsWithValuation(portfolioId: Long, userId: Long): List<HoldingWithValuation> {
+        val baseCurrency = userSettingsRepository.find(userId).baseCurrency
         return holdingService.getHoldings(portfolioId).map { holding ->
             valuate(holding, baseCurrency)
         }
@@ -31,19 +31,19 @@ class ValuationService(
     // One AssetHolding per asset — multiple listings of the same asset (e.g. cross-listed on two
     // exchanges) are rolled up together, with a partial sum rather than an all-or-nothing null
     // when some listings lack price/FX data (see PortfolioValuationCalculator).
-    fun getAssetHoldings(portfolioId: Long): List<AssetHolding> {
-        val baseCurrency = userSettingsRepository.find().baseCurrency
-        return PortfolioValuationCalculator.rollUpByAsset(getHoldingsWithValuation(portfolioId), baseCurrency)
+    fun getAssetHoldings(portfolioId: Long, userId: Long): List<AssetHolding> {
+        val baseCurrency = userSettingsRepository.find(userId).baseCurrency
+        return PortfolioValuationCalculator.rollUpByAsset(getHoldingsWithValuation(portfolioId, userId), baseCurrency)
     }
 
-    fun getValuationSummary(portfolioId: Long): PortfolioValuationSummary =
-        PortfolioValuationCalculator.summarize(getAssetHoldings(portfolioId))
+    fun getValuationSummary(portfolioId: Long, userId: Long): PortfolioValuationSummary =
+        PortfolioValuationCalculator.summarize(getAssetHoldings(portfolioId, userId))
 
     // Current market value per account, in baseCurrency. Price/FX lookups are shared across
     // accounts holding the same listing, since HoldingService.getHoldingsByAccount doesn't
     // carry cost basis for accounts to roll up separately.
-    fun getAccountValuations(portfolioId: Long): List<AccountValuation> {
-        val baseCurrency = userSettingsRepository.find().baseCurrency
+    fun getAccountValuations(portfolioId: Long, userId: Long): List<AccountValuation> {
+        val baseCurrency = userSettingsRepository.find(userId).baseCurrency
         val accountHoldings = holdingService.getHoldingsByAccount(portfolioId)
 
         val priceAndFxByListingId = accountHoldings

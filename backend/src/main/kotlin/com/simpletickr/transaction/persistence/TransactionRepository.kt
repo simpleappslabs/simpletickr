@@ -14,6 +14,9 @@ import java.time.LocalDate
 
 data class TransactionFilter(
     val portfolioId: Long? = null,
+    // Constrains to any of these portfolios; used instead of portfolioId when listing across
+    // every portfolio the caller owns (e.g. the all-transactions page).
+    val portfolioIds: Set<Long>? = null,
     val type: TransactionType? = null,
     val listingId: Long? = null,
     val assetType: AssetType? = null,
@@ -61,6 +64,14 @@ class TransactionRepository(private val jdbcTemplate: JdbcTemplate) {
         val conditions = mutableListOf<String>()
         val params = mutableListOf<Any>()
         filter.portfolioId?.let { conditions += "t.portfolio_id = ?"; params += it }
+        filter.portfolioIds?.let { ids ->
+            if (ids.isEmpty()) {
+                conditions += "1 = 0"
+            } else {
+                conditions += "t.portfolio_id IN (${ids.joinToString(",") { "?" }})"
+                params.addAll(ids)
+            }
+        }
         filter.type?.let        { conditions += "t.type = ?";          params += it.name }
         filter.listingId?.let   { conditions += "t.listing_id = ?";   params += it }
         filter.assetType?.let   { conditions += "a.type = ?";          params += it.name }

@@ -1,5 +1,6 @@
 package com.simpletickr.settings
 
+import com.simpletickr.auth.currentUser
 import com.simpletickr.generated.api.SettingsApi
 import com.simpletickr.generated.model.Settings
 import com.simpletickr.shared.CurrencyCode
@@ -12,12 +13,12 @@ class SettingsController(
 ) : SettingsApi {
 
     override fun getSettings(): ResponseEntity<Settings> =
-        ResponseEntity.ok(userSettingsRepository.find().toModel())
+        ResponseEntity.ok(userSettingsRepository.find(currentUser().id).toModel())
 
     override fun updateSettings(settings: Settings): ResponseEntity<Settings> {
         val code = try { CurrencyCode(settings.baseCurrency) }
                    catch (_: IllegalArgumentException) { return ResponseEntity.badRequest().build() }
-        userSettingsRepository.update(UserSettings(baseCurrency = code))
+        userSettingsRepository.update(currentUser().id, UserSettings(baseCurrency = code))
         return ResponseEntity.ok(settings)
     }
 

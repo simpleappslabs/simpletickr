@@ -32,16 +32,16 @@ class ExportService(
     private val settingsRepository: UserSettingsRepository,
 ) {
 
-    fun buildExport(portfolioIds: List<Long>? = null): SimpletickrExport {
-        val settings = settingsRepository.find()
-        val portfolios = if (portfolioIds == null) portfolioRepository.findAll()
-            else portfolioRepository.findByIds(portfolioIds.toSet())
+    fun buildExport(userId: Long, portfolioIds: List<Long>? = null): SimpletickrExport {
+        val settings = settingsRepository.find(userId)
+        val portfolios = if (portfolioIds == null) portfolioRepository.findAllForUser(userId)
+            else portfolioRepository.findByIds(portfolioIds.toSet()).filter { it.userId == userId }
 
         val transactionsByPortfolio = portfolios.associate { it.id to transactionRepository.findAllForPortfolio(it.id) }
         val transfersByPortfolio = portfolios.associate { it.id to transferRepository.findAllForPortfolio(it.id) }
 
         val allAssets = assetRepository.findAll()
-        val allAccounts = accountRepository.findAll()
+        val allAccounts = accountRepository.findAllForUser(userId)
 
         val assets: List<Asset>
         val accounts: List<Account>

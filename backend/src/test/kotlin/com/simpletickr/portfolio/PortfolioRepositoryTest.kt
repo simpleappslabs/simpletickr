@@ -38,14 +38,14 @@ class PortfolioRepositoryTest {
 
     @Test
     fun `save creates a portfolio and returns it with a generated id`() {
-        val portfolio = repository.save("My Portfolio")
+        val portfolio = repository.save("My Portfolio", 1L)
         assertTrue(portfolio.id > 0)
         assertEquals("My Portfolio", portfolio.name)
     }
 
     @Test
     fun `findById returns the portfolio when it exists`() {
-        val saved = repository.save("Test Portfolio")
+        val saved = repository.save("Test Portfolio", 1L)
         val found = repository.findById(saved.id)
         assertNotNull(found)
         assertEquals(saved.id, found.id)
@@ -59,7 +59,7 @@ class PortfolioRepositoryTest {
 
     @Test
     fun `update changes the portfolio name and returns the updated portfolio`() {
-        val saved = repository.save("Original Name")
+        val saved = repository.save("Original Name", 1L)
         val updated = repository.update(saved.id, "Updated Name")
         assertNotNull(updated)
         assertEquals(saved.id, updated.id)
@@ -73,7 +73,7 @@ class PortfolioRepositoryTest {
 
     @Test
     fun `delete removes the portfolio`() {
-        val saved = repository.save("To Delete")
+        val saved = repository.save("To Delete", 1L)
         repository.delete(saved.id)
         assertNull(repository.findById(saved.id))
     }

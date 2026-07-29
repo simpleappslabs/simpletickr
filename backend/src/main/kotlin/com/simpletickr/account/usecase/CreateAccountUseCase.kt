@@ -11,10 +11,11 @@ class CreateAccountUseCase(private val accountRepository: AccountRepository) {
 
     private val log = LoggerFactory.getLogger(javaClass)
 
-    fun execute(command: CreateAccountCommand): Account {
+    fun execute(command: CreateAccountCommand, userId: Long): Account {
         log.info("Creating account: name={}, type={}", command.name, command.accountType)
         return accountRepository.save(Account(
             id = 0L,
+            userId = userId,
             name = command.name,
             broker = command.broker,
             accountType = command.accountType,

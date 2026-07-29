@@ -4,6 +4,10 @@
 	import { onMount } from 'svelte';
 	import { fly, fade } from 'svelte/transition';
 	import { page } from '$app/stores';
+	import { goto } from '$app/navigation';
+	import { getCurrentUser, logout } from '$lib/api/sdk.gen';
+	import { authState } from '$lib/authState.svelte';
+	import '$lib/client';
 
 	let { children } = $props();
 
@@ -23,6 +27,27 @@
 			theme = stored;
 		}
 		document.documentElement.setAttribute('data-theme', theme);
+	});
+
+	onMount(async () => {
+		const { data, error } = await getCurrentUser();
+		authState.username = error ? null : (data?.username ?? null);
+		authState.checked = true;
+	});
+
+	async function handleLogout() {
+		await logout();
+		authState.username = null;
+		await goto('/login');
+	}
+
+	// Reacts to every navigation, not just the initial load — otherwise clicking into a
+	// protected route while logged out (or a stale session expiring mid-session) would leave
+	// the page blank instead of bouncing back to /login.
+	$effect(() => {
+		if (authState.checked && !authState.username && $page.url.pathname !== '/login') {
+			goto('/login');
+		}
 	});
 
 	$effect(() => {
@@ -47,12 +72,14 @@
 			</a>
 		</div>
 		<nav class="hidden sm:flex flex-none items-center gap-2">
-			<ul class="menu menu-horizontal flex-nowrap gap-1">
-				<li><a href="/" class={$page.url.pathname === '/' ? 'bg-primary text-primary-content font-medium' : ''}>Portfolios</a></li>
-				<li><a href="/transactions" class={$page.url.pathname.startsWith('/transactions') ? 'bg-primary text-primary-content font-medium' : ''}>Transactions</a></li>
-				<li><a href="/dashboard" class={$page.url.pathname.startsWith('/dashboard') ? 'bg-primary text-primary-content font-medium' : ''}>Dashboard</a></li>
-				<li><a href="/settings" class={$page.url.pathname.startsWith('/settings') ? 'bg-primary text-primary-content font-medium' : ''}>Settings</a></li>
-			</ul>
+			{#if authState.username}
+				<ul class="menu menu-horizontal flex-nowrap gap-1">
+					<li><a href="/" class={$page.url.pathname === '/' ? 'bg-primary text-primary-content font-medium' : ''}>Portfolios</a></li>
+					<li><a href="/transactions" class={$page.url.pathname.startsWith('/transactions') ? 'bg-primary text-primary-content font-medium' : ''}>Transactions</a></li>
+					<li><a href="/dashboard" class={$page.url.pathname.startsWith('/dashboard') ? 'bg-primary text-primary-content font-medium' : ''}>Dashboard</a></li>
+					<li><a href="/settings" class={$page.url.pathname.startsWith('/settings') ? 'bg-primary text-primary-content font-medium' : ''}>Settings</a></li>
+				</ul>
+			{/if}
 			<div class="dropdown dropdown-end">
 				<button tabindex="0" class="btn btn-ghost btn-sm btn-square" aria-label="Theme">
 					<svg xmlns="http://www.w3.org/2000/svg" class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -73,6 +100,17 @@
 					{/each}
 				</ul>
 			</div>
+			{#if authState.username}
+				<div class="dropdown dropdown-end">
+					<button tabindex="0" class="btn btn-ghost btn-sm">
+						{authState.username}
+					</button>
+					<ul tabindex="0" class="dropdown-content menu bg-base-200 rounded-box shadow z-10 p-2 w-48">
+						<li><a href="/settings/change-password">Change password</a></li>
+						<li><button onclick={handleLogout}>Log out</button></li>
+					</ul>
+				</div>
+			{/if}
 		</nav>
 		<button
 			class="sm:hidden btn btn-ghost btn-sm"
@@ -88,7 +126,9 @@
 	</div>
 </div>
 
-{@render children()}
+{#if authState.checked && (authState.username || $page.url.pathname === '/login')}
+	{@render children()}
+{/if}
 
 {#if mobileMenuOpen}
 	<div
@@ -111,12 +151,14 @@
 				</svg>
 			</button>
 		</div>
-		<ul class="menu menu-vertical p-4 gap-1 flex-1 text-base">
-			<li><a href="/" class={$page.url.pathname === '/' ? 'bg-primary text-primary-content font-medium' : ''} onclick={() => mobileMenuOpen = false}>Portfolios</a></li>
-			<li><a href="/transactions" class={$page.url.pathname.startsWith('/transactions') ? 'bg-primary text-primary-content font-medium' : ''} onclick={() => mobileMenuOpen = false}>Transactions</a></li>
-			<li><a href="/dashboard" class={$page.url.pathname.startsWith('/dashboard') ? 'bg-primary text-primary-content font-medium' : ''} onclick={() => mobileMenuOpen = false}>Dashboard</a></li>
-			<li><a href="/settings" class={$page.url.pathname.startsWith('/settings') ? 'bg-primary text-primary-content font-medium' : ''} onclick={() => mobileMenuOpen = false}>Settings</a></li>
-		</ul>
+		{#if authState.username}
+			<ul class="menu menu-vertical p-4 gap-1 flex-1 text-base">
+				<li><a href="/" class={$page.url.pathname === '/' ? 'bg-primary text-primary-content font-medium' : ''} onclick={() => mobileMenuOpen = false}>Portfolios</a></li>
+				<li><a href="/transactions" class={$page.url.pathname.startsWith('/transactions') ? 'bg-primary text-primary-content font-medium' : ''} onclick={() => mobileMenuOpen = false}>Transactions</a></li>
+				<li><a href="/dashboard" class={$page.url.pathname.startsWith('/dashboard') ? 'bg-primary text-primary-content font-medium' : ''} onclick={() => mobileMenuOpen = false}>Dashboard</a></li>
+				<li><a href="/settings" class={$page.url.pathname.startsWith('/settings') ? 'bg-primary text-primary-content font-medium' : ''} onclick={() => mobileMenuOpen = false}>Settings</a></li>
+			</ul>
+		{/if}
 		<div class="p-4 border-t border-base-300">
 			<p class="text-xs text-base-content/50 uppercase tracking-widest mb-2">Theme</p>
 			<select class="select select-bordered select-sm w-full" bind:value={theme} aria-label="Theme">
@@ -125,5 +167,12 @@
 				{/each}
 			</select>
 		</div>
+		{#if authState.username}
+			<div class="p-4 border-t border-base-300 space-y-2">
+				<p class="text-xs text-base-content/50 uppercase tracking-widest">{authState.username}</p>
+				<a href="/settings/change-password" class="btn btn-ghost btn-sm w-full justify-start" onclick={() => mobileMenuOpen = false}>Change password</a>
+				<button class="btn btn-ghost btn-sm w-full justify-start" onclick={() => { mobileMenuOpen = false; handleLogout(); }}>Log out</button>
+			</div>
+		{/if}
 	</nav>
 {/if}

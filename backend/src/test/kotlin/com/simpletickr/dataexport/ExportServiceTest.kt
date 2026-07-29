@@ -50,11 +50,11 @@ class ExportServiceTest {
     )
 
     private fun account(id: Long, name: String) = Account(
-        id = id, name = name, broker = null, accountType = AccountType.BROKERAGE,
+        id = id, userId = 1L, name = name, broker = null, accountType = AccountType.BROKERAGE,
         currency = null, accountNumber = null, institution = null,
     )
 
-    private fun portfolio(id: Long, name: String) = Portfolio(id = id, uuid = UUID.randomUUID(), name = name)
+    private fun portfolio(id: Long, name: String) = Portfolio(id = id, uuid = UUID.randomUUID(), name = name, userId = 1L)
 
     private fun transaction(portfolioId: Long, listingId: Long, accountId: Long) = Transaction(
         id = 0, portfolioId = portfolioId, listingId = listingId, assetId = 0,
@@ -70,18 +70,18 @@ class ExportServiceTest {
 
     @Test
     fun `buildExport with no portfolioIds returns everything, including unreferenced assets and accounts`() {
-        whenever(settingsRepository.find()).thenReturn(UserSettings(eur))
+        whenever(settingsRepository.find(1L)).thenReturn(UserSettings(eur))
         val portfolios = listOf(portfolio(1L, "P1"), portfolio(2L, "P2"))
-        whenever(portfolioRepository.findAll()).thenReturn(portfolios)
+        whenever(portfolioRepository.findAllForUser(1L)).thenReturn(portfolios)
         whenever(assetRepository.findAll()).thenReturn(listOf(asset(100L, 1000L), asset(200L, 2000L)))
-        whenever(accountRepository.findAll()).thenReturn(listOf(account(10L, "A1"), account(20L, "A2")))
+        whenever(accountRepository.findAllForUser(1L)).thenReturn(listOf(account(10L, "A1"), account(20L, "A2")))
         whenever(mappingRepository.findAll()).thenReturn(emptyList())
         whenever(transactionRepository.findAllForPortfolio(1L)).thenReturn(listOf(transaction(1L, 1000L, 10L)))
         whenever(transactionRepository.findAllForPortfolio(2L)).thenReturn(emptyList())
         whenever(transferRepository.findAllForPortfolio(1L)).thenReturn(emptyList())
         whenever(transferRepository.findAllForPortfolio(2L)).thenReturn(emptyList())
 
-        val export = service.buildExport(null)
+        val export = service.buildExport(1L, null)
 
         assertEquals(2, export.portfolios.size)
         assertEquals(2, export.assets.size) // asset 200 unreferenced by any transaction, still included
@@ -90,15 +90,15 @@ class ExportServiceTest {
 
     @Test
     fun `buildExport scoped to one portfolio only includes assets and accounts it references`() {
-        whenever(settingsRepository.find()).thenReturn(UserSettings(eur))
+        whenever(settingsRepository.find(1L)).thenReturn(UserSettings(eur))
         whenever(portfolioRepository.findByIds(setOf(1L))).thenReturn(listOf(portfolio(1L, "P1")))
         whenever(assetRepository.findAll()).thenReturn(listOf(asset(100L, 1000L), asset(200L, 2000L)))
-        whenever(accountRepository.findAll()).thenReturn(listOf(account(10L, "A1"), account(20L, "A2")))
+        whenever(accountRepository.findAllForUser(1L)).thenReturn(listOf(account(10L, "A1"), account(20L, "A2")))
         whenever(mappingRepository.findAll()).thenReturn(emptyList())
         whenever(transactionRepository.findAllForPortfolio(1L)).thenReturn(listOf(transaction(1L, 1000L, 10L)))
         whenever(transferRepository.findAllForPortfolio(1L)).thenReturn(emptyList())
 
-        val export = service.buildExport(listOf(1L))
+        val export = service.buildExport(1L, listOf(1L))
 
         assertEquals(1, export.portfolios.size)
         assertEquals(1, export.assets.size)
@@ -109,15 +109,15 @@ class ExportServiceTest {
 
     @Test
     fun `buildExport scoped to a portfolio includes assets and accounts referenced only via transfers`() {
-        whenever(settingsRepository.find()).thenReturn(UserSettings(eur))
+        whenever(settingsRepository.find(1L)).thenReturn(UserSettings(eur))
         whenever(portfolioRepository.findByIds(setOf(1L))).thenReturn(listOf(portfolio(1L, "P1")))
         whenever(assetRepository.findAll()).thenReturn(listOf(asset(100L, 1000L), asset(200L, 2000L)))
-        whenever(accountRepository.findAll()).thenReturn(listOf(account(10L, "A1"), account(20L, "A2"), account(30L, "A3")))
+        whenever(accountRepository.findAllForUser(1L)).thenReturn(listOf(account(10L, "A1"), account(20L, "A2"), account(30L, "A3")))
         whenever(mappingRepository.findAll()).thenReturn(emptyList())
         whenever(transactionRepository.findAllForPortfolio(1L)).thenReturn(emptyList())
         whenever(transferRepository.findAllForPortfolio(1L)).thenReturn(listOf(transfer(1L, 2000L, 20L, 30L)))
 
-        val export = service.buildExport(listOf(1L))
+        val export = service.buildExport(1L, listOf(1L))
 
         assertEquals(1, export.assets.size)
         assertEquals(200L, export.assets.single().id)

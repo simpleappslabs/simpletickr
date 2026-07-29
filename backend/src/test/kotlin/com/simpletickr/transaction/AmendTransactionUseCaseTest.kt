@@ -1,5 +1,6 @@
 package com.simpletickr.transaction
 
+import com.simpletickr.account.persistence.AccountRepository
 import com.simpletickr.asset.model.Listing
 import com.simpletickr.asset.persistence.ListingRepository
 import com.simpletickr.fx.model.FxRate
@@ -27,16 +28,18 @@ class AmendTransactionUseCaseTest {
 
     private val transactionRepository = mock<TransactionRepository>()
     private val listingRepository = mock<ListingRepository>()
+    private val accountRepository = mock<AccountRepository>()
     private val fxRateService = mock<FxRateService>()
     private val userSettingsRepository = mock<UserSettingsRepository>()
-    private val useCase = AmendTransactionUseCase(transactionRepository, listingRepository, fxRateService, userSettingsRepository)
+    private val useCase = AmendTransactionUseCase(transactionRepository, listingRepository, accountRepository, fxRateService, userSettingsRepository)
 
     private val date = LocalDate.of(2024, 1, 15)
     private val listing = Listing(id = 5L, assetId = 2L, exchange = null, ticker = "AAPL", currency = CurrencyCode("USD"))
     private val existing = Transaction(1L, 10L, 5L, 2L, TransactionType.BUY, BigDecimal("5"), BigDecimal("100"), date, null, accountId = 1L)
 
     init {
-        whenever(userSettingsRepository.find()).thenReturn(UserSettings(CurrencyCode("EUR")))
+        whenever(userSettingsRepository.find(1L)).thenReturn(UserSettings(CurrencyCode("EUR")))
+        whenever(accountRepository.isOwnedBy(1L, 1L)).thenReturn(true)
         whenever(fxRateService.lookupOrFetch(any(), any(), any())).thenReturn(
             FxRate(CurrencyCode("EUR"), CurrencyCode("USD"), date, BigDecimal("1.08"))
         )
@@ -59,7 +62,7 @@ class AmendTransactionUseCaseTest {
     fun `execute returns null when transaction not found`() {
         whenever(transactionRepository.findById(99L)).thenReturn(null)
 
-        assertNull(useCase.execute(10L, 99L, amendCommand()))
+        assertNull(useCase.execute(10L, 99L, amendCommand(), 1L))
         verify(transactionRepository, never()).update(any())
     }
 
@@ -67,7 +70,7 @@ class AmendTransactionUseCaseTest {
     fun `execute returns null when transaction belongs to different portfolio`() {
         whenever(transactionRepository.findById(1L)).thenReturn(existing)
 
-        assertNull(useCase.execute(99L, 1L, amendCommand()))
+        assertNull(useCase.execute(99L, 1L, amendCommand(), 1L))
         verify(transactionRepository, never()).update(any())
     }
 
@@ -79,7 +82,7 @@ class AmendTransactionUseCaseTest {
         whenever(listingRepository.findById(5L)).thenReturn(listing)
         whenever(transactionRepository.update(any())).thenReturn(amended)
 
-        val result = useCase.execute(10L, 1L, command)
+        val result = useCase.execute(10L, 1L, command, 1L)
 
         assertEquals(amended, result)
     }
@@ -88,7 +91,7 @@ class AmendTransactionUseCaseTest {
     fun `execute throws when transaction is part of a trade`() {
         whenever(transactionRepository.findById(1L)).thenReturn(existing.copy(tradeId = 55L))
 
-        assertThrows<IllegalArgumentException> { useCase.execute(10L, 1L, amendCommand()) }
+        assertThrows<IllegalArgumentException> { useCase.execute(10L, 1L, amendCommand(), 1L) }
         verify(transactionRepository, never()).update(any())
     }
 

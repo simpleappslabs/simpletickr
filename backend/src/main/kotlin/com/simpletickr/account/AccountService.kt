@@ -7,7 +7,8 @@ import org.springframework.stereotype.Service
 @Service
 class AccountService(private val accountRepository: AccountRepository) {
 
-    fun listAccounts(): List<Account> = accountRepository.findAll()
+    fun listAccounts(userId: Long): List<Account> = accountRepository.findAllForUser(userId)
 
-    fun getAccount(id: Long): Account? = accountRepository.findById(id)
+    fun getAccount(id: Long, userId: Long): Account? =
+        accountRepository.findById(id)?.takeIf { it.userId == userId }
 }

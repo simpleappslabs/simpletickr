@@ -1,9 +1,13 @@
 package com.simpletickr.sync
 
+import com.simpletickr.auth.CurrentUser
+import com.simpletickr.shared.SecurityConfig
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.whenever
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest
+import org.springframework.context.annotation.Import
+import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user
 import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
@@ -12,7 +16,10 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import java.time.OffsetDateTime
 
 @WebMvcTest(SyncController::class)
+@Import(SecurityConfig::class)
 class SyncControllerTest {
+
+    private val owner = CurrentUser(1L, "test-user", "hash")
 
     @Autowired
     private lateinit var mockMvc: MockMvc
@@ -36,7 +43,7 @@ class SyncControllerTest {
             listOf(entry(1L, synced = 10, failed = 2, status = SyncStatus.PARTIAL, durationMs = 2500L))
         )
 
-        mockMvc.perform(get("/sync/history").param("type", "PRICE"))
+        mockMvc.perform(get("/sync/history").param("type", "PRICE").with(user(owner)))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.length()").value(1))
             .andExpect(jsonPath("$[0].id").value(1))
@@ -54,7 +61,7 @@ class SyncControllerTest {
             listOf(entry(2L, type = SyncType.FX, trigger = SyncTrigger.SCHEDULED, status = SyncStatus.SUCCESS))
         )
 
-        mockMvc.perform(get("/sync/history").param("type", "FX"))
+        mockMvc.perform(get("/sync/history").param("type", "FX").with(user(owner)))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$[0].type").value("FX"))
             .andExpect(jsonPath("$[0].trigger").value("SCHEDULED"))
@@ -65,14 +72,14 @@ class SyncControllerTest {
     fun `GET sync history returns 200 with empty list when no history`() {
         whenever(syncHistoryRepository.findRecent(SyncType.PRICE)).thenReturn(emptyList())
 
-        mockMvc.perform(get("/sync/history").param("type", "PRICE"))
+        mockMvc.perform(get("/sync/history").param("type", "PRICE").with(user(owner)))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.length()").value(0))
     }
 
     @Test
     fun `GET sync history returns 400 for unknown type`() {
-        mockMvc.perform(get("/sync/history").param("type", "GARBAGE"))
+        mockMvc.perform(get("/sync/history").param("type", "GARBAGE").with(user(owner)))
             .andExpect(status().isBadRequest)
     }
 }

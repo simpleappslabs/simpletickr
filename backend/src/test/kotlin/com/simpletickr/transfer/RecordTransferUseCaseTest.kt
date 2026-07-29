@@ -32,8 +32,8 @@ class RecordTransferUseCaseTest {
 
     private val date = LocalDate.of(2024, 6, 1)
     private val ethListing = Listing(id = 20L, assetId = 2L, exchange = null, ticker = "ETH", currency = CurrencyCode("USD"))
-    private val sourceAccount = Account(id = 1L, name = "Exchange", broker = null, accountType = AccountType.CRYPTO, currency = null, accountNumber = null, institution = null)
-    private val destinationAccount = Account(id = 2L, name = "Cold Wallet", broker = null, accountType = AccountType.CRYPTO, currency = null, accountNumber = null, institution = null)
+    private val sourceAccount = Account(id = 1L, userId = 1L, name = "Exchange", broker = null, accountType = AccountType.CRYPTO, currency = null, accountNumber = null, institution = null)
+    private val destinationAccount = Account(id = 2L, userId = 1L, name = "Cold Wallet", broker = null, accountType = AccountType.CRYPTO, currency = null, accountNumber = null, institution = null)
 
     private val existingHolding = Holding(
         assetId = 2L, assetName = "Ethereum", listingId = 20L, exchange = null, ticker = "ETH",
@@ -53,8 +53,8 @@ class RecordTransferUseCaseTest {
     init {
         whenever(transferRepository.create(any())).thenAnswer { inv -> inv.getArgument<Transfer>(0).copy(id = 900L) }
         whenever(listingRepository.findById(20L)).thenReturn(ethListing)
-        whenever(accountRepository.findById(1L)).thenReturn(sourceAccount)
-        whenever(accountRepository.findById(2L)).thenReturn(destinationAccount)
+        whenever(accountRepository.isOwnedBy(1L, 1L)).thenReturn(true)
+        whenever(accountRepository.isOwnedBy(2L, 1L)).thenReturn(true)
         whenever(transactionRepository.existsForAccountInPortfolio(1L, 5L)).thenReturn(true)
         whenever(transferRepository.existsForAccountInPortfolio(1L, 5L)).thenReturn(false)
         whenever(holdingService.getHoldings(5L, asOf = date)).thenReturn(listOf(existingHolding))
@@ -62,7 +62,7 @@ class RecordTransferUseCaseTest {
 
     @Test
     fun `happy path records the transfer with no price or cost basis`() {
-        val result = useCase.execute(5L, command)
+        val result = useCase.execute(5L, command, 1L)
 
         assertEquals(5L, result.portfolioId)
         assertEquals(20L, result.listingId)
@@ -76,50 +76,50 @@ class RecordTransferUseCaseTest {
     @Test
     fun `throws when source and destination accounts are the same`() {
         val sameAccount = command.copy(destinationAccountId = 1L)
-        assertThrows<IllegalArgumentException> { useCase.execute(5L, sameAccount) }
+        assertThrows<IllegalArgumentException> { useCase.execute(5L, sameAccount, 1L) }
     }
 
     @Test
     fun `throws when listing not found`() {
         whenever(listingRepository.findById(20L)).thenReturn(null)
-        assertThrows<IllegalArgumentException> { useCase.execute(5L, command) }
+        assertThrows<IllegalArgumentException> { useCase.execute(5L, command, 1L) }
     }
 
     @Test
     fun `throws when source account not found`() {
-        whenever(accountRepository.findById(1L)).thenReturn(null)
-        assertThrows<IllegalArgumentException> { useCase.execute(5L, command) }
+        whenever(accountRepository.isOwnedBy(1L, 1L)).thenReturn(false)
+        assertThrows<IllegalArgumentException> { useCase.execute(5L, command, 1L) }
     }
 
     @Test
     fun `throws when destination account not found`() {
-        whenever(accountRepository.findById(2L)).thenReturn(null)
-        assertThrows<IllegalArgumentException> { useCase.execute(5L, command) }
+        whenever(accountRepository.isOwnedBy(2L, 1L)).thenReturn(false)
+        assertThrows<IllegalArgumentException> { useCase.execute(5L, command, 1L) }
     }
 
     @Test
     fun `throws when source account has no prior activity in this portfolio`() {
         whenever(transactionRepository.existsForAccountInPortfolio(1L, 5L)).thenReturn(false)
         whenever(transferRepository.existsForAccountInPortfolio(1L, 5L)).thenReturn(false)
-        assertThrows<IllegalArgumentException> { useCase.execute(5L, command) }
+        assertThrows<IllegalArgumentException> { useCase.execute(5L, command, 1L) }
     }
 
     @Test
     fun `succeeds when destination account has no prior activity in this portfolio - new wallet case`() {
-        val result = useCase.execute(5L, command)
+        val result = useCase.execute(5L, command, 1L)
         assertEquals(2L, result.destinationAccountId)
     }
 
     @Test
     fun `throws when there is no holding of the listing in the portfolio as of the transfer date`() {
         whenever(holdingService.getHoldings(5L, asOf = date)).thenReturn(emptyList())
-        assertThrows<IllegalArgumentException> { useCase.execute(5L, command) }
+        assertThrows<IllegalArgumentException> { useCase.execute(5L, command, 1L) }
     }
 
     @Test
     fun `throws when transferring more than is held as of the transfer date`() {
         val tooMuch = command.copy(quantity = BigDecimal("10"))
-        assertThrows<IllegalArgumentException> { useCase.execute(5L, tooMuch) }
+        assertThrows<IllegalArgumentException> { useCase.execute(5L, tooMuch, 1L) }
     }
 
     @Test
@@ -127,7 +127,7 @@ class RecordTransferUseCaseTest {
         // "Current" holdings would allow this, but as of the (earlier) transfer date, less was held.
         whenever(holdingService.getHoldings(5L, asOf = date)).thenReturn(listOf(existingHolding.copy(quantity = BigDecimal("0.5"))))
         val tooMuchAsOfDate = command.copy(quantity = BigDecimal("1.0"))
-        assertThrows<IllegalArgumentException> { useCase.execute(5L, tooMuchAsOfDate) }
+        assertThrows<IllegalArgumentException> { useCase.execute(5L, tooMuchAsOfDate, 1L) }
     }
 
     private fun assertBd(expected: String, actual: BigDecimal) =

@@ -58,7 +58,7 @@ class ImportDataUseCaseTest {
         .registerKotlinModule()
         .registerModule(JavaTimeModule())
 
-    private val defaultAccount = Account(id = 1L, name = "Default", broker = null, accountType = AccountType.BROKERAGE, currency = null, accountNumber = null, institution = null)
+    private val defaultAccount = Account(id = 1L, userId = 1L, name = "Default", broker = null, accountType = AccountType.BROKERAGE, currency = null, accountNumber = null, institution = null)
 
     private val useCase = ImportDataUseCase(
         assetRepository, accountRepository, listingRepository, mappingRepository,
@@ -102,8 +102,8 @@ class ImportDataUseCaseTest {
         Mockito.reset(assetRepository, accountRepository, listingRepository, mappingRepository,
             portfolioRepository, transactionRepository, transferRepository, settingsRepository)
         whenever(assetRepository.findAll()).thenReturn(emptyList())
-        whenever(accountRepository.findAll()).thenReturn(listOf(defaultAccount))
-        whenever(portfolioRepository.findAll()).thenReturn(emptyList())
+        whenever(accountRepository.findAllForUser(1L)).thenReturn(listOf(defaultAccount))
+        whenever(portfolioRepository.findAllForUser(1L)).thenReturn(emptyList())
         whenever(transactionRepository.existsIdentical(any(), any(), any(), any(), any(), any(), anyOrNull(), anyOrNull()))
             .thenReturn(false)
         whenever(transferRepository.existsIdentical(any(), any(), any(), any(), anyOrNull(), any(), any()))
@@ -114,7 +114,7 @@ class ImportDataUseCaseTest {
 
     @Test
     fun `analyze with invalid JSON returns error`() {
-        val result = useCase.analyze("not json".toByteArray())
+        val result = useCase.analyze("not json".toByteArray(), 1L)
         assertTrue(result.errors.isNotEmpty())
         assertEquals(0, result.assetsToCreate)
     }
@@ -122,7 +122,7 @@ class ImportDataUseCaseTest {
     @Test
     fun `analyze with unsupported schema version returns error`() {
         val export = validExport.copy(schemaVersion = 99)
-        val result = useCase.analyze(bytes(export))
+        val result = useCase.analyze(bytes(export), 1L)
         assertTrue(result.errors.any { it.contains("version") })
     }
 
@@ -132,20 +132,20 @@ class ImportDataUseCaseTest {
         val export = validExport.copy(
             portfolios = listOf(portfolioExport.copy(transactions = listOf(badTx)))
         )
-        val result = useCase.analyze(bytes(export))
+        val result = useCase.analyze(bytes(export), 1L)
         assertTrue(result.errors.any { it.contains("999") })
     }
 
     @Test
     fun `analyze with duplicate asset ID in export returns error`() {
         val export = validExport.copy(assets = listOf(assetExport, assetExport))
-        val result = useCase.analyze(bytes(export))
+        val result = useCase.analyze(bytes(export), 1L)
         assertTrue(result.errors.any { it.contains("Duplicate asset") })
     }
 
     @Test
     fun `analyze fresh database counts all entities as to-create`() {
-        val result = useCase.analyze(bytes(validExport))
+        val result = useCase.analyze(bytes(validExport), 1L)
         assertEquals(emptyList(), result.errors)
         assertEquals(1, result.assetsToCreate)
         assertEquals(0, result.assetsExisting)
@@ -163,7 +163,7 @@ class ImportDataUseCaseTest {
             listings = listOf(Listing(10L, 1L, "NYSE", "AAPL", CurrencyCode("USD"))))
         whenever(assetRepository.findAll()).thenReturn(listOf(existingAsset))
 
-        val result = useCase.analyze(bytes(validExport))
+        val result = useCase.analyze(bytes(validExport), 1L)
         assertEquals(0, result.assetsToCreate)
         assertEquals(1, result.assetsExisting)
         assertEquals(0, result.listingsToCreate)
@@ -174,14 +174,14 @@ class ImportDataUseCaseTest {
     fun `analyze existing portfolio matched by UUID shows it as existing with transaction dedup`() {
         val existingAsset = Asset(1L, assetUuid, null, "Apple Inc.", AssetType.STOCK,
             listings = listOf(Listing(10L, 1L, "NYSE", "AAPL", CurrencyCode("USD"))))
-        val existingPortfolio = Portfolio(100L, portfolioUuid, "My Portfolio")
+        val existingPortfolio = Portfolio(100L, portfolioUuid, "My Portfolio", 1L)
         whenever(assetRepository.findAll()).thenReturn(listOf(existingAsset))
-        whenever(portfolioRepository.findAll()).thenReturn(listOf(existingPortfolio))
+        whenever(portfolioRepository.findAllForUser(1L)).thenReturn(listOf(existingPortfolio))
         whenever(transactionRepository.existsIdentical(
             eq(100L), eq(10L), any(), any(), any(), any(), anyOrNull(), anyOrNull()
         )).thenReturn(true)
 
-        val result = useCase.analyze(bytes(validExport))
+        val result = useCase.analyze(bytes(validExport), 1L)
         assertEquals(0, result.transactionsToImport)
         assertEquals(1, result.transactionsSkipped)
     }
@@ -190,20 +190,20 @@ class ImportDataUseCaseTest {
     fun `apply on fresh database creates all entities`() {
         val newAsset = Asset(1L, assetUuid, null, "Apple Inc.", AssetType.STOCK, emptyList())
         val newListing = Listing(10L, 1L, "NYSE", "AAPL", CurrencyCode("USD"))
-        val newPortfolio = Portfolio(100L, portfolioUuid, "My Portfolio")
+        val newPortfolio = Portfolio(100L, portfolioUuid, "My Portfolio", 1L)
         whenever(assetRepository.save(any(), any(), any(), any())).thenReturn(newAsset)
         whenever(listingRepository.save(any(), any(), any(), any())).thenReturn(newListing)
         whenever(listingRepository.findByAssetId(1L)).thenReturn(emptyList())
-        whenever(portfolioRepository.save(any(), any())).thenReturn(newPortfolio)
+        whenever(portfolioRepository.save(any(), any(), any())).thenReturn(newPortfolio)
         whenever(mappingRepository.findByListingAndProvider(any(), any())).thenReturn(null)
 
-        val result = useCase.apply(bytes(validExport))
+        val result = useCase.apply(bytes(validExport), 1L)
 
         assertEquals(1, result.assetsCreated)
         assertEquals(1, result.listingsCreated)
         assertEquals(1, result.portfoliosCreated)
         assertEquals(1, result.transactionsImported)
-        verify(settingsRepository).update(UserSettings(CurrencyCode("EUR")))
+        verify(settingsRepository).update(1L, UserSettings(CurrencyCode("EUR")))
         verify(transactionRepository).save(any())
     }
 
@@ -211,16 +211,16 @@ class ImportDataUseCaseTest {
     fun `apply is idempotent when all entities already exist`() {
         val existingAsset = Asset(1L, assetUuid, null, "Apple Inc.", AssetType.STOCK,
             listings = listOf(Listing(10L, 1L, "NYSE", "AAPL", CurrencyCode("USD"))))
-        val existingPortfolio = Portfolio(100L, portfolioUuid, "My Portfolio")
+        val existingPortfolio = Portfolio(100L, portfolioUuid, "My Portfolio", 1L)
         whenever(assetRepository.findAll()).thenReturn(listOf(existingAsset))
-        whenever(portfolioRepository.findAll()).thenReturn(listOf(existingPortfolio))
+        whenever(portfolioRepository.findAllForUser(1L)).thenReturn(listOf(existingPortfolio))
         whenever(listingRepository.findByAssetId(1L))
             .thenReturn(listOf(Listing(10L, 1L, "NYSE", "AAPL", CurrencyCode("USD"))))
         whenever(mappingRepository.findByListingAndProvider(eq(10L), any())).thenReturn(null)
         whenever(transactionRepository.existsIdentical(any(), any(), any(), any(), any(), any(), anyOrNull(), anyOrNull()))
             .thenReturn(true)
 
-        val result = useCase.apply(bytes(validExport))
+        val result = useCase.apply(bytes(validExport), 1L)
 
         assertEquals(0, result.assetsCreated)
         assertEquals(0, result.listingsCreated)
@@ -239,7 +239,7 @@ class ImportDataUseCaseTest {
         val export = validExport.copy(assets = listOf(cryptoAsset), portfolios = emptyList())
         whenever(assetRepository.findAll()).thenReturn(listOf(existingAsset))
 
-        val result = useCase.analyze(bytes(export))
+        val result = useCase.analyze(bytes(export), 1L)
 
         assertEquals(emptyList(), result.errors)
         assertEquals(0, result.assetsToCreate)
@@ -250,7 +250,7 @@ class ImportDataUseCaseTest {
     fun `apply with validation errors throws exception`() {
         val export = validExport.copy(schemaVersion = 99)
         try {
-            useCase.apply(bytes(export))
+            useCase.apply(bytes(export), 1L)
             assertTrue(false, "Expected exception")
         } catch (e: Exception) {
             assertTrue(e.message?.contains("version") == true || e.message?.contains("400") == true)
@@ -263,7 +263,7 @@ class ImportDataUseCaseTest {
         val export = validExport.copy(
             portfolios = listOf(portfolioExport.copy(transfers = listOf(badTransfer)))
         )
-        val result = useCase.analyze(bytes(export))
+        val result = useCase.analyze(bytes(export), 1L)
         assertTrue(result.errors.any { it.contains("Transfers") && it.contains("999") })
     }
 
@@ -272,7 +272,7 @@ class ImportDataUseCaseTest {
         val export = validExport.copy(
             portfolios = listOf(portfolioExport.copy(transfers = listOf(transferExport)))
         )
-        val result = useCase.analyze(bytes(export))
+        val result = useCase.analyze(bytes(export), 1L)
         assertEquals(emptyList(), result.errors)
         assertEquals(1, result.transfersToImport)
         assertEquals(0, result.transfersSkipped)
@@ -282,12 +282,12 @@ class ImportDataUseCaseTest {
     fun `analyze existing transfer is deduped when portfolio, listing and accounts already exist`() {
         val existingAsset = Asset(1L, assetUuid, null, "Apple Inc.", AssetType.STOCK,
             listings = listOf(Listing(10L, 1L, "NYSE", "AAPL", CurrencyCode("USD"))))
-        val existingPortfolio = Portfolio(100L, portfolioUuid, "My Portfolio")
-        val sourceAccount = Account(2L, "Exchange", null, AccountType.BROKERAGE, null, null, null)
-        val destinationAccount = Account(3L, "Cold Wallet", null, AccountType.BROKERAGE, null, null, null)
+        val existingPortfolio = Portfolio(100L, portfolioUuid, "My Portfolio", 1L)
+        val sourceAccount = Account(2L, 1L, "Exchange", null, AccountType.BROKERAGE, null, null, null)
+        val destinationAccount = Account(3L, 1L, "Cold Wallet", null, AccountType.BROKERAGE, null, null, null)
         whenever(assetRepository.findAll()).thenReturn(listOf(existingAsset))
-        whenever(portfolioRepository.findAll()).thenReturn(listOf(existingPortfolio))
-        whenever(accountRepository.findAll()).thenReturn(listOf(defaultAccount, sourceAccount, destinationAccount))
+        whenever(portfolioRepository.findAllForUser(1L)).thenReturn(listOf(existingPortfolio))
+        whenever(accountRepository.findAllForUser(1L)).thenReturn(listOf(defaultAccount, sourceAccount, destinationAccount))
         whenever(transferRepository.existsIdentical(
             eq(100L), eq(10L), any(), any(), anyOrNull(), eq(2L), eq(3L)
         )).thenReturn(true)
@@ -295,7 +295,7 @@ class ImportDataUseCaseTest {
         val export = validExport.copy(
             portfolios = listOf(portfolioExport.copy(transfers = listOf(transferExport)))
         )
-        val result = useCase.analyze(bytes(export))
+        val result = useCase.analyze(bytes(export), 1L)
         assertEquals(0, result.transfersToImport)
         assertEquals(1, result.transfersSkipped)
     }
@@ -304,12 +304,12 @@ class ImportDataUseCaseTest {
     fun `apply on fresh database creates transfer and resolves accounts by name`() {
         val newAsset = Asset(1L, assetUuid, null, "Apple Inc.", AssetType.STOCK, emptyList())
         val newListing = Listing(10L, 1L, "NYSE", "AAPL", CurrencyCode("USD"))
-        val newPortfolio = Portfolio(100L, portfolioUuid, "My Portfolio")
-        val sourceAccount = Account(2L, "Exchange", null, AccountType.BROKERAGE, null, null, null)
+        val newPortfolio = Portfolio(100L, portfolioUuid, "My Portfolio", 1L)
+        val sourceAccount = Account(2L, 1L, "Exchange", null, AccountType.BROKERAGE, null, null, null)
         whenever(assetRepository.save(any(), any(), any(), any())).thenReturn(newAsset)
         whenever(listingRepository.save(any(), any(), any(), any())).thenReturn(newListing)
         whenever(listingRepository.findByAssetId(1L)).thenReturn(emptyList())
-        whenever(portfolioRepository.save(any(), any())).thenReturn(newPortfolio)
+        whenever(portfolioRepository.save(any(), any(), any())).thenReturn(newPortfolio)
         whenever(mappingRepository.findByListingAndProvider(any(), any())).thenReturn(null)
         whenever(accountRepository.save(any())).thenAnswer { inv ->
             val account = inv.getArgument<Account>(0)
@@ -319,7 +319,7 @@ class ImportDataUseCaseTest {
         val export = validExport.copy(
             portfolios = listOf(portfolioExport.copy(transfers = listOf(transferExport)))
         )
-        val result = useCase.apply(bytes(export))
+        val result = useCase.apply(bytes(export), 1L)
 
         assertEquals(1, result.transfersImported)
         verify(transferRepository).create(any())

@@ -90,27 +90,27 @@ class ImportDataUseCase(
         )
     }
 
-    fun analyze(fileContent: ByteArray): ImportAnalysis {
+    fun analyze(fileContent: ByteArray, userId: Long): ImportAnalysis {
         val export = parse(fileContent)
             ?: return ImportAnalysis(listOf("Invalid or unreadable JSON"), 0, 0, 0, 0, 0, 0, 0, 0)
-        return buildPlan(export).toAnalysis()
+        return buildPlan(export, userId).toAnalysis()
     }
 
     @Transactional
-    fun apply(fileContent: ByteArray): ImportResult {
+    fun apply(fileContent: ByteArray, userId: Long): ImportResult {
         val export = parse(fileContent)
             ?: throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid or unreadable JSON")
-        val plan = buildPlan(export)
+        val plan = buildPlan(export, userId)
         if (!plan.isValid)
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, plan.errors.joinToString("; "))
-        return executePlan(export, plan)
+        return executePlan(export, plan, userId)
     }
 
     private fun parse(content: ByteArray): SimpletickrExport? = try {
         objectMapper.readValue(content, SimpletickrExport::class.java)
     } catch (_: Exception) { null }
 
-    private fun buildPlan(export: SimpletickrExport): ImportPlan {
+    private fun buildPlan(export: SimpletickrExport, userId: Long): ImportPlan {
         val errors = mutableListOf<String>()
 
         if (export.schemaVersion !in 1..3) {
@@ -197,8 +197,8 @@ class ImportDataUseCase(
                 }
             }.toMap()
 
-        // Match portfolios
-        val existingPortfolios = portfolioRepository.findAll()
+        // Match portfolios (only within the importing user's own portfolios)
+        val existingPortfolios = portfolioRepository.findAllForUser(userId)
         val existingPortfoliosByUuid = existingPortfolios.associateBy { it.uuid }
         val existingPortfoliosByName = existingPortfolios.associateBy { it.name }
 
@@ -234,7 +234,7 @@ class ImportDataUseCase(
         }
 
         // Count transfers: dedup only when portfolio, listing and both accounts already exist
-        val existingAccountsByName = accountRepository.findAll().associateBy { it.name }
+        val existingAccountsByName = accountRepository.findAllForUser(userId).associateBy { it.name }
         var transfersToInsert = 0
         var transfersSkipped = 0
 
@@ -262,9 +262,9 @@ class ImportDataUseCase(
         return ImportPlan(errors, resolvedAssets, resolvedPortfolios, toInsert, skipped, transfersToInsert, transfersSkipped)
     }
 
-    private fun executePlan(export: SimpletickrExport, plan: ImportPlan): ImportResult {
+    private fun executePlan(export: SimpletickrExport, plan: ImportPlan, userId: Long): ImportResult {
         // Apply settings
-        settingsRepository.update(UserSettings(CurrencyCode(export.settings.baseCurrency)))
+        settingsRepository.update(userId, UserSettings(CurrencyCode(export.settings.baseCurrency)))
 
         // Create assets and build final listing ID map
         val listingIdMap = mutableMapOf<Long, Long>() // exportListingId → realListingId
@@ -315,7 +315,7 @@ class ImportDataUseCase(
 
         for (rp in plan.resolvedPortfolios) {
             val realPortfolioId: Long = if (rp.needsCreate) {
-                portfolioRepository.save(rp.exported.name, rp.exported.uuid).id.also { portfoliosCreated++ }
+                portfolioRepository.save(rp.exported.name, userId, rp.exported.uuid).id.also { portfoliosCreated++ }
             } else {
                 rp.existingId!!
             }
@@ -323,12 +323,12 @@ class ImportDataUseCase(
         }
 
         // Resolve accounts: build name → id map, create missing ones
-        val existingAccounts = accountRepository.findAll().associateBy { it.name }.toMutableMap()
+        val existingAccounts = accountRepository.findAllForUser(userId).associateBy { it.name }.toMutableMap()
         fun resolveAccount(name: String?): Long {
             val key = name ?: "Default"
             return existingAccounts.getOrPut(key) {
                 accountRepository.save(Account(
-                    id = 0L, name = key, broker = null,
+                    id = 0L, userId = userId, name = key, broker = null,
                     accountType = AccountType.BROKERAGE,
                     currency = null, accountNumber = null, institution = null,
                 ))

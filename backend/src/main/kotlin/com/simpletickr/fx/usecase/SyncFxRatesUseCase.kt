@@ -5,6 +5,7 @@ import com.simpletickr.fx.persistence.FxRateRepository
 import com.simpletickr.fx.provider.FxRateProvider
 import com.simpletickr.price.usecase.SyncResult
 import com.simpletickr.settings.UserSettingsRepository
+import com.simpletickr.shared.CurrencyCode
 import com.simpletickr.sync.SyncHistoryRepository
 import com.simpletickr.sync.SyncStatus
 import com.simpletickr.sync.SyncTrigger
@@ -26,15 +27,19 @@ class SyncFxRatesUseCase(
 
     private val log = LoggerFactory.getLogger(javaClass)
 
+    // Runs unattended (scheduled job), with no single "current user" — syncs rates for every
+    // base currency actually in use across all users, plus the implicit default (EUR) for users
+    // who have never set a preference and so have no user_settings row at all.
     fun execute(from: LocalDate? = null, to: LocalDate? = null, trigger: SyncTrigger = SyncTrigger.MANUAL): SyncResult {
         log.info("Syncing FX rates: trigger={}", trigger)
         val startedAt = System.currentTimeMillis()
         val effectiveFrom = from ?: LocalDate.now().minusDays(lookbackDays)
         val effectiveTo = to ?: LocalDate.now()
-        val baseCurrency = userSettingsRepository.find().baseCurrency
-        val quoteCurrencies = listingRepository.findDistinctCurrencies().filter { it != baseCurrency }
+        val baseCurrencies = (userSettingsRepository.findAllDistinctBaseCurrencies() + CurrencyCode("EUR")).distinct()
+        val listingCurrencies = listingRepository.findDistinctCurrencies()
+        val pairs = baseCurrencies.flatMap { base -> listingCurrencies.filter { it != base }.map { quote -> base to quote } }
 
-        if (quoteCurrencies.isEmpty()) {
+        if (pairs.isEmpty()) {
             syncHistoryRepository.record(SyncType.FX, trigger, SyncStatus.SUCCESS, System.currentTimeMillis() - startedAt, 0, 0)
             return SyncResult(0, 0)
         }
@@ -42,13 +47,13 @@ class SyncFxRatesUseCase(
         val provider = providers.firstOrNull()
         if (provider == null) {
             log.warn("No FX provider registered, skipping sync")
-            syncHistoryRepository.record(SyncType.FX, trigger, SyncStatus.FAILED, System.currentTimeMillis() - startedAt, 0, quoteCurrencies.size)
-            return SyncResult(0, quoteCurrencies.size)
+            syncHistoryRepository.record(SyncType.FX, trigger, SyncStatus.FAILED, System.currentTimeMillis() - startedAt, 0, pairs.size)
+            return SyncResult(0, pairs.size)
         }
 
         var synced = 0
         var failed = 0
-        for (quoteCurrency in quoteCurrencies) {
+        for ((baseCurrency, quoteCurrency) in pairs) {
             val rates = provider.fetchHistory(baseCurrency, quoteCurrency, effectiveFrom, effectiveTo)
             if (rates.isNotEmpty()) {
                 fxRateRepository.upsert(rates)

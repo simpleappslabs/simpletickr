@@ -1,6 +1,7 @@
 package com.simpletickr.dataexport
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.simpletickr.auth.currentUser
 import com.simpletickr.dataexport.model.ImportAnalysis
 import com.simpletickr.dataexport.model.ImportResult
 import org.springframework.http.MediaType
@@ -23,7 +24,7 @@ class DataExportController(
     fun exportData(
         @RequestParam("portfolioIds", required = false) portfolioIds: List<Long>?,
     ): ResponseEntity<ByteArray> {
-        val export = exportService.buildExport(portfolioIds)
+        val export = exportService.buildExport(currentUser().id, portfolioIds)
         val json = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsBytes(export)
         val filename = "simpletickr-export-${LocalDate.now()}.json"
         return ResponseEntity.ok()
@@ -37,6 +38,6 @@ class DataExportController(
         @RequestParam("file") file: MultipartFile,
         @RequestParam("dryRun", required = false, defaultValue = "false") dryRun: Boolean,
     ): ResponseEntity<*> =
-        if (dryRun) ResponseEntity.ok<ImportAnalysis>(importDataUseCase.analyze(file.bytes))
-        else ResponseEntity.ok<ImportResult>(importDataUseCase.apply(file.bytes))
+        if (dryRun) ResponseEntity.ok<ImportAnalysis>(importDataUseCase.analyze(file.bytes, currentUser().id))
+        else ResponseEntity.ok<ImportResult>(importDataUseCase.apply(file.bytes, currentUser().id))
 }

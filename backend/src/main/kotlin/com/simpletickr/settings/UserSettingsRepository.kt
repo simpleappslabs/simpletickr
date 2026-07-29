@@ -7,16 +7,26 @@ import org.springframework.stereotype.Repository
 @Repository
 class UserSettingsRepository(private val jdbcTemplate: JdbcTemplate) {
 
-    fun find(): UserSettings =
+    fun find(userId: Long): UserSettings =
         jdbcTemplate.query(
-            "SELECT base_currency FROM user_settings WHERE id = 1",
-            { rs, _ -> UserSettings(CurrencyCode(rs.getString("base_currency"))) }
+            "SELECT base_currency FROM user_settings WHERE user_id = ?",
+            { rs, _ -> UserSettings(CurrencyCode(rs.getString("base_currency"))) },
+            userId,
         ).firstOrNull() ?: UserSettings(CurrencyCode("EUR"))
 
-    fun update(settings: UserSettings) {
+    fun update(userId: Long, settings: UserSettings) {
         jdbcTemplate.update(
-            "UPDATE user_settings SET base_currency = ? WHERE id = 1",
-            settings.baseCurrency.value
+            """
+            INSERT INTO user_settings (user_id, base_currency) VALUES (?, ?)
+            ON CONFLICT (user_id) DO UPDATE SET base_currency = EXCLUDED.base_currency
+            """.trimIndent(),
+            userId, settings.baseCurrency.value,
         )
     }
+
+    fun findAllDistinctBaseCurrencies(): List<CurrencyCode> =
+        jdbcTemplate.query(
+            "SELECT DISTINCT base_currency FROM user_settings",
+            { rs, _ -> CurrencyCode(rs.getString("base_currency")) },
+        )
 }

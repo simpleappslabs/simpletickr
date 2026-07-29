@@ -1,5 +1,6 @@
 package com.simpletickr.user.dashboard
 
+import com.simpletickr.auth.currentUser
 import com.simpletickr.generated.api.DashboardApi
 import com.simpletickr.generated.model.AddDashboardWidgetRequest
 import com.simpletickr.generated.model.UpdateDashboardWidgetRequest
@@ -15,7 +16,7 @@ import com.simpletickr.generated.model.DashboardWidgetType as GeneratedDashboard
 class DashboardController(private val service: DashboardService) : DashboardApi {
 
     override fun listDashboardWidgets(): ResponseEntity<List<GeneratedDashboardWidget>> =
-        ResponseEntity.ok(service.listWidgets().map { it.toModel() })
+        ResponseEntity.ok(service.listWidgets(currentUser().id).map { it.toModel() })
 
     override fun addDashboardWidget(addDashboardWidgetRequest: AddDashboardWidgetRequest): ResponseEntity<GeneratedDashboardWidget> {
         val type = DashboardWidgetType.valueOf(addDashboardWidgetRequest.type.value)
@@ -23,18 +24,18 @@ class DashboardController(private val service: DashboardService) : DashboardApi 
             LISTING_PRICE -> ListingPriceConfig(addDashboardWidgetRequest.config.targetId, addDashboardWidgetRequest.config.range)
             PORTFOLIO_VALUE -> PortfolioValueConfig(addDashboardWidgetRequest.config.targetId, addDashboardWidgetRequest.config.range)
         }
-        val widget = service.addWidget(type, config)
+        val widget = service.addWidget(type, config, currentUser().id)
         return ResponseEntity.status(201).body(widget.toModel())
     }
 
     override fun updateDashboardWidget(id: Long, updateDashboardWidgetRequest: UpdateDashboardWidgetRequest): ResponseEntity<GeneratedDashboardWidget> {
-        val widget = service.updateWidgetRange(id, updateDashboardWidgetRequest.config.range)
+        val widget = service.updateWidgetRange(id, updateDashboardWidgetRequest.config.range, currentUser().id)
             ?: return ResponseEntity.notFound().build()
         return ResponseEntity.ok(widget.toModel())
     }
 
     override fun removeDashboardWidget(id: Long): ResponseEntity<Unit> {
-        if (!service.removeWidget(id)) return ResponseEntity.notFound().build()
+        if (!service.removeWidget(id, currentUser().id)) return ResponseEntity.notFound().build()
         return ResponseEntity.noContent().build()
     }
 

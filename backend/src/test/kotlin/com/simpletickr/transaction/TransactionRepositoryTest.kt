@@ -55,11 +55,11 @@ class TransactionRepositoryTest {
 
     @BeforeEach
     fun setup() {
-        portfolioId = portfolioRepository.save("Test Portfolio").id
+        portfolioId = portfolioRepository.save("Test Portfolio", 1L).id
         val asset = assetRepository.save(null, "Test Asset", AssetType.STOCK)
         assetId = asset.id
         listingId = listingRepository.save(assetId, null, "TST_TXN", CurrencyCode("USD")).id
-        accountId = accountRepository.save(Account(0L, "Test Account", null, AccountType.BROKERAGE, null, null, null)).id
+        accountId = accountRepository.save(Account(0L, 1L, "Test Account", null, AccountType.BROKERAGE, null, null, null)).id
     }
 
     private fun saveTransaction(
@@ -110,7 +110,7 @@ class TransactionRepositoryTest {
 
     @Test
     fun `findAll with portfolioId filters by portfolio`() {
-        val otherPortfolioId = portfolioRepository.save("Other Portfolio").id
+        val otherPortfolioId = portfolioRepository.save("Other Portfolio", 1L).id
         val otherAsset = assetRepository.save(null, "Test Asset 2", AssetType.STOCK)
         val otherListingId = listingRepository.save(otherAsset.id, null, "TST_TXN2", CurrencyCode("USD")).id
 
@@ -124,7 +124,7 @@ class TransactionRepositoryTest {
 
     @Test
     fun `count with portfolioId counts only that portfolio`() {
-        val otherPortfolioId = portfolioRepository.save("Other Portfolio").id
+        val otherPortfolioId = portfolioRepository.save("Other Portfolio", 1L).id
         val otherAsset = assetRepository.save(null, "Test Asset 3", AssetType.STOCK)
         val otherListingId = listingRepository.save(otherAsset.id, null, "TST_CNT", CurrencyCode("USD")).id
 
@@ -223,7 +223,7 @@ class TransactionRepositoryTest {
 
     @Test
     fun `findAll filters by portfolioId and type`() {
-        val otherPortfolioId = portfolioRepository.save("Other").id
+        val otherPortfolioId = portfolioRepository.save("Other", 1L).id
         val otherAsset = assetRepository.save(null, "OA", AssetType.STOCK)
         val otherListingId = listingRepository.save(otherAsset.id, null, "OA_T", CurrencyCode("USD")).id
 
@@ -339,7 +339,7 @@ class TransactionRepositoryTest {
 
     @Test
     fun `existsByExternalId is scoped to portfolioId`() {
-        val otherPortfolioId = portfolioRepository.save("Other").id
+        val otherPortfolioId = portfolioRepository.save("Other", 1L).id
         val tx = Transaction(0L, portfolioId, listingId, assetId, TransactionType.BUY,
             BigDecimal("5"), BigDecimal("100"), LocalDate.of(2024, 1, 1), null,
             externalId = "bolero:xyz", accountId = accountId)

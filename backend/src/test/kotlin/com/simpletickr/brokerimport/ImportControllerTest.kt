@@ -6,14 +6,20 @@ import com.simpletickr.brokerimport.bolero.AssetImportMappingRef
 import com.simpletickr.brokerimport.bolero.BoleroAnalysisResult
 import com.simpletickr.brokerimport.bolero.BoleroInstrumentInfo
 import com.simpletickr.brokerimport.bolero.ImportBoleroTransactionsUseCase
+import com.simpletickr.account.persistence.AccountRepository
+import com.simpletickr.auth.CurrentUser
+import com.simpletickr.portfolio.persistence.PortfolioRepository
+import com.simpletickr.shared.SecurityConfig
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.whenever
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest
+import org.springframework.context.annotation.Import
 import org.springframework.http.MediaType
 import org.springframework.mock.web.MockMultipartFile
+import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user
 import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete
@@ -24,7 +30,10 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPat
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 
 @WebMvcTest(ImportController::class)
+@Import(SecurityConfig::class)
 class ImportControllerTest {
+
+    private val owner = CurrentUser(1L, "test-user", "hash")
 
     @Autowired private lateinit var mockMvc: MockMvc
     @Autowired private lateinit var objectMapper: ObjectMapper
@@ -34,6 +43,8 @@ class ImportControllerTest {
     @MockitoBean private lateinit var assetImportMappingService: AssetImportMappingService
     @MockitoBean private lateinit var createAssetImportMappingUseCase: CreateAssetImportMappingUseCase
     @MockitoBean private lateinit var deleteAssetImportMappingUseCase: DeleteAssetImportMappingUseCase
+    @MockitoBean private lateinit var portfolioRepository: PortfolioRepository
+    @MockitoBean private lateinit var accountRepository: AccountRepository
 
     private val emptyXlsx = MockMultipartFile(
         "file", "test.xlsx",
@@ -53,7 +64,7 @@ class ImportControllerTest {
         )
         whenever(analyzeBoleroImportUseCase.execute(any())).thenReturn(analysisResult)
 
-        mockMvc.perform(multipart("/import/bolero/analyze").file(emptyXlsx))
+        mockMvc.perform(multipart("/import/bolero/analyze").file(emptyXlsx).with(user(owner)))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.totalRows").value(8))
             .andExpect(jsonPath("$.skippedRows").value(92))
@@ -73,9 +84,16 @@ class ImportControllerTest {
                 ImportRowResult(12, ImportStatus.SKIPPED, "no mapping defined for: UNKNOWN"),
             ),
         )
-        whenever(importBoleroTransactionsUseCase.execute(eq(1L), any())).thenReturn(importResult)
+        whenever(portfolioRepository.isOwnedBy(1L, 1L)).thenReturn(true)
+        whenever(accountRepository.isOwnedBy(1L, 1L)).thenReturn(true)
+        whenever(importBoleroTransactionsUseCase.execute(eq(1L), eq(1L), any(), any())).thenReturn(importResult)
 
-        mockMvc.perform(multipart("/portfolios/1/transactions/import/bolero").file(emptyXlsx))
+        mockMvc.perform(
+            multipart("/portfolios/1/transactions/import/bolero")
+                .file(emptyXlsx)
+                .param("accountId", "1")
+                .with(user(owner))
+        )
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.imported").value(5))
             .andExpect(jsonPath("$.skipped").value(3))
@@ -89,7 +107,7 @@ class ImportControllerTest {
         whenever(assetImportMappingService.listMappings(null))
             .thenReturn(listOf(AssetImportMapping(1L, "bolero", "INSTRUMENT X", 10L)))
 
-        mockMvc.perform(get("/import/asset-mappings"))
+        mockMvc.perform(get("/import/asset-mappings").with(user(owner)))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.length()").value(1))
             .andExpect(jsonPath("$[0].broker").value("bolero"))
@@ -104,6 +122,7 @@ class ImportControllerTest {
 
         mockMvc.perform(
             post("/import/asset-mappings")
+                .with(user(owner))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(mapOf(
                     "broker" to "bolero",
@@ -118,7 +137,7 @@ class ImportControllerTest {
 
     @Test
     fun `DELETE asset-mappings returns 204`() {
-        mockMvc.perform(delete("/import/asset-mappings/1"))
+        mockMvc.perform(delete("/import/asset-mappings/1").with(user(owner)))
             .andExpect(status().isNoContent)
     }
 }

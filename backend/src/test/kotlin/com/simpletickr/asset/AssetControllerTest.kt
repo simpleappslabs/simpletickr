@@ -11,16 +11,20 @@ import com.simpletickr.asset.usecase.DeleteAssetUseCase
 import com.simpletickr.asset.usecase.DeleteListingUseCase
 import com.simpletickr.asset.usecase.UpdateAssetUseCase
 import com.simpletickr.asset.usecase.UpdateListingUseCase
+import com.simpletickr.auth.CurrentUser
 import com.simpletickr.price.model.PriceProviderMapping
 import com.simpletickr.shared.CurrencyCode
+import com.simpletickr.shared.SecurityConfig
 import java.util.UUID
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
 import org.mockito.kotlin.whenever
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest
+import org.springframework.context.annotation.Import
 import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.http.MediaType
+import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user
 import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete
@@ -30,7 +34,10 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPat
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 
 @WebMvcTest(AssetController::class)
+@Import(SecurityConfig::class)
 class AssetControllerTest {
+
+    private val owner = CurrentUser(1L, "test-user", "hash")
 
     @Autowired
     private lateinit var mockMvc: MockMvc
@@ -64,7 +71,7 @@ class AssetControllerTest {
             )
         )
 
-        mockMvc.perform(get("/assets"))
+        mockMvc.perform(get("/assets").with(user(owner)))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.length()").value(2))
             .andExpect(jsonPath("$[0].listings[0].ticker").value("AAPL"))
@@ -78,7 +85,7 @@ class AssetControllerTest {
         val mappings = mapOf(10L to listOf(PriceProviderMapping(1L, 10L, "YAHOO", "AAPL")))
         whenever(assetService.getAsset(1L)).thenReturn(AssetDetail(asset, mappings))
 
-        mockMvc.perform(get("/assets/1"))
+        mockMvc.perform(get("/assets/1").with(user(owner)))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.listings[0].ticker").value("AAPL"))
             .andExpect(jsonPath("$.listings[0].priceMappings[0].provider").value("YAHOO"))
@@ -89,7 +96,7 @@ class AssetControllerTest {
     fun `GET asset by id returns 404 when not found`() {
         whenever(assetService.getAsset(99L)).thenReturn(null)
 
-        mockMvc.perform(get("/assets/99"))
+        mockMvc.perform(get("/assets/99").with(user(owner)))
             .andExpect(status().isNotFound)
     }
 
@@ -100,6 +107,7 @@ class AssetControllerTest {
 
         mockMvc.perform(
             post("/assets")
+                .with(user(owner))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""{"name":"NVIDIA Corporation","type":"STOCK","listings":[{"ticker":"NVDA","currency":"USD"}]}""")
         )
@@ -114,7 +122,7 @@ class AssetControllerTest {
             DataIntegrityViolationException("fk_transactions_listing")
         )
 
-        mockMvc.perform(delete("/assets/1"))
+        mockMvc.perform(delete("/assets/1").with(user(owner)))
             .andExpect(status().isConflict)
             .andExpect(jsonPath("$.message").value("This asset cannot be deleted because it has linked transactions."))
     }
@@ -123,6 +131,7 @@ class AssetControllerTest {
     fun `POST asset returns 400 when listings is empty`() {
         mockMvc.perform(
             post("/assets")
+                .with(user(owner))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""{"name":"NVIDIA Corporation","type":"STOCK","listings":[]}""")
         )

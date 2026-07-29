@@ -50,12 +50,12 @@ class TransferRepositoryTest {
 
     @BeforeEach
     fun setup() {
-        portfolioId = portfolioRepository.save("Test Portfolio").id
+        portfolioId = portfolioRepository.save("Test Portfolio", 1L).id
         val asset = assetRepository.save(null, "Test Asset", AssetType.CRYPTO)
         assetId = asset.id
         listingId = listingRepository.save(assetId, null, "TST_XFER", CurrencyCode("USD")).id
-        sourceAccountId = accountRepository.save(Account(0L, "Exchange", null, AccountType.CRYPTO, null, null, null)).id
-        destinationAccountId = accountRepository.save(Account(0L, "Cold Wallet", null, AccountType.CRYPTO, null, null, null)).id
+        sourceAccountId = accountRepository.save(Account(0L, 1L, "Exchange", null, AccountType.CRYPTO, null, null, null)).id
+        destinationAccountId = accountRepository.save(Account(0L, 1L, "Cold Wallet", null, AccountType.CRYPTO, null, null, null)).id
     }
 
     private fun saveTransfer(
@@ -129,7 +129,7 @@ class TransferRepositoryTest {
     @Test
     fun `existsForAccountInPortfolio is false for an unrelated account`() {
         saveTransfer()
-        val unrelatedAccountId = accountRepository.save(Account(0L, "Unrelated", null, AccountType.CRYPTO, null, null, null)).id
+        val unrelatedAccountId = accountRepository.save(Account(0L, 1L, "Unrelated", null, AccountType.CRYPTO, null, null, null)).id
         assertEquals(false, repository.existsForAccountInPortfolio(unrelatedAccountId, portfolioId))
     }
 

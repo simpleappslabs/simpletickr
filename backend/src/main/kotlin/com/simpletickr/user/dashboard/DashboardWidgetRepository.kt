@@ -14,30 +14,32 @@ class DashboardWidgetRepository(
     private val rowMapper = { rs: java.sql.ResultSet, _: Int ->
         RawDashboardWidget(
             id = rs.getLong("id"),
+            userId = rs.getLong("user_id"),
             type = DashboardWidgetType.valueOf(rs.getString("type")),
             configJson = rs.getString("config"),
         )
     }
 
-    fun findAll(): List<RawDashboardWidget> =
+    fun findAllForUser(userId: Long): List<RawDashboardWidget> =
         jdbcTemplate.query(
-            "SELECT id, type, config FROM dashboard_widget ORDER BY created_at",
-            rowMapper
+            "SELECT id, user_id, type, config FROM dashboard_widget WHERE user_id = ? ORDER BY created_at",
+            rowMapper, userId,
         )
 
-    fun insert(type: DashboardWidgetType, config: WidgetConfig): RawDashboardWidget {
+    fun insert(type: DashboardWidgetType, config: WidgetConfig, userId: Long): RawDashboardWidget {
         val keyHolder = GeneratedKeyHolder()
         val configJson = objectMapper.writeValueAsString(config)
         jdbcTemplate.update({ con ->
             con.prepareStatement(
-                "INSERT INTO dashboard_widget (type, config) VALUES (?, ?::jsonb)",
+                "INSERT INTO dashboard_widget (user_id, type, config) VALUES (?, ?, ?::jsonb)",
                 arrayOf("id")
             ).apply {
-                setString(1, type.name)
-                setString(2, configJson)
+                setLong(1, userId)
+                setString(2, type.name)
+                setString(3, configJson)
             }
         }, keyHolder)
-        return RawDashboardWidget(keyHolder.key!!.toLong(), type, configJson)
+        return RawDashboardWidget(keyHolder.key!!.toLong(), userId, type, configJson)
     }
 
     fun updateConfig(id: Long, config: WidgetConfig): Boolean {
@@ -53,7 +55,7 @@ class DashboardWidgetRepository(
 
     fun findRawById(id: Long): RawDashboardWidget? =
         jdbcTemplate.query(
-            "SELECT id, type, config FROM dashboard_widget WHERE id = ?",
+            "SELECT id, user_id, type, config FROM dashboard_widget WHERE id = ?",
             rowMapper,
             id
         ).firstOrNull()
@@ -61,6 +63,7 @@ class DashboardWidgetRepository(
 
 data class RawDashboardWidget(
     val id: Long,
+    val userId: Long,
     val type: DashboardWidgetType,
     val configJson: String,
 )

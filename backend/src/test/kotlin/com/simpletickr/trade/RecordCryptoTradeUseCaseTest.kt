@@ -1,5 +1,6 @@
 package com.simpletickr.trade
 
+import com.simpletickr.account.persistence.AccountRepository
 import com.simpletickr.asset.model.Asset
 import com.simpletickr.asset.model.AssetType
 import com.simpletickr.asset.model.Listing
@@ -27,6 +28,7 @@ import kotlin.test.assertEquals
 class RecordCryptoTradeUseCaseTest {
 
     private val cryptoTradeRepository = mock<CryptoTradeRepository>()
+    private val accountRepository = mock<AccountRepository>()
     private val transactionRepository = mock<TransactionRepository>()
     private val listingRepository = mock<ListingRepository>()
     private val assetRepository = mock<AssetRepository>()
@@ -35,7 +37,7 @@ class RecordCryptoTradeUseCaseTest {
 
     private val useCase = RecordCryptoTradeUseCase(
         cryptoTradeRepository, transactionRepository, listingRepository,
-        assetRepository, fxRateService, userSettingsRepository,
+        assetRepository, accountRepository, fxRateService, userSettingsRepository,
     )
 
     private val date = LocalDate.of(2024, 6, 1)
@@ -48,8 +50,9 @@ class RecordCryptoTradeUseCaseTest {
         Transaction(id, 5L, listingId, assetId, type, BigDecimal("1"), BigDecimal("50000"), date, null, tradeId = tradeId, accountId = 1L)
 
     init {
-        whenever(userSettingsRepository.find()).thenReturn(UserSettings(CurrencyCode("USD")))
+        whenever(userSettingsRepository.find(1L)).thenReturn(UserSettings(CurrencyCode("USD")))
         whenever(cryptoTradeRepository.create(any())).thenReturn(99L)
+        whenever(accountRepository.isOwnedBy(1L, 1L)).thenReturn(true)
         whenever(listingRepository.findById(10L)).thenReturn(btcListing)
         whenever(listingRepository.findById(20L)).thenReturn(ethListing)
         whenever(assetRepository.findById(1L)).thenReturn(btcAsset)
@@ -69,7 +72,7 @@ class RecordCryptoTradeUseCaseTest {
 
     @Test
     fun `happy path returns trade with sell and buy legs`() {
-        val result = useCase.execute(5L, command)
+        val result = useCase.execute(5L, command, 1L)
 
         assertEquals(99L, result.id)
         assertEquals(5L, result.portfolioId)
@@ -82,41 +85,41 @@ class RecordCryptoTradeUseCaseTest {
     @Test
     fun `throws when sell listing not found`() {
         whenever(listingRepository.findById(10L)).thenReturn(null)
-        assertThrows<IllegalArgumentException> { useCase.execute(5L, command) }
+        assertThrows<IllegalArgumentException> { useCase.execute(5L, command, 1L) }
     }
 
     @Test
     fun `throws when buy listing not found`() {
         whenever(listingRepository.findById(20L)).thenReturn(null)
-        assertThrows<IllegalArgumentException> { useCase.execute(5L, command) }
+        assertThrows<IllegalArgumentException> { useCase.execute(5L, command, 1L) }
     }
 
     @Test
     fun `throws when sell listing is same as buy listing`() {
         val sameListingCommand = command.copy(buyListingId = 10L)
-        assertThrows<IllegalArgumentException> { useCase.execute(5L, sameListingCommand) }
+        assertThrows<IllegalArgumentException> { useCase.execute(5L, sameListingCommand, 1L) }
     }
 
     @Test
     fun `throws when sell asset is not CRYPTO`() {
         whenever(assetRepository.findById(1L)).thenReturn(btcAsset.copy(type = AssetType.STOCK))
-        assertThrows<IllegalArgumentException> { useCase.execute(5L, command) }
+        assertThrows<IllegalArgumentException> { useCase.execute(5L, command, 1L) }
     }
 
     @Test
     fun `throws when buy asset is not CRYPTO`() {
         whenever(assetRepository.findById(2L)).thenReturn(ethAsset.copy(type = AssetType.ETF))
-        assertThrows<IllegalArgumentException> { useCase.execute(5L, command) }
+        assertThrows<IllegalArgumentException> { useCase.execute(5L, command, 1L) }
     }
 
     @Test
     fun `resolves FX rate for foreign currency legs`() {
         val eurSettings = UserSettings(CurrencyCode("EUR"))
-        whenever(userSettingsRepository.find()).thenReturn(eurSettings)
+        whenever(userSettingsRepository.find(1L)).thenReturn(eurSettings)
         whenever(fxRateService.lookupOrFetch(CurrencyCode("EUR"), CurrencyCode("USD"), date))
             .thenReturn(FxRate(CurrencyCode("EUR"), CurrencyCode("USD"), date, BigDecimal("1.08")))
 
-        val result = useCase.execute(5L, command)
+        val result = useCase.execute(5L, command, 1L)
 
         assertEquals(BigDecimal("1.08"), result.sell.fxRate)
         assertEquals(BigDecimal("1.08"), result.buy.fxRate)

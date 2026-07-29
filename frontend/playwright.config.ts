@@ -29,8 +29,10 @@ export default defineConfig({
 			env: { PUBLIC_API_BASE_URL: 'http://localhost:8081' },
 		},
 	],
+	globalSetup: './tests/global-setup.ts',
 	use: {
 		baseURL: 'http://localhost:4173',
+		storageState: 'tests/.auth/storage-state.json',
 	},
 	testMatch: '**/*.e2e.{ts,js}',
 });

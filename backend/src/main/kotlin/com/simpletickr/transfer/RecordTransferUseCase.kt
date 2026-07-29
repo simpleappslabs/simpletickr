@@ -21,7 +21,7 @@ class RecordTransferUseCase(
     private val log = LoggerFactory.getLogger(javaClass)
 
     @Transactional
-    fun execute(portfolioId: Long, command: RecordTransferCommand): Transfer {
+    fun execute(portfolioId: Long, command: RecordTransferCommand, userId: Long): Transfer {
         log.info(
             "Recording transfer: portfolioId={}, listing={}, quantity={}",
             portfolioId, command.listingId, command.quantity,
@@ -34,10 +34,12 @@ class RecordTransferUseCase(
         val listing = listingRepository.findById(command.listingId)
             ?: throw IllegalArgumentException("Listing ${command.listingId} not found")
 
-        accountRepository.findById(command.sourceAccountId)
-            ?: throw IllegalArgumentException("Account ${command.sourceAccountId} not found")
-        accountRepository.findById(command.destinationAccountId)
-            ?: throw IllegalArgumentException("Account ${command.destinationAccountId} not found")
+        require(accountRepository.isOwnedBy(command.sourceAccountId, userId)) {
+            "Account ${command.sourceAccountId} not found"
+        }
+        require(accountRepository.isOwnedBy(command.destinationAccountId, userId)) {
+            "Account ${command.destinationAccountId} not found"
+        }
 
         // Holdings aren't tracked per account, so this can't verify the source account
         // specifically holds enough — it's a best-effort guard against picking an account

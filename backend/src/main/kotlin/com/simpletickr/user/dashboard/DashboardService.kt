@@ -15,8 +15,8 @@ class DashboardService(
     private val objectMapper: ObjectMapper,
 ) {
 
-    fun listWidgets(): List<DashboardWidget> {
-        val raw = repository.findAll()
+    fun listWidgets(userId: Long): List<DashboardWidget> {
+        val raw = repository.findAllForUser(userId)
 
         val listingIds = raw.filter { it.type == LISTING_PRICE }
             .map { it.parseConfig<ListingPriceConfig>().targetId }.toSet()
@@ -42,22 +42,29 @@ class DashboardService(
         }
     }
 
-    fun addWidget(type: DashboardWidgetType, config: WidgetConfig): DashboardWidget {
-        val raw = repository.insert(type, config)
+    fun addWidget(type: DashboardWidgetType, config: WidgetConfig, userId: Long): DashboardWidget {
+        if (type == PORTFOLIO_VALUE) {
+            val targetId = (config as PortfolioValueConfig).targetId
+            require(portfolioRepository.isOwnedBy(targetId, userId)) { "Portfolio $targetId not found" }
+        }
+        val raw = repository.insert(type, config, userId)
         return enrich(raw)
     }
 
-    fun updateWidgetRange(id: Long, range: String): DashboardWidget? {
-        val raw = repository.findRawById(id) ?: return null
+    fun updateWidgetRange(id: Long, range: String, userId: Long): DashboardWidget? {
+        val raw = repository.findRawById(id)?.takeIf { it.userId == userId } ?: return null
         val updatedConfig = when (raw.type) {
             LISTING_PRICE -> raw.parseConfig<ListingPriceConfig>().copy(range = range)
             PORTFOLIO_VALUE -> raw.parseConfig<PortfolioValueConfig>().copy(range = range)
         }
         repository.updateConfig(id, updatedConfig)
-        return enrich(RawDashboardWidget(raw.id, raw.type, objectMapper.writeValueAsString(updatedConfig)))
+        return enrich(RawDashboardWidget(raw.id, raw.userId, raw.type, objectMapper.writeValueAsString(updatedConfig)))
     }
 
-    fun removeWidget(id: Long): Boolean = repository.delete(id)
+    fun removeWidget(id: Long, userId: Long): Boolean {
+        if (repository.findRawById(id)?.userId != userId) return false
+        return repository.delete(id)
+    }
 
     private fun enrich(raw: RawDashboardWidget): DashboardWidget = when (raw.type) {
         LISTING_PRICE -> {

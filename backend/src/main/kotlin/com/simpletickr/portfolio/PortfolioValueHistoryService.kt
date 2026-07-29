@@ -25,8 +25,9 @@ class PortfolioValueHistoryService(
         portfolioId: Long,
         from: LocalDate?,
         to: LocalDate,
+        userId: Long,
     ): Pair<CurrencyCode, List<PortfolioValuePoint>> {
-        val baseCurrency = userSettingsRepository.find().baseCurrency
+        val baseCurrency = userSettingsRepository.find(userId).baseCurrency
         val effectiveFrom = from ?: repository.findOldestTransactionDate(portfolioId)
             ?: return baseCurrency to emptyList()
 

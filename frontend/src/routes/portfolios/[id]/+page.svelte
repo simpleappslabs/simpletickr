@@ -251,6 +251,7 @@
     <BoleroImportDialog
         portfolioId={portfolio.id}
         {assets}
+        {accounts}
         open={boleroImportOpen}
         onclose={() => boleroImportOpen = false}
         onimported={refreshData}

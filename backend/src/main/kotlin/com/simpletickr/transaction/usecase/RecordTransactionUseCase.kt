@@ -1,5 +1,6 @@
 package com.simpletickr.transaction.usecase
 
+import com.simpletickr.account.persistence.AccountRepository
 import com.simpletickr.asset.persistence.ListingRepository
 import com.simpletickr.fx.FxRateService
 import com.simpletickr.fx.model.FxRateSource
@@ -15,17 +16,21 @@ import org.springframework.stereotype.Service
 class RecordTransactionUseCase(
     private val transactionRepository: TransactionRepository,
     private val listingRepository: ListingRepository,
+    private val accountRepository: AccountRepository,
     private val fxRateService: FxRateService,
     private val userSettingsRepository: UserSettingsRepository,
 ) {
 
     private val log = LoggerFactory.getLogger(javaClass)
 
-    fun execute(portfolioId: Long, command: RecordTransactionCommand): Transaction {
+    fun execute(portfolioId: Long, command: RecordTransactionCommand, userId: Long): Transaction {
         log.info("Recording {} transaction: portfolioId={}, listingId={}, date={}", command.type, portfolioId, command.listingId, command.date)
         val listing = listingRepository.findById(command.listingId)
             ?: throw IllegalArgumentException("Listing ${command.listingId} not found")
-        val baseCurrency = userSettingsRepository.find().baseCurrency
+        require(accountRepository.isOwnedBy(command.accountId, userId)) {
+            "Account ${command.accountId} not found"
+        }
+        val baseCurrency = userSettingsRepository.find(userId).baseCurrency
 
         val (fxRate, fxRateSource) = when {
             command.type == TransactionType.SPLIT -> null to null

@@ -1,5 +1,6 @@
 package com.simpletickr.transaction
 
+import com.simpletickr.account.persistence.AccountRepository
 import com.simpletickr.asset.model.Listing
 import com.simpletickr.asset.persistence.ListingRepository
 import com.simpletickr.fx.model.FxRate
@@ -23,14 +24,16 @@ class RecordTransactionUseCaseTest {
 
     private val transactionRepository = mock<TransactionRepository>()
     private val listingRepository = mock<ListingRepository>()
+    private val accountRepository = mock<AccountRepository>()
     private val fxRateService = mock<FxRateService>()
     private val userSettingsRepository = mock<UserSettingsRepository>()
-    private val useCase = RecordTransactionUseCase(transactionRepository, listingRepository, fxRateService, userSettingsRepository)
+    private val useCase = RecordTransactionUseCase(transactionRepository, listingRepository, accountRepository, fxRateService, userSettingsRepository)
 
     private val date = LocalDate.of(2024, 1, 15)
 
     init {
-        whenever(userSettingsRepository.find()).thenReturn(UserSettings(CurrencyCode("EUR")))
+        whenever(userSettingsRepository.find(1L)).thenReturn(UserSettings(CurrencyCode("EUR")))
+        whenever(accountRepository.isOwnedBy(1L, 1L)).thenReturn(true)
         whenever(fxRateService.lookupOrFetch(any(), any(), any())).thenReturn(
             FxRate(CurrencyCode("EUR"), CurrencyCode("USD"), date, BigDecimal("1.08"))
         )
@@ -52,7 +55,7 @@ class RecordTransactionUseCaseTest {
         whenever(listingRepository.findById(5L)).thenReturn(listing)
         whenever(transactionRepository.save(any())).thenReturn(saved)
 
-        val result = useCase.execute(10L, command)
+        val result = useCase.execute(10L, command, 1L)
 
         assertEquals(42L, result.id)
         assertEquals(10L, result.portfolioId)
@@ -75,7 +78,7 @@ class RecordTransactionUseCaseTest {
         whenever(listingRepository.findById(5L)).thenReturn(listing)
         whenever(transactionRepository.save(any())).thenReturn(saved)
 
-        val result = useCase.execute(99L, command)
+        val result = useCase.execute(99L, command, 1L)
 
         assertEquals(99L, result.portfolioId)
     }
@@ -96,7 +99,7 @@ class RecordTransactionUseCaseTest {
         whenever(listingRepository.findById(5L)).thenReturn(foreignListing)
         whenever(transactionRepository.save(any())).thenReturn(saved)
 
-        val result = useCase.execute(10L, command)
+        val result = useCase.execute(10L, command, 1L)
 
         assertEquals(TransactionType.SPLIT, result.type)
         org.mockito.kotlin.verify(fxRateService, org.mockito.kotlin.never()).lookupOrFetch(any(), any(), any())

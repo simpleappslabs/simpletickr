@@ -5,6 +5,7 @@ import com.simpletickr.account.model.AccountType
 import com.simpletickr.account.usecase.CreateAccountUseCase
 import com.simpletickr.account.usecase.DeleteAccountUseCase
 import com.simpletickr.account.usecase.UpdateAccountUseCase
+import com.simpletickr.auth.currentUser
 import com.simpletickr.generated.api.AccountsApi
 import com.simpletickr.generated.model.AccountRequest
 import org.springframework.http.ResponseEntity
@@ -21,10 +22,10 @@ class AccountController(
 ) : AccountsApi {
 
     override fun listAccounts(): ResponseEntity<List<AccountModel>> =
-        ResponseEntity.ok(accountService.listAccounts().map { it.toModel() })
+        ResponseEntity.ok(accountService.listAccounts(currentUser().id).map { it.toModel() })
 
     override fun getAccount(id: Long): ResponseEntity<AccountModel> {
-        val account = accountService.getAccount(id) ?: return ResponseEntity.notFound().build()
+        val account = accountService.getAccount(id, currentUser().id) ?: return ResponseEntity.notFound().build()
         return ResponseEntity.ok(account.toModel())
     }
 
@@ -37,7 +38,7 @@ class AccountController(
             accountNumber = accountRequest.accountNumber,
             institution = accountRequest.institution,
         )
-        return ResponseEntity.status(201).body(createAccountUseCase.execute(command).toModel())
+        return ResponseEntity.status(201).body(createAccountUseCase.execute(command, currentUser().id).toModel())
     }
 
     override fun updateAccount(id: Long, accountRequest: AccountRequest): ResponseEntity<AccountModel> {
@@ -49,12 +50,12 @@ class AccountController(
             accountNumber = accountRequest.accountNumber,
             institution = accountRequest.institution,
         )
-        val account = updateAccountUseCase.execute(id, command) ?: return ResponseEntity.notFound().build()
+        val account = updateAccountUseCase.execute(id, command, currentUser().id) ?: return ResponseEntity.notFound().build()
         return ResponseEntity.ok(account.toModel())
     }
 
     override fun deleteAccount(id: Long): ResponseEntity<Unit> {
-        if (!deleteAccountUseCase.execute(id)) return ResponseEntity.notFound().build()
+        if (!deleteAccountUseCase.execute(id, currentUser().id)) return ResponseEntity.notFound().build()
         return ResponseEntity.noContent().build()
     }
 
