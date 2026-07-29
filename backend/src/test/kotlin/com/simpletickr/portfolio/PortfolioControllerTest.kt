@@ -3,12 +3,13 @@ package com.simpletickr.portfolio
 import com.simpletickr.account.AccountService
 import com.simpletickr.account.model.Account
 import com.simpletickr.account.model.AccountType
-import com.simpletickr.asset.persistence.AssetRepository
 import com.simpletickr.auth.CurrentUser
+import com.simpletickr.gains.RealizationMethod
+import com.simpletickr.gains.RealizedGainsReport
 import com.simpletickr.price.usecase.BackfillPortfolioPricesUseCase
 import com.simpletickr.price.usecase.SyncResult
+import com.simpletickr.settings.SettingsService
 import com.simpletickr.settings.UserSettings
-import com.simpletickr.settings.UserSettingsRepository
 import com.simpletickr.shared.CurrencyCode
 import com.simpletickr.portfolio.model.AccountValuation
 import com.simpletickr.portfolio.model.AssetHolding
@@ -16,11 +17,11 @@ import com.simpletickr.portfolio.model.HoldingWithValuation
 import com.simpletickr.portfolio.model.Portfolio
 import com.simpletickr.portfolio.model.PortfolioValuationSummary
 import com.simpletickr.portfolio.model.PortfolioValuePoint
-import com.simpletickr.portfolio.persistence.PortfolioRepository
+import com.simpletickr.portfolio.usecase.CreatePortfolioUseCase
+import com.simpletickr.portfolio.usecase.DeletePortfolioUseCase
+import com.simpletickr.portfolio.usecase.UpdatePortfolioUseCase
 import com.simpletickr.shared.SecurityConfig
 import java.util.UUID
-import com.simpletickr.transaction.persistence.TransactionRepository
-import com.simpletickr.transfer.TransferRepository
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
 import org.mockito.kotlin.eq
@@ -52,25 +53,28 @@ class PortfolioControllerTest {
     private lateinit var mockMvc: MockMvc
 
     @MockitoBean
-    private lateinit var portfolioRepository: PortfolioRepository
+    private lateinit var portfolioQueryService: PortfolioQueryService
+
+    @MockitoBean
+    private lateinit var createPortfolioUseCase: CreatePortfolioUseCase
+
+    @MockitoBean
+    private lateinit var updatePortfolioUseCase: UpdatePortfolioUseCase
+
+    @MockitoBean
+    private lateinit var deletePortfolioUseCase: DeletePortfolioUseCase
 
     @MockitoBean
     private lateinit var valuationService: ValuationService
 
     @MockitoBean
-    private lateinit var transactionRepository: TransactionRepository
-
-    @MockitoBean
-    private lateinit var transferRepository: TransferRepository
-
-    @MockitoBean
-    private lateinit var assetRepository: AssetRepository
+    private lateinit var realizedGainsService: RealizedGainsService
 
     @MockitoBean
     private lateinit var accountService: AccountService
 
     @MockitoBean
-    private lateinit var userSettingsRepository: UserSettingsRepository
+    private lateinit var settingsService: SettingsService
 
     @MockitoBean
     private lateinit var backfillPortfolioPricesUseCase: BackfillPortfolioPricesUseCase
@@ -80,7 +84,7 @@ class PortfolioControllerTest {
 
     @Test
     fun `GET portfolios returns empty list`() {
-        whenever(portfolioRepository.findAllForUser(1L)).thenReturn(emptyList())
+        whenever(portfolioQueryService.listPortfolios(1L)).thenReturn(emptyList())
 
         mockMvc.perform(get("/portfolios").with(user(owner)))
             .andExpect(status().isOk)
@@ -90,7 +94,7 @@ class PortfolioControllerTest {
 
     @Test
     fun `GET portfolios returns list of portfolios`() {
-        whenever(portfolioRepository.findAllForUser(1L)).thenReturn(
+        whenever(portfolioQueryService.listPortfolios(1L)).thenReturn(
             listOf(Portfolio(1L, UUID(0, 1), "My Portfolio", 1L), Portfolio(2L, UUID(0, 2), "Savings", 1L))
         )
 
@@ -104,7 +108,7 @@ class PortfolioControllerTest {
 
     @Test
     fun `GET portfolio by id returns 200 when found`() {
-        whenever(portfolioRepository.findById(1L)).thenReturn(Portfolio(1L, UUID(0, 1), "My Portfolio", 1L))
+        whenever(portfolioQueryService.getPortfolio(1L, 1L)).thenReturn(Portfolio(1L, UUID(0, 1), "My Portfolio", 1L))
 
         mockMvc.perform(get("/portfolios/1").with(user(owner)))
             .andExpect(status().isOk)
@@ -114,23 +118,19 @@ class PortfolioControllerTest {
 
     @Test
     fun `GET portfolio by id returns 404 when not found`() {
-        whenever(portfolioRepository.findById(99L)).thenReturn(null)
-
         mockMvc.perform(get("/portfolios/99").with(user(owner)))
             .andExpect(status().isNotFound)
     }
 
     @Test
     fun `GET portfolio by id returns 404 when owned by another user`() {
-        whenever(portfolioRepository.findById(1L)).thenReturn(Portfolio(1L, UUID(0, 1), "My Portfolio", 1L))
-
         mockMvc.perform(get("/portfolios/1").with(user(other)))
             .andExpect(status().isNotFound)
     }
 
     @Test
     fun `POST portfolio creates and returns 201`() {
-        whenever(portfolioRepository.save(eq("New Portfolio"), eq(1L), any())).thenReturn(Portfolio(3L, UUID(0, 3), "New Portfolio", 1L))
+        whenever(createPortfolioUseCase.execute("New Portfolio", 1L)).thenReturn(Portfolio(3L, UUID(0, 3), "New Portfolio", 1L))
 
         mockMvc.perform(
             post("/portfolios")
@@ -145,8 +145,7 @@ class PortfolioControllerTest {
 
     @Test
     fun `PUT portfolio returns 200 with updated portfolio`() {
-        whenever(portfolioRepository.findById(1L)).thenReturn(Portfolio(1L, UUID(0, 1), "Original", 1L))
-        whenever(portfolioRepository.update(1L, "Renamed")).thenReturn(Portfolio(1L, UUID(0, 1), "Renamed", 1L))
+        whenever(updatePortfolioUseCase.execute(1L, "Renamed", 1L)).thenReturn(Portfolio(1L, UUID(0, 1), "Renamed", 1L))
 
         mockMvc.perform(
             put("/portfolios/1")
@@ -161,8 +160,6 @@ class PortfolioControllerTest {
 
     @Test
     fun `PUT portfolio returns 404 when not found`() {
-        whenever(portfolioRepository.findById(99L)).thenReturn(null)
-
         mockMvc.perform(
             put("/portfolios/99")
                 .with(user(owner))
@@ -174,8 +171,6 @@ class PortfolioControllerTest {
 
     @Test
     fun `PUT portfolio returns 404 when owned by another user`() {
-        whenever(portfolioRepository.findById(1L)).thenReturn(Portfolio(1L, UUID(0, 1), "Original", 1L))
-
         mockMvc.perform(
             put("/portfolios/1")
                 .with(user(other))
@@ -187,7 +182,7 @@ class PortfolioControllerTest {
 
     @Test
     fun `DELETE portfolio returns 204 when found`() {
-        whenever(portfolioRepository.findById(1L)).thenReturn(Portfolio(1L, UUID(0, 1), "My Portfolio", 1L))
+        whenever(deletePortfolioUseCase.execute(1L, 1L)).thenReturn(true)
 
         mockMvc.perform(delete("/portfolios/1").with(user(owner)))
             .andExpect(status().isNoContent)
@@ -195,32 +190,26 @@ class PortfolioControllerTest {
 
     @Test
     fun `DELETE portfolio returns 404 when not found`() {
-        whenever(portfolioRepository.findById(99L)).thenReturn(null)
-
         mockMvc.perform(delete("/portfolios/99").with(user(owner)))
             .andExpect(status().isNotFound)
     }
 
     @Test
     fun `DELETE portfolio returns 404 when owned by another user`() {
-        whenever(portfolioRepository.findById(1L)).thenReturn(Portfolio(1L, UUID(0, 1), "My Portfolio", 1L))
-
         mockMvc.perform(delete("/portfolios/1").with(user(other)))
             .andExpect(status().isNotFound)
     }
 
     @Test
     fun `GET holdings returns 404 when portfolio not found`() {
-        whenever(portfolioRepository.findById(99L)).thenReturn(null)
-
         mockMvc.perform(get("/portfolios/99/holdings").with(user(owner)))
             .andExpect(status().isNotFound)
     }
 
     @Test
     fun `GET holdings returns 200 with asset-rolled-up holdings`() {
-        whenever(portfolioRepository.findById(1L)).thenReturn(Portfolio(1L, UUID(0, 1), "My Portfolio", 1L))
-        whenever(userSettingsRepository.find(1L)).thenReturn(UserSettings(CurrencyCode("EUR")))
+        whenever(portfolioQueryService.isOwnedBy(1L, 1L)).thenReturn(true)
+        whenever(settingsService.getSettings(1L)).thenReturn(UserSettings(CurrencyCode("EUR")))
         whenever(valuationService.getAssetHoldings(1L, 1L)).thenReturn(listOf(
             AssetHolding(
                 assetId = 5L, assetName = "Request Network",
@@ -242,24 +231,20 @@ class PortfolioControllerTest {
 
     @Test
     fun `GET holdings returns 404 when owned by another user`() {
-        whenever(portfolioRepository.findById(1L)).thenReturn(Portfolio(1L, UUID(0, 1), "My Portfolio", 1L))
-
         mockMvc.perform(get("/portfolios/1/holdings").with(user(other)))
             .andExpect(status().isNotFound)
     }
 
     @Test
     fun `GET account-allocation returns 404 when portfolio not found`() {
-        whenever(portfolioRepository.findById(99L)).thenReturn(null)
-
         mockMvc.perform(get("/portfolios/99/account-allocation").with(user(owner)))
             .andExpect(status().isNotFound)
     }
 
     @Test
     fun `GET account-allocation returns 200 with market value per account`() {
-        whenever(portfolioRepository.findById(1L)).thenReturn(Portfolio(1L, UUID(0, 1), "My Portfolio", 1L))
-        whenever(userSettingsRepository.find(1L)).thenReturn(UserSettings(CurrencyCode("EUR")))
+        whenever(portfolioQueryService.isOwnedBy(1L, 1L)).thenReturn(true)
+        whenever(settingsService.getSettings(1L)).thenReturn(UserSettings(CurrencyCode("EUR")))
         whenever(accountService.listAccounts(1L)).thenReturn(listOf(
             Account(id = 10L, userId = 1L, name = "Fidelity Roth IRA", broker = null, accountType = AccountType.BROKERAGE, currency = null, accountNumber = null, institution = null),
         ))
@@ -279,8 +264,8 @@ class PortfolioControllerTest {
 
     @Test
     fun `GET account-allocation omits an account that no longer exists`() {
-        whenever(portfolioRepository.findById(1L)).thenReturn(Portfolio(1L, UUID(0, 1), "My Portfolio", 1L))
-        whenever(userSettingsRepository.find(1L)).thenReturn(UserSettings(CurrencyCode("EUR")))
+        whenever(portfolioQueryService.isOwnedBy(1L, 1L)).thenReturn(true)
+        whenever(settingsService.getSettings(1L)).thenReturn(UserSettings(CurrencyCode("EUR")))
         whenever(accountService.listAccounts(1L)).thenReturn(emptyList())
         whenever(valuationService.getAccountValuations(1L, 1L)).thenReturn(listOf(
             AccountValuation(accountId = 99L, marketValueBase = BigDecimal("100")),
@@ -294,7 +279,7 @@ class PortfolioControllerTest {
 
     @Test
     fun `GET valuation-summary returns 200 with excluded holdings reported explicitly`() {
-        whenever(portfolioRepository.findById(1L)).thenReturn(Portfolio(1L, UUID(0, 1), "My Portfolio", 1L))
+        whenever(portfolioQueryService.isOwnedBy(1L, 1L)).thenReturn(true)
         whenever(valuationService.getValuationSummary(1L, 1L)).thenReturn(
             PortfolioValuationSummary(
                 totalCostBase = BigDecimal("1500"),
@@ -316,15 +301,13 @@ class PortfolioControllerTest {
 
     @Test
     fun `GET valuation-summary returns 404 when portfolio not found`() {
-        whenever(portfolioRepository.findById(99L)).thenReturn(null)
-
         mockMvc.perform(get("/portfolios/99/valuation-summary").with(user(owner)))
             .andExpect(status().isNotFound)
     }
 
     @Test
     fun `POST sync-prices returns 200 with sync result`() {
-        whenever(portfolioRepository.findById(1L)).thenReturn(Portfolio(1L, UUID(0, 1), "My Portfolio", 1L))
+        whenever(portfolioQueryService.isOwnedBy(1L, 1L)).thenReturn(true)
         whenever(backfillPortfolioPricesUseCase.execute(1L)).thenReturn(SyncResult(3, 0))
 
         mockMvc.perform(post("/portfolios/1/sync-prices").with(user(owner)))
@@ -335,15 +318,13 @@ class PortfolioControllerTest {
 
     @Test
     fun `POST sync-prices returns 404 when portfolio not found`() {
-        whenever(portfolioRepository.findById(99L)).thenReturn(null)
-
         mockMvc.perform(post("/portfolios/99/sync-prices").with(user(owner)))
             .andExpect(status().isNotFound)
     }
 
     @Test
     fun `GET value-history returns 200 with value and invested points`() {
-        whenever(portfolioRepository.findById(1L)).thenReturn(Portfolio(1L, UUID(0, 1), "My Portfolio", 1L))
+        whenever(portfolioQueryService.isOwnedBy(1L, 1L)).thenReturn(true)
         whenever(
             portfolioValueHistoryService.getValueHistory(1L, LocalDate.of(2024, 1, 1), LocalDate.of(2024, 1, 3), 1L)
         ).thenReturn(
@@ -367,9 +348,31 @@ class PortfolioControllerTest {
 
     @Test
     fun `GET value-history returns 404 when portfolio not found`() {
-        whenever(portfolioRepository.findById(99L)).thenReturn(null)
-
         mockMvc.perform(get("/portfolios/99/value-history?from=2024-01-01&to=2024-01-03").with(user(owner)))
+            .andExpect(status().isNotFound)
+    }
+
+    @Test
+    fun `GET realized-gains returns 200 with report from service`() {
+        whenever(portfolioQueryService.isOwnedBy(1L, 1L)).thenReturn(true)
+        whenever(realizedGainsService.getRealizedGains(1L, RealizationMethod.FIFO, LocalDate.of(2024, 1, 1), LocalDate.of(2024, 12, 31)))
+            .thenReturn(RealizedGainsReport(
+                method = RealizationMethod.FIFO,
+                from = LocalDate.of(2024, 1, 1),
+                to = LocalDate.of(2024, 12, 31),
+                entries = emptyList(),
+                byCurrency = emptyMap(),
+            ))
+
+        mockMvc.perform(get("/portfolios/1/realized-gains?method=FIFO&from=2024-01-01&to=2024-12-31").with(user(owner)))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.method").value("FIFO"))
+            .andExpect(jsonPath("$.entries").isArray)
+    }
+
+    @Test
+    fun `GET realized-gains returns 404 when portfolio not owned`() {
+        mockMvc.perform(get("/portfolios/1/realized-gains?method=FIFO&from=2024-01-01&to=2024-12-31").with(user(other)))
             .andExpect(status().isNotFound)
     }
 }

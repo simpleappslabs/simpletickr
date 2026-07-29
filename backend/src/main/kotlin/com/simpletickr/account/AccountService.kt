@@ -11,4 +11,6 @@ class AccountService(private val accountRepository: AccountRepository) {
 
     fun getAccount(id: Long, userId: Long): Account? =
         accountRepository.findById(id)?.takeIf { it.userId == userId }
+
+    fun isOwnedBy(id: Long, userId: Long): Boolean = accountRepository.isOwnedBy(id, userId)
 }

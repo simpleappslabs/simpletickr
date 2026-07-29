@@ -5,7 +5,7 @@ import com.simpletickr.account.model.Account
 import com.simpletickr.auth.currentUser
 import com.simpletickr.generated.api.TransfersApi
 import com.simpletickr.generated.model.TransferRequest
-import com.simpletickr.portfolio.persistence.PortfolioRepository
+import com.simpletickr.portfolio.PortfolioQueryService
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.RestController
 import java.math.BigDecimal
@@ -17,20 +17,20 @@ import com.simpletickr.generated.model.Transfer as TransferModel
 class TransferController(
     private val recordTransferUseCase: RecordTransferUseCase,
     private val deleteTransferUseCase: DeleteTransferUseCase,
-    private val transferRepository: TransferRepository,
-    private val portfolioRepository: PortfolioRepository,
+    private val transferQueryService: TransferQueryService,
+    private val portfolioQueryService: PortfolioQueryService,
     private val accountService: AccountService,
 ) : TransfersApi {
 
     override fun listTransfersForPortfolio(portfolioId: Long): ResponseEntity<List<TransferModel>> {
-        if (!portfolioRepository.isOwnedBy(portfolioId, currentUser().id)) return ResponseEntity.notFound().build()
-        val transfers = transferRepository.findAllForPortfolio(portfolioId)
+        val transfers = transferQueryService.listTransfersForPortfolio(portfolioId, currentUser().id)
+            ?: return ResponseEntity.notFound().build()
         val accountsById = accountService.listAccounts(currentUser().id).associateBy { it.id }
         return ResponseEntity.ok(transfers.map { it.toModel(accountsById) })
     }
 
     override fun recordTransfer(portfolioId: Long, transferRequest: TransferRequest): ResponseEntity<TransferModel> {
-        if (!portfolioRepository.isOwnedBy(portfolioId, currentUser().id)) return ResponseEntity.notFound().build()
+        if (!portfolioQueryService.isOwnedBy(portfolioId, currentUser().id)) return ResponseEntity.notFound().build()
         val command = RecordTransferCommand(
             listingId = transferRequest.listingId,
             quantity = BigDecimal.valueOf(transferRequest.quantity),
@@ -48,7 +48,7 @@ class TransferController(
     }
 
     override fun removeTransfer(portfolioId: Long, id: Long): ResponseEntity<Unit> {
-        if (!portfolioRepository.isOwnedBy(portfolioId, currentUser().id)) return ResponseEntity.notFound().build()
+        if (!portfolioQueryService.isOwnedBy(portfolioId, currentUser().id)) return ResponseEntity.notFound().build()
         if (!deleteTransferUseCase.execute(portfolioId, id)) return ResponseEntity.notFound().build()
         return ResponseEntity.noContent().build()
     }

@@ -4,13 +4,11 @@ import com.simpletickr.account.AccountService
 import com.simpletickr.account.model.Account
 import com.simpletickr.account.model.AccountType
 import com.simpletickr.auth.CurrentUser
-import com.simpletickr.portfolio.model.Portfolio
-import com.simpletickr.portfolio.persistence.PortfolioRepository
+import com.simpletickr.portfolio.PortfolioQueryService
 import com.simpletickr.shared.SecurityConfig
 import com.simpletickr.transaction.model.Transaction
 import com.simpletickr.transaction.model.TransactionType
 import com.simpletickr.transaction.persistence.TransactionFilter
-import com.simpletickr.transaction.persistence.TransactionRepository
 import com.simpletickr.trade.RecordCryptoTradeUseCase
 import com.simpletickr.transaction.usecase.AmendTransactionUseCase
 import com.simpletickr.transaction.usecase.DeleteTransactionUseCase
@@ -35,7 +33,6 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPat
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import java.math.BigDecimal
 import java.time.LocalDate
-import java.util.UUID
 
 @WebMvcTest(TransactionController::class)
 @Import(SecurityConfig::class)
@@ -46,8 +43,8 @@ class TransactionControllerTest {
     @Autowired
     private lateinit var mockMvc: MockMvc
 
-    @MockitoBean private lateinit var transactionRepository: TransactionRepository
-    @MockitoBean private lateinit var portfolioRepository: PortfolioRepository
+    @MockitoBean private lateinit var transactionQueryService: TransactionQueryService
+    @MockitoBean private lateinit var portfolioQueryService: PortfolioQueryService
     @MockitoBean private lateinit var recordTransactionUseCase: RecordTransactionUseCase
     @MockitoBean private lateinit var amendTransactionUseCase: AmendTransactionUseCase
     @MockitoBean private lateinit var deleteTransactionUseCase: DeleteTransactionUseCase
@@ -64,19 +61,17 @@ class TransactionControllerTest {
         accountId = 1L,
     )
 
-    private val ownedPortfolio = Portfolio(10L, UUID(0, 10), "Test Portfolio", 1L)
-
     @BeforeEach
     fun stubAccounts() {
         whenever(accountService.listAccounts(1L)).thenReturn(listOf(sampleAccount))
         whenever(accountService.getAccount(1L, 1L)).thenReturn(sampleAccount)
-        whenever(portfolioRepository.isOwnedBy(10L, 1L)).thenReturn(true)
+        whenever(portfolioQueryService.isOwnedBy(10L, 1L)).thenReturn(true)
     }
 
     @Test
     fun `GET transactions returns paginated response filtered by portfolioId`() {
-        whenever(transactionRepository.findAll(TransactionFilter(portfolioId = 10L), 0, 25)).thenReturn(listOf(sample))
-        whenever(transactionRepository.count(TransactionFilter(portfolioId = 10L))).thenReturn(1L)
+        whenever(transactionQueryService.listTransactions(TransactionFilter(portfolioId = 10L), 0, 25, 1L))
+            .thenReturn(TransactionPageResult(listOf(sample), 1L))
 
         mockMvc.perform(get("/transactions?portfolioId=10").with(user(owner)))
             .andExpect(status().isOk)
@@ -92,8 +87,8 @@ class TransactionControllerTest {
 
     @Test
     fun `GET transactions respects page and size params`() {
-        whenever(transactionRepository.findAll(TransactionFilter(portfolioId = 10L), 1, 10)).thenReturn(emptyList())
-        whenever(transactionRepository.count(TransactionFilter(portfolioId = 10L))).thenReturn(15L)
+        whenever(transactionQueryService.listTransactions(TransactionFilter(portfolioId = 10L), 1, 10, 1L))
+            .thenReturn(TransactionPageResult(emptyList(), 15L))
 
         mockMvc.perform(get("/transactions?portfolioId=10&page=1&size=10").with(user(owner)))
             .andExpect(status().isOk)
@@ -105,10 +100,8 @@ class TransactionControllerTest {
 
     @Test
     fun `GET transactions filters by type`() {
-        whenever(portfolioRepository.findAllForUser(1L)).thenReturn(listOf(ownedPortfolio))
-        val filter = TransactionFilter(portfolioIds = setOf(10L), type = TransactionType.BUY)
-        whenever(transactionRepository.findAll(filter, 0, 25)).thenReturn(listOf(sample))
-        whenever(transactionRepository.count(filter)).thenReturn(1L)
+        whenever(transactionQueryService.listTransactions(TransactionFilter(type = TransactionType.BUY), 0, 25, 1L))
+            .thenReturn(TransactionPageResult(listOf(sample), 1L))
 
         mockMvc.perform(get("/transactions?type=BUY").with(user(owner)))
             .andExpect(status().isOk)
@@ -118,10 +111,8 @@ class TransactionControllerTest {
 
     @Test
     fun `GET transactions filters by listingId`() {
-        whenever(portfolioRepository.findAllForUser(1L)).thenReturn(listOf(ownedPortfolio))
-        val filter = TransactionFilter(portfolioIds = setOf(10L), listingId = 5L)
-        whenever(transactionRepository.findAll(filter, 0, 25)).thenReturn(listOf(sample))
-        whenever(transactionRepository.count(filter)).thenReturn(1L)
+        whenever(transactionQueryService.listTransactions(TransactionFilter(listingId = 5L), 0, 25, 1L))
+            .thenReturn(TransactionPageResult(listOf(sample), 1L))
 
         mockMvc.perform(get("/transactions?listingId=5").with(user(owner)))
             .andExpect(status().isOk)
@@ -131,14 +122,9 @@ class TransactionControllerTest {
 
     @Test
     fun `GET transactions filters by date range`() {
-        whenever(portfolioRepository.findAllForUser(1L)).thenReturn(listOf(ownedPortfolio))
-        val filter = TransactionFilter(
-            portfolioIds = setOf(10L),
-            dateFrom = LocalDate.of(2024, 1, 1),
-            dateTo = LocalDate.of(2024, 12, 31),
-        )
-        whenever(transactionRepository.findAll(filter, 0, 25)).thenReturn(listOf(sample))
-        whenever(transactionRepository.count(filter)).thenReturn(1L)
+        val filter = TransactionFilter(dateFrom = LocalDate.of(2024, 1, 1), dateTo = LocalDate.of(2024, 12, 31))
+        whenever(transactionQueryService.listTransactions(filter, 0, 25, 1L))
+            .thenReturn(TransactionPageResult(listOf(sample), 1L))
 
         mockMvc.perform(get("/transactions?dateFrom=2024-01-01&dateTo=2024-12-31").with(user(owner)))
             .andExpect(status().isOk)
@@ -170,8 +156,17 @@ class TransactionControllerTest {
     }
 
     @Test
+    fun `GET transactions returns 404 when portfolioId not owned`() {
+        whenever(transactionQueryService.listTransactions(TransactionFilter(portfolioId = 99L), 0, 25, 1L))
+            .thenReturn(null)
+
+        mockMvc.perform(get("/transactions?portfolioId=99").with(user(owner)))
+            .andExpect(status().isNotFound)
+    }
+
+    @Test
     fun `GET transaction by id returns 200 when found`() {
-        whenever(transactionRepository.findById(1L)).thenReturn(sample)
+        whenever(transactionQueryService.getTransaction(1L, 1L)).thenReturn(sample)
 
         mockMvc.perform(get("/transactions/1").with(user(owner)))
             .andExpect(status().isOk)
@@ -181,7 +176,7 @@ class TransactionControllerTest {
 
     @Test
     fun `GET transaction by id returns 404 when not found`() {
-        whenever(transactionRepository.findById(99L)).thenReturn(null)
+        whenever(transactionQueryService.getTransaction(99L, 1L)).thenReturn(null)
 
         mockMvc.perform(get("/transactions/99").with(user(owner)))
             .andExpect(status().isNotFound)

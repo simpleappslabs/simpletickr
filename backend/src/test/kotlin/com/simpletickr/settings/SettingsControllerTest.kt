@@ -30,11 +30,11 @@ class SettingsControllerTest {
     private lateinit var mockMvc: MockMvc
 
     @MockitoBean
-    private lateinit var userSettingsRepository: UserSettingsRepository
+    private lateinit var settingsService: SettingsService
 
     @Test
     fun `GET settings returns the current user's own base currency`() {
-        whenever(userSettingsRepository.find(1L)).thenReturn(UserSettings(CurrencyCode("EUR")))
+        whenever(settingsService.getSettings(1L)).thenReturn(UserSettings(CurrencyCode("EUR")))
 
         mockMvc.perform(get("/settings").with(user(owner)))
             .andExpect(status().isOk)
@@ -43,7 +43,7 @@ class SettingsControllerTest {
 
     @Test
     fun `GET settings for a different user is independent of the caller's own settings`() {
-        whenever(userSettingsRepository.find(2L)).thenReturn(UserSettings(CurrencyCode("USD")))
+        whenever(settingsService.getSettings(2L)).thenReturn(UserSettings(CurrencyCode("USD")))
 
         mockMvc.perform(get("/settings").with(user(other)))
             .andExpect(status().isOk)
@@ -60,6 +60,6 @@ class SettingsControllerTest {
         )
             .andExpect(status().isOk)
 
-        verify(userSettingsRepository).update(eq(1L), eq(UserSettings(CurrencyCode("GBP"))))
+        verify(settingsService).updateSettings(eq(1L), eq(UserSettings(CurrencyCode("GBP"))))
     }
 }

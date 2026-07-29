@@ -10,12 +10,11 @@ import com.simpletickr.generated.model.CryptoTradeRequest
 import com.simpletickr.generated.model.CryptoTradeResponse
 import com.simpletickr.generated.model.TransactionPage
 import com.simpletickr.generated.model.TransactionRequest
-import com.simpletickr.portfolio.persistence.PortfolioRepository
+import com.simpletickr.portfolio.PortfolioQueryService
 import com.simpletickr.trade.RecordCryptoTradeUseCase
 import com.simpletickr.transaction.model.Transaction
 import com.simpletickr.transaction.model.TransactionType
 import com.simpletickr.transaction.persistence.TransactionFilter
-import com.simpletickr.transaction.persistence.TransactionRepository
 import com.simpletickr.transaction.usecase.AmendTransactionUseCase
 import com.simpletickr.transaction.usecase.DeleteTransactionUseCase
 import com.simpletickr.transaction.usecase.RecordTransactionUseCase
@@ -31,8 +30,8 @@ import com.simpletickr.generated.model.TransactionType as GeneratedTransactionTy
 
 @RestController
 class TransactionController(
-    private val transactionRepository: TransactionRepository,
-    private val portfolioRepository: PortfolioRepository,
+    private val transactionQueryService: TransactionQueryService,
+    private val portfolioQueryService: PortfolioQueryService,
     private val accountService: AccountService,
     private val recordTransactionUseCase: RecordTransactionUseCase,
     private val amendTransactionUseCase: AmendTransactionUseCase,
@@ -54,15 +53,8 @@ class TransactionController(
         if (page < 0 || size <= 0 || size > 200) return ResponseEntity.badRequest().build()
         if (dateFrom != null && dateTo != null && dateFrom > dateTo) return ResponseEntity.badRequest().build()
 
-        val userId = currentUser().id
-        if (portfolioId != null && !portfolioRepository.isOwnedBy(portfolioId, userId)) {
-            return ResponseEntity.notFound().build()
-        }
-        val portfolioIds = if (portfolioId == null) portfolioRepository.findAllForUser(userId).map { it.id }.toSet() else null
-
         val filter = TransactionFilter(
             portfolioId = portfolioId,
-            portfolioIds = portfolioIds,
             type = type?.let { TransactionType.valueOf(it.value) },
             listingId = listingId,
             assetType = assetType?.let { AssetType.valueOf(it.value) },
@@ -70,28 +62,27 @@ class TransactionController(
             dateTo = dateTo,
             accountId = accountId,
         )
-        val items = transactionRepository.findAll(filter, page, size)
-        val total = transactionRepository.count(filter)
-        val totalPages = ((total + size - 1) / size).toInt()
+        val result = transactionQueryService.listTransactions(filter, page, size, currentUser().id)
+            ?: return ResponseEntity.notFound().build()
+        val totalPages = ((result.total + size - 1) / size).toInt()
         val accountsById = accountService.listAccounts(currentUser().id).associateBy { it.id }
         return ResponseEntity.ok(TransactionPage(
-            items = items.map { it.toModel(accountsById) },
+            items = result.items.map { it.toModel(accountsById) },
             page = page,
             propertySize = size,
-            totalElements = total,
+            totalElements = result.total,
             totalPages = totalPages,
         ))
     }
 
     override fun getTransaction(id: Long): ResponseEntity<TransactionModel> {
-        val transaction = transactionRepository.findById(id) ?: return ResponseEntity.notFound().build()
-        if (!portfolioRepository.isOwnedBy(transaction.portfolioId, currentUser().id)) return ResponseEntity.notFound().build()
+        val transaction = transactionQueryService.getTransaction(id, currentUser().id) ?: return ResponseEntity.notFound().build()
         val account = accountService.getAccount(transaction.accountId, currentUser().id)!!
         return ResponseEntity.ok(transaction.toModel(mapOf(account.id to account)))
     }
 
     override fun recordTransaction(portfolioId: Long, transactionRequest: TransactionRequest): ResponseEntity<TransactionModel> {
-        if (!portfolioRepository.isOwnedBy(portfolioId, currentUser().id)) return ResponseEntity.notFound().build()
+        if (!portfolioQueryService.isOwnedBy(portfolioId, currentUser().id)) return ResponseEntity.notFound().build()
         val command = RecordTransactionCommand(
             listingId = transactionRequest.listingId,
             type = TransactionType.valueOf(transactionRequest.type.value),
@@ -109,7 +100,7 @@ class TransactionController(
     }
 
     override fun amendTransaction(portfolioId: Long, id: Long, transactionRequest: TransactionRequest): ResponseEntity<TransactionModel> {
-        if (!portfolioRepository.isOwnedBy(portfolioId, currentUser().id)) return ResponseEntity.notFound().build()
+        if (!portfolioQueryService.isOwnedBy(portfolioId, currentUser().id)) return ResponseEntity.notFound().build()
         val command = AmendTransactionCommand(
             listingId = transactionRequest.listingId,
             type = TransactionType.valueOf(transactionRequest.type.value),
@@ -128,13 +119,13 @@ class TransactionController(
     }
 
     override fun removeTransaction(portfolioId: Long, id: Long): ResponseEntity<Unit> {
-        if (!portfolioRepository.isOwnedBy(portfolioId, currentUser().id)) return ResponseEntity.notFound().build()
+        if (!portfolioQueryService.isOwnedBy(portfolioId, currentUser().id)) return ResponseEntity.notFound().build()
         if (!deleteTransactionUseCase.execute(portfolioId, id)) return ResponseEntity.notFound().build()
         return ResponseEntity.noContent().build()
     }
 
     override fun recordCryptoTrade(portfolioId: Long, cryptoTradeRequest: CryptoTradeRequest): ResponseEntity<CryptoTradeResponse> {
-        if (!portfolioRepository.isOwnedBy(portfolioId, currentUser().id)) return ResponseEntity.notFound().build()
+        if (!portfolioQueryService.isOwnedBy(portfolioId, currentUser().id)) return ResponseEntity.notFound().build()
         val command = RecordCryptoTradeCommand(
             sellListingId = cryptoTradeRequest.sellListingId,
             sellQuantity = BigDecimal.valueOf(cryptoTradeRequest.sellQuantity),

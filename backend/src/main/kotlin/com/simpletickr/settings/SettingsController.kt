@@ -9,16 +9,16 @@ import org.springframework.web.bind.annotation.RestController
 
 @RestController
 class SettingsController(
-    private val userSettingsRepository: UserSettingsRepository,
+    private val settingsService: SettingsService,
 ) : SettingsApi {
 
     override fun getSettings(): ResponseEntity<Settings> =
-        ResponseEntity.ok(userSettingsRepository.find(currentUser().id).toModel())
+        ResponseEntity.ok(settingsService.getSettings(currentUser().id).toModel())
 
     override fun updateSettings(settings: Settings): ResponseEntity<Settings> {
         val code = try { CurrencyCode(settings.baseCurrency) }
                    catch (_: IllegalArgumentException) { return ResponseEntity.badRequest().build() }
-        userSettingsRepository.update(currentUser().id, UserSettings(baseCurrency = code))
+        settingsService.updateSettings(currentUser().id, UserSettings(baseCurrency = code))
         return ResponseEntity.ok(settings)
     }
 

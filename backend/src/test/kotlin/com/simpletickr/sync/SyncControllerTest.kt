@@ -25,7 +25,7 @@ class SyncControllerTest {
     private lateinit var mockMvc: MockMvc
 
     @MockitoBean
-    private lateinit var syncHistoryRepository: SyncHistoryRepository
+    private lateinit var syncHistoryService: SyncHistoryService
 
     private fun entry(
         id: Long,
@@ -39,7 +39,7 @@ class SyncControllerTest {
 
     @Test
     fun `GET sync history returns 200 with entries for PRICE type`() {
-        whenever(syncHistoryRepository.findRecent(SyncType.PRICE)).thenReturn(
+        whenever(syncHistoryService.findRecent(SyncType.PRICE, 20)).thenReturn(
             listOf(entry(1L, synced = 10, failed = 2, status = SyncStatus.PARTIAL, durationMs = 2500L))
         )
 
@@ -57,7 +57,7 @@ class SyncControllerTest {
 
     @Test
     fun `GET sync history returns 200 with entries for FX type`() {
-        whenever(syncHistoryRepository.findRecent(SyncType.FX)).thenReturn(
+        whenever(syncHistoryService.findRecent(SyncType.FX, 20)).thenReturn(
             listOf(entry(2L, type = SyncType.FX, trigger = SyncTrigger.SCHEDULED, status = SyncStatus.SUCCESS))
         )
 
@@ -70,7 +70,7 @@ class SyncControllerTest {
 
     @Test
     fun `GET sync history returns 200 with empty list when no history`() {
-        whenever(syncHistoryRepository.findRecent(SyncType.PRICE)).thenReturn(emptyList())
+        whenever(syncHistoryService.findRecent(SyncType.PRICE, 20)).thenReturn(emptyList())
 
         mockMvc.perform(get("/sync/history").param("type", "PRICE").with(user(owner)))
             .andExpect(status().isOk)

@@ -4,7 +4,7 @@ import com.simpletickr.account.AccountService
 import com.simpletickr.account.model.Account
 import com.simpletickr.account.model.AccountType
 import com.simpletickr.auth.CurrentUser
-import com.simpletickr.portfolio.persistence.PortfolioRepository
+import com.simpletickr.portfolio.PortfolioQueryService
 import com.simpletickr.shared.SecurityConfig
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -37,9 +37,9 @@ class TransferControllerTest {
 
     @MockitoBean private lateinit var recordTransferUseCase: RecordTransferUseCase
     @MockitoBean private lateinit var deleteTransferUseCase: DeleteTransferUseCase
-    @MockitoBean private lateinit var transferRepository: TransferRepository
+    @MockitoBean private lateinit var transferQueryService: TransferQueryService
     @MockitoBean private lateinit var accountService: AccountService
-    @MockitoBean private lateinit var portfolioRepository: PortfolioRepository
+    @MockitoBean private lateinit var portfolioQueryService: PortfolioQueryService
 
     private val sourceAccount = Account(id = 1L, userId = 1L, name = "Exchange", broker = null, accountType = AccountType.CRYPTO, currency = null, accountNumber = null, institution = null)
     private val destinationAccount = Account(id = 2L, userId = 1L, name = "Cold Wallet", broker = null, accountType = AccountType.CRYPTO, currency = null, accountNumber = null, institution = null)
@@ -55,12 +55,12 @@ class TransferControllerTest {
         whenever(accountService.listAccounts(1L)).thenReturn(listOf(sourceAccount, destinationAccount))
         whenever(accountService.getAccount(1L, 1L)).thenReturn(sourceAccount)
         whenever(accountService.getAccount(2L, 1L)).thenReturn(destinationAccount)
-        whenever(portfolioRepository.isOwnedBy(10L, 1L)).thenReturn(true)
+        whenever(portfolioQueryService.isOwnedBy(10L, 1L)).thenReturn(true)
     }
 
     @Test
     fun `GET transfers for portfolio returns 200`() {
-        whenever(transferRepository.findAllForPortfolio(10L)).thenReturn(listOf(sample))
+        whenever(transferQueryService.listTransfersForPortfolio(10L, 1L)).thenReturn(listOf(sample))
 
         mockMvc.perform(get("/portfolios/10/transfers").with(user(owner)))
             .andExpect(status().isOk)
@@ -68,6 +68,14 @@ class TransferControllerTest {
             .andExpect(jsonPath("$[0].id").value(900))
             .andExpect(jsonPath("$[0].sourceAccount.name").value("Exchange"))
             .andExpect(jsonPath("$[0].destinationAccount.name").value("Cold Wallet"))
+    }
+
+    @Test
+    fun `GET transfers for portfolio returns 404 when not owned`() {
+        whenever(transferQueryService.listTransfersForPortfolio(10L, 1L)).thenReturn(null)
+
+        mockMvc.perform(get("/portfolios/10/transfers").with(user(owner)))
+            .andExpect(status().isNotFound)
     }
 
     @Test

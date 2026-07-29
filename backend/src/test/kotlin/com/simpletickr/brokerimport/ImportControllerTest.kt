@@ -6,9 +6,9 @@ import com.simpletickr.brokerimport.bolero.AssetImportMappingRef
 import com.simpletickr.brokerimport.bolero.BoleroAnalysisResult
 import com.simpletickr.brokerimport.bolero.BoleroInstrumentInfo
 import com.simpletickr.brokerimport.bolero.ImportBoleroTransactionsUseCase
-import com.simpletickr.account.persistence.AccountRepository
+import com.simpletickr.account.AccountService
 import com.simpletickr.auth.CurrentUser
-import com.simpletickr.portfolio.persistence.PortfolioRepository
+import com.simpletickr.portfolio.PortfolioQueryService
 import com.simpletickr.shared.SecurityConfig
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
@@ -43,8 +43,8 @@ class ImportControllerTest {
     @MockitoBean private lateinit var assetImportMappingService: AssetImportMappingService
     @MockitoBean private lateinit var createAssetImportMappingUseCase: CreateAssetImportMappingUseCase
     @MockitoBean private lateinit var deleteAssetImportMappingUseCase: DeleteAssetImportMappingUseCase
-    @MockitoBean private lateinit var portfolioRepository: PortfolioRepository
-    @MockitoBean private lateinit var accountRepository: AccountRepository
+    @MockitoBean private lateinit var portfolioQueryService: PortfolioQueryService
+    @MockitoBean private lateinit var accountService: AccountService
 
     private val emptyXlsx = MockMultipartFile(
         "file", "test.xlsx",
@@ -84,8 +84,8 @@ class ImportControllerTest {
                 ImportRowResult(12, ImportStatus.SKIPPED, "no mapping defined for: UNKNOWN"),
             ),
         )
-        whenever(portfolioRepository.isOwnedBy(1L, 1L)).thenReturn(true)
-        whenever(accountRepository.isOwnedBy(1L, 1L)).thenReturn(true)
+        whenever(portfolioQueryService.isOwnedBy(1L, 1L)).thenReturn(true)
+        whenever(accountService.isOwnedBy(1L, 1L)).thenReturn(true)
         whenever(importBoleroTransactionsUseCase.execute(eq(1L), eq(1L), any(), any())).thenReturn(importResult)
 
         mockMvc.perform(

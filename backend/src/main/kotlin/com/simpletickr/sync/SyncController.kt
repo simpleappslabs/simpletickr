@@ -10,12 +10,12 @@ import com.simpletickr.generated.model.SyncType as SyncTypeModel
 
 @RestController
 class SyncController(
-    private val syncHistoryRepository: SyncHistoryRepository,
+    private val syncHistoryService: SyncHistoryService,
 ) : SyncApi {
 
     override fun getSyncHistory(type: SyncTypeModel, limit: Int): ResponseEntity<List<SyncHistoryEntryModel>> {
         val syncType = SyncType.valueOf(type.name)
-        return ResponseEntity.ok(syncHistoryRepository.findRecent(syncType, limit).map { it.toModel() })
+        return ResponseEntity.ok(syncHistoryService.findRecent(syncType, limit).map { it.toModel() })
     }
 
     private fun SyncHistoryEntry.toModel() = SyncHistoryEntryModel(
