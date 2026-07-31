@@ -21,7 +21,7 @@ import kotlin.test.assertTrue
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Testcontainers
-class AuthFlowIntegrationTest {
+class AuthFlowIT {
 
     companion object {
         @Container

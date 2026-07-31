@@ -22,7 +22,7 @@ import kotlin.test.assertTrue
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Testcontainers
 @Import(AccountRepository::class)
-class AccountRepositoryTest {
+class AccountRepositoryIT {
 
     companion object {
         @Container

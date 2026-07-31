@@ -82,3 +82,27 @@ tasks.withType<Test> {
 	// docker-java defaults to API 1.32; Docker 29+ requires >= 1.40
 	systemProperty("api.version", "1.44")
 }
+
+// `test` keeps running everything (unit + integration), unchanged. These two are
+// additive, opt-in entry points for running just one group — classified by the
+// `*Test` (unit, no Spring context) vs `*IT` (integration: Spring context and/or
+// Testcontainers) naming convention.
+tasks.register<Test>("unitTest") {
+	description = "Runs unit tests only (no Spring context)."
+	group = "verification"
+	testClassesDirs = sourceSets["test"].output.classesDirs
+	classpath = sourceSets["test"].runtimeClasspath
+	filter {
+		excludeTestsMatching("*IT")
+	}
+}
+
+tasks.register<Test>("integrationTest") {
+	description = "Runs integration tests only (Spring context / Testcontainers)."
+	group = "verification"
+	testClassesDirs = sourceSets["test"].output.classesDirs
+	classpath = sourceSets["test"].runtimeClasspath
+	filter {
+		includeTestsMatching("*IT")
+	}
+}

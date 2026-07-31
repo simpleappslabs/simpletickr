@@ -17,7 +17,7 @@ import kotlin.test.assertNull
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Testcontainers
 @Import(UserRepository::class)
-class UserRepositoryTest {
+class UserRepositoryIT {
 
     companion object {
         @Container

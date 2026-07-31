@@ -28,7 +28,7 @@ import java.time.LocalDate
 
 @WebMvcTest(TransferController::class)
 @Import(SecurityConfig::class)
-class TransferControllerTest {
+class TransferControllerIT {
 
     private val owner = CurrentUser(1L, "test-user", "hash")
 

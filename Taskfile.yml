@@ -38,6 +38,18 @@ tasks:
     cmds:
       - ./gradlew test
 
+  backend:test:unit:
+    desc: Run backend unit tests only (fast, no Spring context)
+    dir: backend
+    cmds:
+      - ./gradlew unitTest
+
+  backend:test:integration:
+    desc: Run backend integration tests only (Spring context / Testcontainers)
+    dir: backend
+    cmds:
+      - ./gradlew integrationTest
+
   backend:run:
     desc: Start the backend
     dir: backend

@@ -35,7 +35,7 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 
 @WebMvcTest(AssetController::class)
 @Import(SecurityConfig::class)
-class AssetControllerTest {
+class AssetControllerIT {
 
     private val owner = CurrentUser(1L, "test-user", "hash")
 

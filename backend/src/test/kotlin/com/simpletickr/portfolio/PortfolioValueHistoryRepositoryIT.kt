@@ -31,7 +31,7 @@ import kotlin.test.assertNull
     AssetRepository::class,
     ListingRepository::class,
 )
-class PortfolioValueHistoryRepositoryTest {
+class PortfolioValueHistoryRepositoryIT {
 
     companion object {
         @Container

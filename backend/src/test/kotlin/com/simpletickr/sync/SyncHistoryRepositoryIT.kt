@@ -16,7 +16,7 @@ import kotlin.test.assertTrue
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Testcontainers
 @Import(SyncHistoryRepository::class)
-class SyncHistoryRepositoryTest {
+class SyncHistoryRepositoryIT {
 
     companion object {
         @Container

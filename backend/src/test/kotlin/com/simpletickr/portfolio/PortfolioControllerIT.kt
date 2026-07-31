@@ -44,7 +44,7 @@ import java.time.LocalDate
 
 @WebMvcTest(PortfolioController::class)
 @Import(SecurityConfig::class)
-class PortfolioControllerTest {
+class PortfolioControllerIT {
 
     private val owner = CurrentUser(1L, "test-user", "hash")
     private val other = CurrentUser(2L, "other-user", "hash")

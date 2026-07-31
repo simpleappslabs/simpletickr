@@ -24,7 +24,7 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 
 @WebMvcTest(AuthController::class)
 @Import(SecurityConfig::class)
-class AuthControllerTest {
+class AuthControllerIT {
 
     private val owner = CurrentUser(1L, "admin", "hash")
 

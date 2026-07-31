@@ -27,7 +27,7 @@ import kotlin.test.assertTrue
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Testcontainers
 @Import(AssetRepository::class, ListingRepository::class, AssetPriceHistoryRepository::class)
-class AssetRepositoryTest {
+class AssetRepositoryIT {
 
     companion object {
         @Container

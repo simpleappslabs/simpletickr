@@ -28,7 +28,7 @@ import java.time.Instant
 
 @WebMvcTest(DataExportController::class)
 @Import(SecurityConfig::class)
-class DataExportControllerTest {
+class DataExportControllerIT {
 
     private val owner = CurrentUser(1L, "test-user", "hash")
 

@@ -16,12 +16,14 @@ task backend:run         # start backend on localhost:8080
 task frontend:dev        # start frontend dev server on localhost:5173
 
 # Tests
-task backend:test        # run all backend tests (Testcontainers, no running DB needed)
-task frontend:test:e2e   # run Playwright E2E tests (starts isolated test DB automatically; backend must already be running)
-task ci                  # api:lint + backend:build + frontend pipeline in parallel (no E2E)
+task backend:test              # run all backend tests (Testcontainers, no running DB needed)
+task backend:test:unit         # run backend unit tests only (fast, no Spring context)
+task backend:test:integration  # run backend integration tests only (Spring context / Testcontainers)
+task frontend:test:e2e         # run Playwright E2E tests (starts isolated test DB automatically; backend must already be running)
+task ci                        # api:lint + backend:build + frontend pipeline in parallel (no E2E)
 
 # Run a single backend test class:
-cd backend && ./gradlew test --tests "com.simpletickr.transaction.TransactionRepositoryTest"
+cd backend && ./gradlew test --tests "com.simpletickr.transaction.TransactionRepositoryIT"
 
 # Type-check frontend:
 cd frontend && npm run check
@@ -163,9 +165,12 @@ Generated SDK is imported from `$lib/api/sdk.gen`.
 ## Testing
 
 ### Backend
-- **Service tests** — plain unit tests with Mockito mocks; no Spring context needed
-- **Repository tests** — `@JdbcTest` + Testcontainers (`@ServiceConnection`) — one per repository
-- **Controller tests** — `@WebMvcTest` + `@MockitoBean` — no DB, tests HTTP layer only
+- **Unit tests** (`*Test`) — plain unit tests with Mockito mocks; no Spring context needed
+- **Integration tests** (`*IT`) — boot a Spring context and/or Testcontainers:
+  - Controller tests — `@WebMvcTest` + `@MockitoBean` — no DB, tests HTTP layer only
+  - Repository tests — `@JdbcTest` + Testcontainers (`@ServiceConnection`) — one per repository
+  - `SimpletickrApplicationIT` / `AuthFlowIT` — full `@SpringBootTest` + Testcontainers
+- Run all: `task backend:test` · unit only: `task backend:test:unit` · integration only: `task backend:test:integration`
 
 ### Frontend
 - **E2E tests** — Playwright, `tests/*.e2e.ts`, run against preview server + real backend

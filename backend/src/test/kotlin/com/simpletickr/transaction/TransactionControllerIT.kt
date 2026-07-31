@@ -36,7 +36,7 @@ import java.time.LocalDate
 
 @WebMvcTest(TransactionController::class)
 @Import(SecurityConfig::class)
-class TransactionControllerTest {
+class TransactionControllerIT {
 
     private val owner = CurrentUser(1L, "test-user", "hash")
 

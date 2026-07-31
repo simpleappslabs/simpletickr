@@ -1,7 +1,5 @@
 package com.simpletickr.auth.persistence
 
-import com.simpletickr.auth.model.MembershipRole
-import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase
@@ -17,8 +15,8 @@ import kotlin.test.assertTrue
 @JdbcTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Testcontainers
-@Import(MembershipRepository::class, OrganizationRepository::class)
-class MembershipRepositoryTest {
+@Import(OrganizationRepository::class)
+class OrganizationRepositoryIT {
 
     companion object {
         @Container
@@ -27,24 +25,12 @@ class MembershipRepositoryTest {
     }
 
     @Autowired
-    private lateinit var repository: MembershipRepository
-
-    @Autowired
-    private lateinit var organizationRepository: OrganizationRepository
-
-    private var organizationId: Long = 0
-
-    @BeforeEach
-    fun setup() {
-        organizationId = organizationRepository.save("Test Org").id
-    }
+    private lateinit var repository: OrganizationRepository
 
     @Test
-    fun `save creates a membership and returns it with a generated id`() {
-        val membership = repository.save(1L, organizationId, MembershipRole.OWNER)
-        assertTrue(membership.id > 0)
-        assertEquals(1L, membership.userId)
-        assertEquals(organizationId, membership.organizationId)
-        assertEquals(MembershipRole.OWNER, membership.role)
+    fun `save creates an organization and returns it with a generated id`() {
+        val organization = repository.save("admin's organization")
+        assertTrue(organization.id > 0)
+        assertEquals("admin's organization", organization.name)
     }
 }

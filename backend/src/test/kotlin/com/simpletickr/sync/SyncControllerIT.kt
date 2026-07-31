@@ -17,7 +17,7 @@ import java.time.OffsetDateTime
 
 @WebMvcTest(SyncController::class)
 @Import(SecurityConfig::class)
-class SyncControllerTest {
+class SyncControllerIT {
 
     private val owner = CurrentUser(1L, "test-user", "hash")
 

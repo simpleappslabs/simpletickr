@@ -31,7 +31,7 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 
 @WebMvcTest(ImportController::class)
 @Import(SecurityConfig::class)
-class ImportControllerTest {
+class ImportControllerIT {
 
     private val owner = CurrentUser(1L, "test-user", "hash")
 

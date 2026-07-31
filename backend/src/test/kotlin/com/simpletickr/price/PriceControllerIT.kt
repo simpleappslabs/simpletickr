@@ -26,7 +26,7 @@ import java.time.LocalDate
 
 @WebMvcTest(PriceController::class)
 @Import(SecurityConfig::class)
-class PriceControllerTest {
+class PriceControllerIT {
 
     private val owner = CurrentUser(1L, "test-user", "hash")
 
