@@ -113,11 +113,8 @@ helm dependency update charts/simpletickr
 helm install simpletickr charts/simpletickr \
   --set postgresql.enabled=true \
   --set postgresql.auth.password=changeme \
-  --set backend.corsAllowedOrigins=https://simpletickr.example.com \
-  --set backend.ingress.enabled=true \
-  --set backend.ingress.hostname=api.simpletickr.example.com \
-  --set frontend.ingress.enabled=true \
-  --set frontend.ingress.hostname=simpletickr.example.com
+  --set ingress.enabled=true \
+  --set ingress.hosts[0]=simpletickr.example.com
 ```
 
 **With an external database** — recommended for production:
@@ -126,12 +123,18 @@ helm install simpletickr charts/simpletickr \
 helm install simpletickr charts/simpletickr \
   --set backend.db.host=your-db-host \
   --set backend.db.password=changeme \
-  --set backend.corsAllowedOrigins=https://simpletickr.example.com \
-  --set backend.ingress.enabled=true \
-  --set backend.ingress.hostname=api.simpletickr.example.com \
-  --set frontend.ingress.enabled=true \
-  --set frontend.ingress.hostname=simpletickr.example.com
+  --set ingress.enabled=true \
+  --set ingress.hosts[0]=simpletickr.example.com
 ```
+
+Frontend and backend are served from the same Ingress: the frontend at `/`
+and the API under `/api` (`ingress.apiPath`) — same-origin, no CORS needed
+between them. Add more `--set ingress.hosts[1]=...` entries to expose the
+same app under multiple domains (e.g. a LAN hostname and a Tailscale
+hostname pointing at the same instances). The backend always answers under
+`/api` (via its Spring servlet context-path), whether or not the chart's own
+Ingress is enabled. `backend.corsAllowedOrigins` is still available for
+cross-origin API access from something other than this chart's frontend.
 
 To use a pre-existing Secret for the database password, set `backend.db.existingSecret.name` and `backend.db.existingSecret.key` instead of `backend.db.password`. See `charts/simpletickr/values.yaml` for the full reference.
 

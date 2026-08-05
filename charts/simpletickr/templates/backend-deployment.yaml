@@ -64,15 +64,17 @@ spec:
             - name: CORS_ALLOWED_ORIGINS
               value: {{ .Values.backend.corsAllowedOrigins | quote }}
             {{- end }}
+            - name: SERVER_SERVLET_CONTEXT_PATH
+              value: {{ .Values.ingress.apiPath | quote }}
           livenessProbe:
             httpGet:
-              path: /actuator/health
+              path: {{ include "simpletickr.backend.healthPath" . }}
               port: http
             initialDelaySeconds: 30
             periodSeconds: 10
           readinessProbe:
             httpGet:
-              path: /actuator/health
+              path: {{ include "simpletickr.backend.healthPath" . }}
               port: http
             initialDelaySeconds: 15
             periodSeconds: 5

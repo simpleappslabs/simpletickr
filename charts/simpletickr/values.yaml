@@ -18,11 +18,6 @@ backend:
   # Comma-separated list of allowed CORS origins.
   # Defaults to localhost dev origins when left empty.
   corsAllowedOrigins: ""
-  ingress:
-    enabled: false
-    className: ""
-    hostname: api.simpletickr.example.com
-    tls: false
   # DB connection — required when postgresql.enabled is false
   db:
     host: ""
@@ -43,13 +38,34 @@ frontend:
     type: ClusterIP
     port: 3000
   # Overrides the backend URL seen by the frontend.
-  # Defaults to the backend ClusterIP service within the cluster.
+  # Defaults to a same-origin path when ingress.enabled, otherwise the
+  # backend ClusterIP service within the cluster.
   apiBaseUrl: ""
-  ingress:
+
+# Shared Ingress serving both frontend and backend under one or more
+# hostnames: frontend at "/", backend API at apiPath. The backend always
+# answers under apiPath (via its Spring servlet context-path), whether or
+# not this Ingress is enabled.
+ingress:
+  enabled: false
+  className: ""
+  # One Ingress resource serves all of these hostnames. List more than one
+  # to expose the same app under multiple domains (e.g. a LAN hostname and
+  # a Tailscale hostname pointing at the same instances).
+  hosts:
+    - simpletickr.example.com
+  # Path prefix routed to the backend. Also becomes the backend's Spring
+  # servlet context-path (SERVER_SERVLET_CONTEXT_PATH), so no
+  # ingress-controller-specific rewrite/middleware is ever needed.
+  apiPath: /api
+  # Arbitrary annotations for the Ingress resource (e.g. cert-manager's
+  # cluster-issuer, nginx-specific tuning). Empty by default.
+  annotations: {}
+  tls:
     enabled: false
-    className: ""
-    hostname: simpletickr.example.com
-    tls: false
+    # Leave blank to generate one Secret per host (<release>-tls-<host>).
+    # Set to share one certificate (e.g. a multi-SAN cert) across all hosts.
+    secretName: ""
 
 # Optional Bitnami PostgreSQL subchart for dev clusters.
 # Set postgresql.enabled=true to deploy PostgreSQL alongside the app.
