@@ -38,14 +38,14 @@ frontend:
     type: ClusterIP
     port: 3000
   # Overrides the backend URL seen by the frontend.
-  # Defaults to a same-origin path when ingress.enabled, otherwise the
-  # backend ClusterIP service within the cluster.
+  # Defaults to a same-origin "/api" path when ingress.enabled, otherwise
+  # the backend ClusterIP service within the cluster.
   apiBaseUrl: ""
 
 # Shared Ingress serving both frontend and backend under one or more
-# hostnames: frontend at "/", backend API at apiPath. The backend always
-# answers under apiPath (via its Spring servlet context-path), whether or
-# not this Ingress is enabled.
+# hostnames: frontend at "/", backend API at "/api". The backend always
+# answers under "/api" (its Spring servlet context-path default), whether
+# or not this Ingress is enabled.
 ingress:
   enabled: false
   className: ""
@@ -54,10 +54,6 @@ ingress:
   # a Tailscale hostname pointing at the same instances).
   hosts:
     - simpletickr.example.com
-  # Path prefix routed to the backend. Also becomes the backend's Spring
-  # servlet context-path (SERVER_SERVLET_CONTEXT_PATH), so no
-  # ingress-controller-specific rewrite/middleware is ever needed.
-  apiPath: /api
   # Arbitrary annotations for the Ingress resource (e.g. cert-manager's
   # cluster-issuer, nginx-specific tuning). Empty by default.
   annotations: {}

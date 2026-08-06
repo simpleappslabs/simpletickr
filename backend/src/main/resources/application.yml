@@ -19,6 +19,7 @@ spring:
 
 server:
   servlet:
+    context-path: ${SERVER_SERVLET_CONTEXT_PATH:/api}
     session:
       cookie:
         same-site: lax

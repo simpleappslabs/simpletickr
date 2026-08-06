@@ -9,8 +9,8 @@ info:
     identifier: MIT
 
 servers:
-  - url: http://localhost:8080
-    description: Local development
+  - url: /api
+    description: Same-origin API path (proxied to the backend in every environment)
 
 security:
   - cookieAuth: []

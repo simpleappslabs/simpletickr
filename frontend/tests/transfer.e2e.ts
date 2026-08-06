@@ -1,6 +1,6 @@
 import { expect, request, test, type Locator, type Page } from '@playwright/test';
 
-const BACKEND_URL = 'http://localhost:8081';
+const BACKEND_URL = 'http://localhost:8081/api';
 
 let sourceAccountName: string;
 let destinationAccountName: string;

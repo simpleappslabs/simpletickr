@@ -56,13 +56,8 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- if .Values.frontend.apiBaseUrl -}}
 {{- .Values.frontend.apiBaseUrl }}
 {{- else if .Values.ingress.enabled -}}
-{{- .Values.ingress.apiPath }}
+/api
 {{- else -}}
-{{- printf "http://%s:%d%s" (include "simpletickr.backend.fullname" .) (.Values.backend.service.port | int) .Values.ingress.apiPath }}
+{{- printf "http://%s:%d/api" (include "simpletickr.backend.fullname" .) (.Values.backend.service.port | int) }}
 {{- end }}
-{{- end }}
-
-{{/* Resolves the backend's health-check path, kept in sync with ingress.apiPath */}}
-{{- define "simpletickr.backend.healthPath" -}}
-{{- printf "%s%s" (.Values.ingress.apiPath | trimSuffix "/") "/actuator/health" }}
 {{- end }}

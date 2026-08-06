@@ -74,29 +74,22 @@ cp .env.example .env
 docker compose up -d
 ```
 
-The app is available at **http://localhost:3000**. The API is available at **http://localhost:8080**.
+The app is available at **http://localhost:8088**. An nginx reverse proxy (`nginx.conf`) serves the frontend at `/` and the API at `/api` on that same origin — the frontend and backend containers aren't published to the host directly.
 
 Data is stored in a named Docker volume (`db_data`) and persists across restarts.
 
 ### Environment variables
 
-| Variable              | Required | Default                 | Description                                                                                                        |
-|-----------------------|----------|-------------------------|--------------------------------------------------------------------------------------------------------------------|
-| `DB_NAME`             | yes      | —                       | PostgreSQL database name                                                                                           |
-| `DB_USER`             | yes      | —                       | PostgreSQL username                                                                                                |
-| `DB_PASSWORD`         | yes      | —                       | PostgreSQL password                                                                                                |
-| `PUBLIC_API_BASE_URL` | no       | `http://localhost:8080` | URL the browser uses to reach the API — set this to your server's hostname or IP if accessing from another machine |
+| Variable              | Required | Default | Description                                                                                                          |
+|-----------------------|----------|---------|------------------------------------------------------------------------------------------------------------------------|
+| `DB_NAME`             | yes      | —       | PostgreSQL database name                                                                                             |
+| `DB_USER`             | yes      | —       | PostgreSQL username                                                                                                  |
+| `DB_PASSWORD`         | yes      | —       | PostgreSQL password                                                                                                  |
+| `PUBLIC_API_BASE_URL` | no       | `/api`  | URL the browser uses to reach the API. Relative by default (same-origin, via the reverse proxy) — only override this if pointing the frontend at a different backend. |
 
 ### Accessing from another machine
 
-If you're running simpletickr on a server and accessing it from a different device, set `PUBLIC_API_BASE_URL` to the server's address before starting:
-
-```bash
-# .env
-PUBLIC_API_BASE_URL=http://192.168.1.100:8080
-```
-
-Then run `docker compose up -d` (or `docker compose up -d --build` to rebuild with the new value).
+Since the frontend always calls its own origin's `/api`, this works out of the box — just visit `http://<server-ip>:8088` from the other device. No configuration needed.
 
 ### Kubernetes (Helm)
 
@@ -128,8 +121,8 @@ helm install simpletickr charts/simpletickr \
 ```
 
 Frontend and backend are served from the same Ingress: the frontend at `/`
-and the API under `/api` (`ingress.apiPath`) — same-origin, no CORS needed
-between them. Add more `--set ingress.hosts[1]=...` entries to expose the
+and the API under `/api` — same-origin, no CORS needed between them. Add
+more `--set ingress.hosts[1]=...` entries to expose the
 same app under multiple domains (e.g. a LAN hostname and a Tailscale
 hostname pointing at the same instances). The backend always answers under
 `/api` (via its Spring servlet context-path), whether or not the chart's own

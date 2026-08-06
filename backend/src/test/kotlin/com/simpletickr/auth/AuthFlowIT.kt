@@ -5,7 +5,6 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.web.client.TestRestTemplate
-import org.springframework.boot.test.web.server.LocalServerPort
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection
 import org.springframework.http.HttpEntity
 import org.springframework.http.HttpHeaders
@@ -29,16 +28,11 @@ class AuthFlowIT {
         val postgres = PostgreSQLContainer<Nothing>("postgres:17")
     }
 
-    @LocalServerPort
-    private var port: Int = 0
-
     @Autowired
     private lateinit var restTemplate: TestRestTemplate
 
     @Autowired
     private lateinit var jdbcTemplate: JdbcTemplate
-
-    private fun url(path: String) = "http://localhost:$port$path"
 
     @BeforeEach
     fun seedLocalIdentity() {
@@ -57,14 +51,14 @@ class AuthFlowIT {
 
     @Test
     fun `protected endpoint rejects unauthenticated requests`() {
-        val response = restTemplate.getForEntity(url("/portfolios"), String::class.java)
+        val response = restTemplate.getForEntity("/portfolios", String::class.java)
         assertEquals(HttpStatus.UNAUTHORIZED, response.statusCode)
     }
 
     @Test
     fun `login then reusing the session cookie authenticates subsequent requests, logout clears it`() {
         val loginResponse = restTemplate.postForEntity(
-            url("/auth/login"),
+            "/auth/login",
             HttpEntity(mapOf("username" to "default", "password" to "TestPassword123!"), jsonHeaders()),
             String::class.java,
         )
@@ -77,23 +71,23 @@ class AuthFlowIT {
         val authedHeaders = HttpHeaders().apply { add(HttpHeaders.COOKIE, sessionCookie) }
 
         val meResponse = restTemplate.exchange(
-            url("/auth/me"), HttpMethod.GET, HttpEntity<Void>(authedHeaders), String::class.java,
+            "/auth/me", HttpMethod.GET, HttpEntity<Void>(authedHeaders), String::class.java,
         )
         assertEquals(HttpStatus.OK, meResponse.statusCode)
         assertTrue(meResponse.body?.contains("default") == true)
 
         val portfoliosResponse = restTemplate.exchange(
-            url("/portfolios"), HttpMethod.GET, HttpEntity<Void>(authedHeaders), String::class.java,
+            "/portfolios", HttpMethod.GET, HttpEntity<Void>(authedHeaders), String::class.java,
         )
         assertEquals(HttpStatus.OK, portfoliosResponse.statusCode)
 
         val logoutResponse = restTemplate.exchange(
-            url("/auth/logout"), HttpMethod.POST, HttpEntity<Void>(authedHeaders), String::class.java,
+            "/auth/logout", HttpMethod.POST, HttpEntity<Void>(authedHeaders), String::class.java,
         )
         assertEquals(HttpStatus.NO_CONTENT, logoutResponse.statusCode)
 
         val afterLogoutResponse = restTemplate.exchange(
-            url("/auth/me"), HttpMethod.GET, HttpEntity<Void>(authedHeaders), String::class.java,
+            "/auth/me", HttpMethod.GET, HttpEntity<Void>(authedHeaders), String::class.java,
         )
         assertEquals(HttpStatus.UNAUTHORIZED, afterLogoutResponse.statusCode)
     }
@@ -101,7 +95,7 @@ class AuthFlowIT {
     @Test
     fun `login with wrong password returns 401`() {
         val response = restTemplate.postForEntity(
-            url("/auth/login"),
+            "/auth/login",
             HttpEntity(mapOf("username" to "default", "password" to "wrong-password"), jsonHeaders()),
             String::class.java,
         )

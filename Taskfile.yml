@@ -78,6 +78,7 @@ tasks:
     desc: Run frontend unit tests
     dir: frontend
     cmds:
+      - docker compose --profile test up -d --wait --force-recreate db-test
       - npm run test
 
   frontend:test:e2e:

@@ -1,6 +1,6 @@
 import { expect, request, test, type Page } from '@playwright/test';
 
-const BACKEND_URL = 'http://localhost:8081';
+const BACKEND_URL = 'http://localhost:8081/api';
 
 test.describe('Transaction recording', () => {
 	test.beforeAll(async () => {
