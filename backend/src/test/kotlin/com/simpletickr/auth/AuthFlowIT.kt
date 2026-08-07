@@ -36,9 +36,8 @@ class AuthFlowIT {
 
     @BeforeEach
     fun seedLocalIdentity() {
-        // Bootstrap already ran at context startup and created 'admin'/<random password> for the
-        // pre-existing seeded 'default' user (id=1) has no local identity yet, so give it one
-        // with a password we control for this test.
+        // Bootstrap already ran at context startup, renamed the seeded user (id=1) to 'admin',
+        // and gave it a random password — replace that identity with one we control for this test.
         jdbcTemplate.update(
             "DELETE FROM identities WHERE user_id = 1 AND provider_type = 'LOCAL'"
         )
@@ -59,7 +58,7 @@ class AuthFlowIT {
     fun `login then reusing the session cookie authenticates subsequent requests, logout clears it`() {
         val loginResponse = restTemplate.postForEntity(
             "/auth/login",
-            HttpEntity(mapOf("username" to "default", "password" to "TestPassword123!"), jsonHeaders()),
+            HttpEntity(mapOf("username" to "admin", "password" to "TestPassword123!"), jsonHeaders()),
             String::class.java,
         )
         assertEquals(HttpStatus.OK, loginResponse.statusCode)
@@ -74,7 +73,7 @@ class AuthFlowIT {
             "/auth/me", HttpMethod.GET, HttpEntity<Void>(authedHeaders), String::class.java,
         )
         assertEquals(HttpStatus.OK, meResponse.statusCode)
-        assertTrue(meResponse.body?.contains("default") == true)
+        assertTrue(meResponse.body?.contains("admin") == true)
 
         val portfoliosResponse = restTemplate.exchange(
             "/portfolios", HttpMethod.GET, HttpEntity<Void>(authedHeaders), String::class.java,
@@ -96,7 +95,7 @@ class AuthFlowIT {
     fun `login with wrong password returns 401`() {
         val response = restTemplate.postForEntity(
             "/auth/login",
-            HttpEntity(mapOf("username" to "default", "password" to "wrong-password"), jsonHeaders()),
+            HttpEntity(mapOf("username" to "admin", "password" to "wrong-password"), jsonHeaders()),
             String::class.java,
         )
         assertEquals(HttpStatus.UNAUTHORIZED, response.statusCode)

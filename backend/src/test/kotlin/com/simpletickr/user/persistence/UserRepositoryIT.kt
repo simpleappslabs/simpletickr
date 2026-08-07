@@ -55,4 +55,18 @@ class UserRepositoryIT {
         assertNotNull(found)
         assertEquals(user.id, found.id)
     }
+
+    @Test
+    fun `findAll returns the seeded default user`() {
+        val users = repository.findAll()
+        assertEquals(listOf("default"), users.map { it.username })
+    }
+
+    @Test
+    fun `updateUsername renames an existing user`() {
+        repository.updateUsername(1L, "admin")
+
+        assertNotNull(repository.findByUsername("admin"))
+        assertNull(repository.findByUsername("default"))
+    }
 }

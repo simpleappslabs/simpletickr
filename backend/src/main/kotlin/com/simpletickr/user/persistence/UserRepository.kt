@@ -22,6 +22,12 @@ class UserRepository(private val jdbcTemplate: JdbcTemplate) {
         jdbcTemplate.queryForObject("SELECT id, username FROM users WHERE username = ?", rowMapper, username)
     } catch (_: EmptyResultDataAccessException) { null }
 
+    fun findAll(): List<User> = jdbcTemplate.query("SELECT id, username FROM users", rowMapper)
+
+    fun updateUsername(id: Long, username: String) {
+        jdbcTemplate.update("UPDATE users SET username = ? WHERE id = ?", username, id)
+    }
+
     fun save(username: String): User {
         val keyHolder = GeneratedKeyHolder()
         jdbcTemplate.update({ con ->

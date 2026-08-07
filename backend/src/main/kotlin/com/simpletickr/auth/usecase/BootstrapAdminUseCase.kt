@@ -1,11 +1,8 @@
 package com.simpletickr.auth.usecase
 
 import com.simpletickr.auth.model.Identity
-import com.simpletickr.auth.model.MembershipRole
 import com.simpletickr.auth.model.ProviderType
 import com.simpletickr.auth.persistence.IdentityRepository
-import com.simpletickr.auth.persistence.MembershipRepository
-import com.simpletickr.auth.persistence.OrganizationRepository
 import com.simpletickr.user.persistence.UserRepository
 import org.slf4j.LoggerFactory
 import org.springframework.security.crypto.password.PasswordEncoder
@@ -19,8 +16,6 @@ data class BootstrapResult(val username: String, val password: String)
 class BootstrapAdminUseCase(
     private val identityRepository: IdentityRepository,
     private val userRepository: UserRepository,
-    private val organizationRepository: OrganizationRepository,
-    private val membershipRepository: MembershipRepository,
     private val passwordEncoder: PasswordEncoder,
 ) {
 
@@ -28,6 +23,8 @@ class BootstrapAdminUseCase(
     private val passwordAlphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789"
     private val random = SecureRandom()
 
+    // Every deploy already has exactly one user by this point (the "default" user seeded by V4,
+    // with its org/membership backfilled by V30) — attach to it rather than create a new one.
     @Transactional
     fun execute(): BootstrapResult? {
         if (identityRepository.count() > 0) return null
@@ -36,9 +33,13 @@ class BootstrapAdminUseCase(
         val username = "admin"
         val password = generatePassword()
 
-        val user = userRepository.save(username)
-        val organization = organizationRepository.save("$username's organization")
-        membershipRepository.save(user.id, organization.id, MembershipRole.OWNER)
+        val users = userRepository.findAll()
+        check(users.size == 1) {
+            "Expected exactly one pre-existing user to bootstrap admin onto, found ${users.size} " +
+                "(ids: ${users.map { it.id }}) — refusing to guess which one should become admin"
+        }
+        val user = users.single()
+        userRepository.updateUsername(user.id, username)
         identityRepository.save(
             Identity(
                 id = 0L,
