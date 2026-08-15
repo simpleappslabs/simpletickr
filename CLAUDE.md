@@ -81,10 +81,10 @@ backend/src/main/kotlin/com/simpletickr/
 │   ├── HoldingRepository.kt          # SQL aggregation for the holdings read-model
 │   ├── HoldingService.kt             # fetches holdings with valuation and FX normalisation
 │   ├── ValuationService.kt           # looks up latest prices and converts to portfolio currency
-│   ├── RealizedGainsCalculator.kt    # pure domain logic for FIFO/AVCO gain calculation
+│   ├── RealizedGainsCalculator.kt    # pure domain logic for FIFO/average-cost gain calculation
 │   ├── RealizedGainsReport.kt
 │   ├── RealizedGainEntry.kt
-│   └── RealizationMethod.kt          # enum: FIFO | AVCO
+│   └── RealizationMethod.kt          # enum: FIFO | AVERAGE_COST
 ├── asset/
 │   ├── Asset.kt
 │   ├── Listing.kt                    # exchange listing (ticker + exchange) for an asset
