@@ -7,10 +7,10 @@ Domain glossary for simpletickr, a personal portfolio tracker (ETFs, crypto, sto
 ### Portfolio & transactions
 
 **Portfolio**:
-The aggregate root. Owns Transactions and Transfers as child entities; any business rule spanning them belongs here.
+The aggregate root. Owns Transactions and Transfers as child entities; any business rule spanning them belongs here. Functions as the user's reporting/tax book — the boundary realized gains and valuation totals are computed within — which is a separate concern from custody (see Account): a User's Accounts are not scoped to a Portfolio, so in principle the same Account can be referenced by Transactions in different Portfolios.
 
 **Transaction**:
-A `BUY`, `SELL`, or `SPLIT` event for one Listing, recorded against a Portfolio and an Account. Carries price, quantity, fees, and (when the Listing's currency differs from the portfolio's base currency) the FX rate at execution time.
+A `BUY`, `SELL`, or `SPLIT` event for one Listing, recorded against a Portfolio and an Account. For `BUY`/`SELL`, `quantity` is a share count and `price`/`fees`/`fxRate` are the execution details. For `SPLIT`, `quantity` means something different — the split ratio (e.g. `2` for a 2-for-1) — and `price`/`fees`/`fxRate` are unused (zero/null); the frontend relabels the field accordingly. Treat `SPLIT` rows as a distinct sub-shape sharing the table, not a normal transaction with a zero price.
 _Avoid_: Trade (a Transaction is one row; see CryptoTrade below for the user-facing "trade" concept, which is a pair of Transactions)
 
 **Transfer**:
@@ -27,7 +27,7 @@ Reference data (name, ISIN, type) that exists independently of any Portfolio —
 A specific exchange quotation of an Asset (ticker + exchange + currency). One Asset can have multiple Listings (e.g. cross-listed on two exchanges); Transactions and Transfers reference a Listing, not an Asset directly.
 
 **Account**:
-A brokerage, bank, crypto, or retirement account that a Transaction or Transfer is recorded against (`BROKERAGE`/`CRYPTO`/`BANK`/`RETIREMENT`/`OTHER`). Global, not scoped to a Portfolio. Unrelated to authentication — see User/Identity below.
+A brokerage, bank, crypto, or retirement account that a Transaction or Transfer is recorded against (`BROKERAGE`/`CRYPTO`/`BANK`/`RETIREMENT`/`OTHER`). Global to the User, not scoped to a Portfolio — but every place Accounts are aggregated (AccountHolding, AccountValuation) is queried Portfolio-first, so in practice an Account functions as a slicing dimension on one Portfolio's data, not as an independently totalable aggregate; there is currently no "total value in this Account across all my Portfolios" view. Unrelated to authentication — see User/Identity below.
 
 > **Naming collision — "broker":** `Account.broker` is a free-text label the user can set on an Account (e.g. "Interactive Brokers"), independent of `accountType`/`institution`. Separately, `AssetImportMapping.broker` is an internal key identifying which broker-specific parser produced an imported row (currently only `"bolero"`). These are unrelated concepts that happen to share a field name — don't assume one implies the other.
 
