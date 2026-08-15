@@ -76,7 +76,7 @@
     const totalCreating = $derived(
         analysis
             ? analysis.assetsToCreate + analysis.listingsToCreate + analysis.portfoliosToCreate
-                + analysis.transactionsToImport + analysis.transfersToImport
+                + analysis.accountsToCreate + analysis.transactionsToImport + analysis.transfersToImport
             : 0
     );
 </script>
@@ -173,6 +173,11 @@
                                 <td class="text-right text-base-content/50">{analysis.portfoliosExisting}</td>
                             </tr>
                             <tr>
+                                <td>Accounts</td>
+                                <td class="text-right">{analysis.accountsToCreate}</td>
+                                <td class="text-right text-base-content/50">{analysis.accountsExisting}</td>
+                            </tr>
+                            <tr>
                                 <td>Transactions</td>
                                 <td class="text-right">{analysis.transactionsToImport}</td>
                                 <td class="text-right text-base-content/50">{analysis.transactionsSkipped} skipped (duplicates)</td>
@@ -221,6 +226,10 @@
                 <div class="stat bg-base-200 rounded-box p-4">
                     <div class="stat-title text-xs">Portfolios created</div>
                     <div class="stat-value text-2xl">{result.portfoliosCreated}</div>
+                </div>
+                <div class="stat bg-base-200 rounded-box p-4">
+                    <div class="stat-title text-xs">Accounts created</div>
+                    <div class="stat-value text-2xl">{result.accountsCreated}</div>
                 </div>
                 <div class="stat bg-base-200 rounded-box p-4">
                     <div class="stat-title text-xs">Transactions imported</div>
