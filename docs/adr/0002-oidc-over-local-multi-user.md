@@ -1,0 +1,7 @@
+# Multi-user access via OIDC, not local admin tooling
+
+Issue #56 (local auth, Phase 1) shipped with exactly one User: bootstrap creates a single admin on first run and there is no code path to create a second. Issue #63 proposed closing that gap with local admin tooling — a `users.is_admin` flag, admin-only `/admin/users` CRUD endpoints, and a small admin UI — built directly on top of the existing `identities`/`organizations`/`memberships` schema.
+
+We rejected that approach and closed #63. Instead, anyone who needs more than one User is expected to enable OIDC (#57, Phase 2, not yet started) and point simpletickr at their own identity provider; each distinct `(providerId, subject)` resolves to its own User via an Identity, giving multi-user support without simpletickr owning any user-management UI or admin-authorization logic. `Organization`/`Membership` remain unused scaffolding — they don't back this decision, since each User already gets a personal Organization and there is no instance-wide admin concept for a `Membership.role` to express.
+
+The trade-off: self-hosters without an existing OIDC provider get no multi-user story until #57 lands (tracked for documentation in #67), and simpletickr takes on a dependency on external identity providers for anything beyond single-user use. We accepted this to avoid building and maintaining local user administration (auth flows, password resets, deletion semantics for a departing user's data) that OIDC providers already solve.
