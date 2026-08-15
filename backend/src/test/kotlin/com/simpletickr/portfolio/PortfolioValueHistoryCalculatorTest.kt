@@ -45,6 +45,12 @@ class PortfolioValueHistoryCalculatorTest {
     private fun fxRates(quote: CurrencyCode, vararg points: Pair<LocalDate, String>) =
         quote to points.map { (date, rate) -> FxRate(eur, quote, date, BigDecimal(rate)) }
 
+    private fun split(listingId: Long = eurListing.id, ratio: String, date: LocalDate) = Transaction(
+        id = nextTxId++, portfolioId = 1L, listingId = listingId, assetId = 1L,
+        type = TransactionType.SPLIT, quantity = BigDecimal(ratio), price = BigDecimal.ZERO,
+        date = date, fees = null, fxRate = null, accountId = 1L,
+    )
+
     private fun compute(
         transactions: List<Transaction>,
         from: LocalDate,
@@ -52,8 +58,10 @@ class PortfolioValueHistoryCalculatorTest {
         listings: List<Listing> = listOf(eurListing),
         priceHistory: Map<Long, List<PricePoint>> = emptyMap(),
         fxRateHistory: Map<CurrencyCode, List<FxRate>> = emptyMap(),
+        transferFees: List<PortfolioValueHistoryCalculator.TransferFee> = emptyList(),
     ) = PortfolioValueHistoryCalculator.compute(
         transactions = transactions,
+        transferFees = transferFees,
         listingMap = listings.associateBy { it.id },
         priceHistory = priceHistory,
         fxRateHistory = fxRateHistory,
@@ -227,5 +235,44 @@ class PortfolioValueHistoryCalculatorTest {
 
         assertEquals(1, result.size)
         assertNull(result[0].value)
+    }
+
+    @Test
+    fun `two splits at different dates each apply to the rows they actually follow`() {
+        // Share A bought before both splits: adjusted by 2 x 3 = 6.
+        // Share B bought between the splits: adjusted by 3 only.
+        // Quantity as of the second split's date must be 6 + 3 = 9, not 6.
+        val result = compute(
+            transactions = listOf(
+                buy(qty = "1", price = "10.00", date = LocalDate.of(2024, 1, 1)),
+                split(ratio = "2", date = LocalDate.of(2024, 1, 10)),
+                buy(qty = "1", price = "10.00", date = LocalDate.of(2024, 1, 15)),
+                split(ratio = "3", date = LocalDate.of(2024, 1, 20)),
+            ),
+            from = LocalDate.of(2024, 1, 20), to = LocalDate.of(2024, 1, 20),
+            priceHistory = mapOf(prices(eurListing.id, LocalDate.of(2024, 1, 20) to "1.00")),
+        )
+
+        assertEquals(1, result.size)
+        assertBd("9.00", result[0].value)
+    }
+
+    @Test
+    fun `transfer fee reduces quantity from the fee date onward, matching current holdings`() {
+        val result = compute(
+            transactions = listOf(buy(qty = "10", price = "100.00", date = LocalDate.of(2024, 1, 1))),
+            from = LocalDate.of(2024, 1, 1), to = LocalDate.of(2024, 1, 3),
+            priceHistory = mapOf(prices(eurListing.id,
+                LocalDate.of(2024, 1, 1) to "100.00",
+                LocalDate.of(2024, 1, 2) to "100.00",
+            )),
+            transferFees = listOf(
+                PortfolioValueHistoryCalculator.TransferFee(eurListing.id, LocalDate.of(2024, 1, 2), BigDecimal("0.5")),
+            ),
+        )
+
+        assertEquals(3, result.size)
+        assertBd("1000.00", result[0].value)
+        assertBd("950.00", result[1].value)
     }
 }

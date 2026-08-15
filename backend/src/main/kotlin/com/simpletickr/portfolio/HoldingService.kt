@@ -5,6 +5,7 @@ import com.simpletickr.portfolio.model.Holding
 import com.simpletickr.portfolio.persistence.HoldingRepository
 import com.simpletickr.shared.CurrencyCode
 import com.simpletickr.transaction.model.SplitAdjuster
+import com.simpletickr.transaction.model.TransactionReplay
 import com.simpletickr.transaction.model.TransactionType
 import org.springframework.stereotype.Service
 import java.math.BigDecimal
@@ -30,30 +31,26 @@ class HoldingService(private val holdingRepository: HoldingRepository) {
         return holdingRepository.findTransactionRows(portfolioId, asOf)
             .groupBy { Key(it.assetId, it.assetName, it.listingId, it.exchange, it.ticker, it.currency) }
             .mapNotNull { (key, rows) ->
-                val splitIndex = rows
-                    .filter { it.type == TransactionType.SPLIT }
-                    .groupBy { it.listingId }
-                    .mapValues { (_, splits) -> splits.map { it.date to it.quantity } }
+                val splitIndex = TransactionReplay.splitIndex(
+                    rows.filter { it.type == TransactionType.SPLIT }.map { Triple(it.listingId, it.date, it.quantity) },
+                )
 
                 val regulars = rows.filter { it.type != TransactionType.SPLIT }
 
                 val netQty = regulars.fold(BigDecimal.ZERO) { acc, r ->
-                    val adj = SplitAdjuster.adjustmentFor(r.listingId, r.date, splitIndex)
-                    val adjQty = r.quantity * adj.multiplier
-                    if (r.type == TransactionType.BUY) acc + adjQty else acc - adjQty
+                    acc + TransactionReplay.signedQuantityDelta(r.listingId, r.date, r.quantity, r.type, splitIndex)
                 }
                 // A transfer moves custody, not portfolio inventory — only its fee (if any) is a
                 // genuine reduction in what the portfolio holds.
                 val transferFeeQty = (transferFeesByListingId[key.listingId] ?: emptyList()).fold(BigDecimal.ZERO) { acc, feeRow ->
-                    val adj = SplitAdjuster.adjustmentFor(feeRow.listingId, feeRow.date, splitIndex)
-                    acc + feeRow.feeQuantity * adj.multiplier
+                    acc + TransactionReplay.splitAdjustedQuantity(feeRow.listingId, feeRow.date, feeRow.feeQuantity, splitIndex)
                 }
                 val adjustedNetQty = netQty - transferFeeQty
                 if (adjustedNetQty <= BigDecimal.ZERO) return@mapNotNull null
 
                 val buys = regulars.filter { it.type == TransactionType.BUY }
                 val totalBuyQty = buys.sumOf { r ->
-                    r.quantity * SplitAdjuster.adjustmentFor(r.listingId, r.date, splitIndex).multiplier
+                    TransactionReplay.splitAdjustedQuantity(r.listingId, r.date, r.quantity, splitIndex)
                 }
                 val totalBuyCost = buys.sumOf { r ->
                     val adj = SplitAdjuster.adjustmentFor(r.listingId, r.date, splitIndex)
@@ -91,26 +88,23 @@ class HoldingService(private val holdingRepository: HoldingRepository) {
         val transactionRows = holdingRepository.findTransactionRows(portfolioId, asOf)
         val transferRows = holdingRepository.findTransferRows(portfolioId, asOf)
 
-        val splitIndex = transactionRows
-            .filter { it.type == TransactionType.SPLIT }
-            .groupBy { it.listingId }
-            .mapValues { (_, splits) -> splits.map { it.date to it.quantity } }
+        val splitIndex = TransactionReplay.splitIndex(
+            transactionRows.filter { it.type == TransactionType.SPLIT }.map { Triple(it.listingId, it.date, it.quantity) },
+        )
 
         val currencyByListingId = mutableMapOf<Long, CurrencyCode>()
         val quantities = mutableMapOf<Key, BigDecimal>()
 
         transactionRows.filter { it.type != TransactionType.SPLIT }.forEach { r ->
             currencyByListingId.putIfAbsent(r.listingId, r.currency)
-            val adjQty = r.quantity * SplitAdjuster.adjustmentFor(r.listingId, r.date, splitIndex).multiplier
-            val delta = if (r.type == TransactionType.BUY) adjQty else -adjQty
+            val delta = TransactionReplay.signedQuantityDelta(r.listingId, r.date, r.quantity, r.type, splitIndex)
             quantities.merge(Key(r.accountId, r.listingId), delta, BigDecimal::add)
         }
 
         transferRows.forEach { t ->
             currencyByListingId.putIfAbsent(t.listingId, t.currency)
-            val adj = SplitAdjuster.adjustmentFor(t.listingId, t.date, splitIndex).multiplier
-            val adjQty = t.quantity * adj
-            val adjFee = (t.feeQuantity ?: BigDecimal.ZERO) * adj
+            val adjQty = TransactionReplay.splitAdjustedQuantity(t.listingId, t.date, t.quantity, splitIndex)
+            val adjFee = t.feeQuantity?.let { TransactionReplay.splitAdjustedQuantity(t.listingId, t.date, it, splitIndex) } ?: BigDecimal.ZERO
             quantities.merge(Key(t.sourceAccountId, t.listingId), -adjQty, BigDecimal::add)
             quantities.merge(Key(t.destinationAccountId, t.listingId), adjQty - adjFee, BigDecimal::add)
         }

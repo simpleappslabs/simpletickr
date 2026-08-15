@@ -44,7 +44,7 @@ Key constraints that shape every decision:
 - **Schema-first API** — controllers implement generated interfaces; they are nearly mechanical
 - **Framework-free domain logic** — domain classes are pure Kotlin; no Spring annotations, no JDBC inside them
 
-**Portfolio is the aggregate root.** Transactions are child entities within the Portfolio aggregate. Business rules that span transactions (e.g. "can't sell more than you hold") are enforced by `Portfolio`, not by a service. The service fetches the data the domain method needs, passes it in, then persists the result.
+**Portfolio is the aggregate root.** Transactions are child entities within the Portfolio aggregate. Any business rule that does span transactions belongs on `Portfolio`, not on a service — the service fetches the data the domain method needs, passes it in, then persists the result. In practice simpletickr doesn't enforce broker-style invariants like "can't sell more than you hold" as hard validation; see [ADR-0001](docs/adr/0001-no-broker-style-transaction-invariants.md).
 
 `Asset` is a separate aggregate — reference data that exists independently of any portfolio. `Holding` is a pure read model (no DB table, computed from transactions). It has no lifecycle and is never persisted.
 

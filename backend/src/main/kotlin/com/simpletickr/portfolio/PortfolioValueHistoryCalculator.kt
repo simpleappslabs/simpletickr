@@ -5,7 +5,7 @@ import com.simpletickr.fx.model.FxRate
 import com.simpletickr.portfolio.model.PortfolioValuePoint
 import com.simpletickr.price.model.PricePoint
 import com.simpletickr.shared.CurrencyCode
-import com.simpletickr.transaction.model.SplitAdjuster
+import com.simpletickr.transaction.model.TransactionReplay
 import com.simpletickr.transaction.model.Transaction
 import com.simpletickr.transaction.model.TransactionType
 import java.math.BigDecimal
@@ -24,8 +24,11 @@ import java.time.LocalDate
 // of a database round trip per lookup.
 object PortfolioValueHistoryCalculator {
 
+    data class TransferFee(val listingId: Long, val date: LocalDate, val quantity: BigDecimal)
+
     fun compute(
         transactions: List<Transaction>,
+        transferFees: List<TransferFee>,
         listingMap: Map<Long, Listing>,
         priceHistory: Map<Long, List<PricePoint>>,
         fxRateHistory: Map<CurrencyCode, List<FxRate>>,
@@ -37,12 +40,11 @@ object PortfolioValueHistoryCalculator {
 
         // Splits apply uniformly regardless of which day/listing combination is being valued —
         // same splitIndex shape and lookup as HoldingService.
-        val splitIndex = transactions
-            .filter { it.type == TransactionType.SPLIT }
-            .groupBy { it.listingId }
-            .mapValues { (_, splits) -> splits.map { it.date to it.quantity } }
+        val splitIndex = TransactionReplay.splitIndex(
+            transactions.filter { it.type == TransactionType.SPLIT }.map { Triple(it.listingId, it.date, it.quantity) },
+        )
 
-        val netQtyByListing = netQuantitiesByListing(transactions, splitIndex, dates)
+        val netQtyByListing = netQuantitiesByListing(transactions, transferFees, splitIndex, dates)
         val priceByListing = priceHistory.mapValues { (_, points) -> forwardFill(points.map { it.date to it.price }, dates) }
         val fxByCurrency = fxRateHistory.mapValues { (_, rates) -> forwardFill(rates.map { it.date to it.rate }, dates) }
         val investedByDate = cumulativeInvested(transactions, listingMap, baseCurrency, dates)
@@ -87,29 +89,40 @@ object PortfolioValueHistoryCalculator {
     }
 
     // Net quantity per listing, forward-filled to every requested day. Multiple same-day BUY/SELL
-    // transactions collapse into one net delta before the running sum, same as HoldingService's
-    // daily_changes step. Each snapshot is adjusted for every split occurring after it, since
-    // historical prices are themselves retroactively split-adjusted by the price provider.
+    // rows (and transfer fees) collapse into one net delta before the running sum. Each row's
+    // split adjustment is applied at its own date via TransactionReplay, before it joins the
+    // running total — applying one multiplier to the running total at snapshot time instead would
+    // misattribute a split to rows it doesn't apply to whenever a listing has more than one split
+    // in its history.
     private fun netQuantitiesByListing(
         transactions: List<Transaction>,
+        transferFees: List<TransferFee>,
         splitIndex: Map<Long, List<Pair<LocalDate, BigDecimal>>>,
         dates: List<LocalDate>,
-    ): Map<Long, Map<LocalDate, BigDecimal>> =
-        transactions
-            .filter { it.type != TransactionType.SPLIT }
-            .groupBy { it.listingId }
-            .mapValues { (listingId, txs) ->
-                val dailyDeltas = txs.groupBy { it.date }
-                    .mapValues { (_, dayTxs) -> dayTxs.sumOf { if (it.type == TransactionType.BUY) it.quantity else -it.quantity } }
+    ): Map<Long, Map<LocalDate, BigDecimal>> {
+        val deltasByListing = mutableMapOf<Long, MutableMap<LocalDate, BigDecimal>>()
 
-                var running = BigDecimal.ZERO
-                val snapshots = dailyDeltas.entries.sortedBy { it.key }.map { (date, delta) ->
-                    running += delta
-                    val multiplier = SplitAdjuster.adjustmentFor(listingId, date, splitIndex).multiplier
-                    date to (running * multiplier)
-                }
-                forwardFill(snapshots, dates)
+        transactions.filter { it.type == TransactionType.BUY || it.type == TransactionType.SELL }.forEach { tx ->
+            val delta = TransactionReplay.signedQuantityDelta(tx.listingId, tx.date, tx.quantity, tx.type, splitIndex)
+            deltasByListing.getOrPut(tx.listingId) { mutableMapOf() }.merge(tx.date, delta, BigDecimal::add)
+        }
+
+        // A transfer moves custody, not portfolio inventory — only its fee (if any) reduces what
+        // the portfolio holds. Same rule as HoldingService.getHoldings.
+        transferFees.forEach { fee ->
+            val delta = -TransactionReplay.splitAdjustedQuantity(fee.listingId, fee.date, fee.quantity, splitIndex)
+            deltasByListing.getOrPut(fee.listingId) { mutableMapOf() }.merge(fee.date, delta, BigDecimal::add)
+        }
+
+        return deltasByListing.mapValues { (_, dailyDeltas) ->
+            var running = BigDecimal.ZERO
+            val snapshots = dailyDeltas.entries.sortedBy { it.key }.map { (date, delta) ->
+                running += delta
+                date to running
             }
+            forwardFill(snapshots, dates)
+        }
+    }
 
     // Net cash deployed, forward-filled to every requested day. Converted to base currency using
     // the FX rate recorded on the transaction itself (not the day's rate) — invested capital is a

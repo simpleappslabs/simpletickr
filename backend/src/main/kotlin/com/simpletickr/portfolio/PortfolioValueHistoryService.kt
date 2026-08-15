@@ -3,6 +3,7 @@ package com.simpletickr.portfolio
 import com.simpletickr.asset.persistence.AssetRepository
 import com.simpletickr.fx.persistence.FxRateRepository
 import com.simpletickr.portfolio.model.PortfolioValuePoint
+import com.simpletickr.portfolio.persistence.HoldingRepository
 import com.simpletickr.portfolio.persistence.PortfolioValueHistoryRepository
 import com.simpletickr.price.persistence.AssetPriceHistoryRepository
 import com.simpletickr.settings.UserSettingsRepository
@@ -16,6 +17,7 @@ import java.time.LocalDate
 class PortfolioValueHistoryService(
     private val repository: PortfolioValueHistoryRepository,
     private val transactionRepository: TransactionRepository,
+    private val holdingRepository: HoldingRepository,
     private val assetRepository: AssetRepository,
     private val priceHistoryRepository: AssetPriceHistoryRepository,
     private val fxRateRepository: FxRateRepository,
@@ -32,6 +34,9 @@ class PortfolioValueHistoryService(
             ?: return baseCurrency to emptyList()
 
         val transactions = transactionRepository.findAllForPortfolio(portfolioId)
+        val transferFees = holdingRepository.findTransferFeeRows(portfolioId, to).map {
+            PortfolioValueHistoryCalculator.TransferFee(it.listingId, it.date, it.feeQuantity)
+        }
         val listingMap = assetRepository.findAll().flatMap { it.listings }.associateBy { it.id }
 
         // One boundary row from before `effectiveFrom` (to seed day one of the fold) plus
@@ -50,7 +55,7 @@ class PortfolioValueHistoryService(
         }
 
         val points = PortfolioValueHistoryCalculator.compute(
-            transactions, listingMap, priceHistory, fxRateHistory, baseCurrency, effectiveFrom, to,
+            transactions, transferFees, listingMap, priceHistory, fxRateHistory, baseCurrency, effectiveFrom, to,
         )
         return baseCurrency to points
     }

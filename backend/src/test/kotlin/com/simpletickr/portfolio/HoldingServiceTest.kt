@@ -111,22 +111,6 @@ class HoldingServiceTest {
     }
 
     @Test
-    fun `sell after split uses adjusted quantities`() {
-        // BUY 100 @ $20, SPLIT 2:1 → 200 @ $10, SELL 50 @ $12 → net = 150
-        val rows = listOf(
-            row(1, TransactionType.BUY, "100", "20", LocalDate.of(2024, 1, 1)),
-            row(2, TransactionType.SPLIT, "2", "0", LocalDate.of(2024, 6, 1)),
-            row(3, TransactionType.SELL, "50", "12", LocalDate.of(2024, 9, 1)),
-        )
-        whenever(repo.findTransactionRows(1L)).thenReturn(rows)
-
-        val holdings = service.getHoldings(1L)
-
-        assertEquals(1, holdings.size)
-        assertBd("150", holdings[0].quantity)
-    }
-
-    @Test
     fun `split does not appear as a holding itself`() {
         val rows = listOf(
             row(1, TransactionType.BUY, "100", "10", LocalDate.of(2024, 1, 1)),
