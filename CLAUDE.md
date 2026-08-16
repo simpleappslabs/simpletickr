@@ -202,6 +202,16 @@ gh project item-edit --project-id PVT_kwDOCTgvzs4BVhCw --id "$ITEM_ID" \
   --field-id PVTSSF_lADOCTgvzs4BVhCwzhQ8U5U --single-select-option-id 57f4641b
 ```
 
+## Agent skills
+
+### Issue tracker
+
+Issues live as GitHub Issues in `simpleappslabs/simpletickr`, using the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Domain docs
+
+Single-context: root `CONTEXT.md` (domain glossary) + `docs/adr/`. See `docs/agents/domain.md`.
+
 ## Git
 
 - Do **not** append `Co-Authored-By: Claude` trailers to commit messages
