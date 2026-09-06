@@ -65,13 +65,13 @@
 
 {#snippet summary()}
     {#if latestValueFormatted}
-        <div class="flex items-baseline gap-2 mb-2">
+        <div class="flex items-baseline gap-2 mb-1">
             <span class="text-sm font-semibold">{latestValueFormatted} {baseCurrency}</span>
             <span class="text-xs text-base-content/40">as of {latestValue?.date}</span>
         </div>
     {/if}
     {#if periodGain}
-        <p class="text-sm mb-2 {periodGain.amount >= 0 ? 'text-success' : 'text-error'}">
+        <p class="text-xs mb-2 {periodGain.amount >= 0 ? 'text-success' : 'text-error'}">
             Unrealized gain ({activeRange}): {periodGain.amount >= 0 ? '+' : ''}{formatGainNumber(periodGain.amount)} {baseCurrency}
             {#if periodGain.pct != null}
                 ({periodGain.amount >= 0 ? '+' : ''}{formatGainNumber(periodGain.pct)}%)

@@ -71,7 +71,7 @@
             </div>
         </div>
         {#if periodGain}
-            <p class="text-sm {periodGain.amount >= 0 ? 'text-success' : 'text-error'}">
+            <p class="text-xs {periodGain.amount >= 0 ? 'text-success' : 'text-error'}">
                 Unrealized gain ({activeRange}): {periodGain.amount >= 0 ? '+' : ''}{formatGainNumber(periodGain.amount)} {baseCurrency}
                 {#if periodGain.pct != null}
                     ({periodGain.amount >= 0 ? '+' : ''}{formatGainNumber(periodGain.pct)}%)
