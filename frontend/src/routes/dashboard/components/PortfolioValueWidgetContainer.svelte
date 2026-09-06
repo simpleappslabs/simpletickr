@@ -3,6 +3,7 @@
     import { getPortfolioValueHistory, updateDashboardWidget } from '$lib/api/sdk.gen';
     import type { DashboardWidget, PortfolioValuePoint } from '$lib/api/types.gen';
     import ValueHistoryChart from '$lib/portfolio/ValueHistoryChart.svelte';
+    import { computePeriodGain, formatGainNumber } from '$lib/portfolio/periodGain';
     import DashboardWidgetCard from './DashboardWidgetCard.svelte';
     import { untrack } from 'svelte';
 
@@ -39,6 +40,7 @@
     const latestValueFormatted = $derived(
         latestValue?.value != null ? latestValue.value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : null
     );
+    const periodGain = $derived(computePeriodGain(valuePoints));
 
     $effect(() => { load(activeRange); });
 
@@ -67,6 +69,14 @@
             <span class="text-sm font-semibold">{latestValueFormatted} {baseCurrency}</span>
             <span class="text-xs text-base-content/40">as of {latestValue?.date}</span>
         </div>
+    {/if}
+    {#if periodGain}
+        <p class="text-sm mb-2 {periodGain.amount >= 0 ? 'text-success' : 'text-error'}">
+            Unrealized gain ({activeRange}): {periodGain.amount >= 0 ? '+' : ''}{formatGainNumber(periodGain.amount)} {baseCurrency}
+            {#if periodGain.pct != null}
+                ({periodGain.amount >= 0 ? '+' : ''}{formatGainNumber(periodGain.pct)}%)
+            {/if}
+        </p>
     {/if}
 {/snippet}
 

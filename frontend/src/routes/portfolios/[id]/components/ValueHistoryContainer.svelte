@@ -2,6 +2,7 @@
     import { getPortfolioValueHistory } from '$lib/api/sdk.gen';
     import type { PortfolioValuationSummary, PortfolioValuePoint } from '$lib/api/types.gen';
     import ValueHistoryChart from '$lib/portfolio/ValueHistoryChart.svelte';
+    import { computePeriodGain, formatGainNumber } from '$lib/portfolio/periodGain';
 
     let { portfolioId, refreshKey = 0, summary = null }: {
         portfolioId: number;
@@ -17,6 +18,8 @@
     let baseCurrency = $state('');
     let loading = $state(false);
     let error = $state<string | null>(null);
+
+    const periodGain = $derived(computePeriodGain(points));
 
     function toDateString(d: Date): string {
         return d.toISOString().slice(0, 10);
@@ -55,16 +58,26 @@
 </script>
 
 <div class="space-y-3">
-    <div class="flex items-center justify-between">
-        <h2 class="text-lg font-semibold">Portfolio value</h2>
-        <div class="join">
-            {#each RANGES as range}
-                <button
-                    class="join-item btn btn-xs {activeRange === range ? 'btn-primary' : 'btn-ghost'}"
-                    onclick={() => { activeRange = range; }}
-                >{range}</button>
-            {/each}
+    <div>
+        <div class="flex items-center justify-between">
+            <h2 class="text-lg font-semibold">Portfolio value</h2>
+            <div class="join">
+                {#each RANGES as range}
+                    <button
+                        class="join-item btn btn-xs {activeRange === range ? 'btn-primary' : 'btn-ghost'}"
+                        onclick={() => { activeRange = range; }}
+                    >{range}</button>
+                {/each}
+            </div>
         </div>
+        {#if periodGain}
+            <p class="text-sm {periodGain.amount >= 0 ? 'text-success' : 'text-error'}">
+                Unrealized gain ({activeRange}): {periodGain.amount >= 0 ? '+' : ''}{formatGainNumber(periodGain.amount)} {baseCurrency}
+                {#if periodGain.pct != null}
+                    ({periodGain.amount >= 0 ? '+' : ''}{formatGainNumber(periodGain.pct)}%)
+                {/if}
+            </p>
+        {/if}
     </div>
 
     {#if loading}
