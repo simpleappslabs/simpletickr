@@ -32,6 +32,13 @@ class IdentityRepository(private val jdbcTemplate: JdbcTemplate) {
         )
     } catch (_: EmptyResultDataAccessException) { null }
 
+    fun findByProviderIdAndSubject(providerId: String, subject: String): Identity? = try {
+        jdbcTemplate.queryForObject(
+            "SELECT id, user_id, provider_type, provider_id, subject, password_hash FROM identities WHERE provider_id = ? AND subject = ?",
+            rowMapper, providerId, subject,
+        )
+    } catch (_: EmptyResultDataAccessException) { null }
+
     fun save(identity: Identity): Identity {
         val keyHolder = GeneratedKeyHolder()
         jdbcTemplate.update({ con ->

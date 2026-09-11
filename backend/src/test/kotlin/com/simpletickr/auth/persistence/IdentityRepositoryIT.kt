@@ -62,6 +62,24 @@ class IdentityRepositoryIT {
     }
 
     @Test
+    fun `findByProviderIdAndSubject returns the matching OIDC identity`() {
+        val saved = repository.save(
+            Identity(id = 0L, userId = 1L, providerType = ProviderType.OIDC, providerId = "https://idp.example.com", subject = "sub-123", passwordHash = null)
+        )
+
+        val found = repository.findByProviderIdAndSubject("https://idp.example.com", "sub-123")
+
+        assertNotNull(found)
+        assertEquals(saved.id, found.id)
+        assertEquals(1L, found.userId)
+    }
+
+    @Test
+    fun `findByProviderIdAndSubject returns null when no matching identity`() {
+        assertNull(repository.findByProviderIdAndSubject("https://idp.example.com", "no-such-subject"))
+    }
+
+    @Test
     fun `updatePasswordHash changes the stored hash`() {
         val saved = repository.save(
             Identity(id = 0L, userId = 1L, providerType = ProviderType.LOCAL, providerId = Identity.LOCAL_PROVIDER_ID, subject = null, passwordHash = "old")

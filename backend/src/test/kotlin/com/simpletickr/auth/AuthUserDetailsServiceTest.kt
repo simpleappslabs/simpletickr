@@ -34,13 +34,13 @@ class AuthUserDetailsServiceTest {
     }
 
     @Test
-    fun `loadUserByUsername returns a CurrentUser wrapping the id, username and password hash`() {
+    fun `loadUserByUsername returns a LocalUserDetails wrapping the id, username and password hash`() {
         whenever(userRepository.findByUsername("admin")).thenReturn(User(1L, "admin"))
         whenever(identityRepository.findByUserIdAndProviderType(1L, ProviderType.LOCAL)).thenReturn(
             Identity(id = 5L, userId = 1L, providerType = ProviderType.LOCAL, providerId = Identity.LOCAL_PROVIDER_ID, subject = null, passwordHash = "hash")
         )
 
-        val result = service.loadUserByUsername("admin") as CurrentUser
+        val result = service.loadUserByUsername("admin") as LocalUserDetails
 
         assertEquals(1L, result.id)
         assertEquals("admin", result.username)

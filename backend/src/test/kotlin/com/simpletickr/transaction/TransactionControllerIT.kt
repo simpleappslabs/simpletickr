@@ -3,8 +3,10 @@ package com.simpletickr.transaction
 import com.simpletickr.account.AccountService
 import com.simpletickr.account.model.Account
 import com.simpletickr.account.model.AccountType
-import com.simpletickr.auth.CurrentUser
+import com.simpletickr.auth.Principal
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import com.simpletickr.portfolio.PortfolioQueryService
+import com.simpletickr.shared.OidcTestSupportConfig
 import com.simpletickr.shared.SecurityConfig
 import com.simpletickr.transaction.model.Transaction
 import com.simpletickr.transaction.model.TransactionType
@@ -22,7 +24,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest
 import org.springframework.context.annotation.Import
 import org.springframework.http.MediaType
-import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user
+import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication
 import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete
@@ -35,10 +37,10 @@ import java.math.BigDecimal
 import java.time.LocalDate
 
 @WebMvcTest(TransactionController::class)
-@Import(SecurityConfig::class)
+@Import(SecurityConfig::class, OidcTestSupportConfig::class)
 class TransactionControllerIT {
 
-    private val owner = CurrentUser(1L, "test-user", "hash")
+    private val owner = UsernamePasswordAuthenticationToken(Principal.Local(1L, "test-user"), null, emptyList())
 
     @Autowired
     private lateinit var mockMvc: MockMvc
@@ -73,7 +75,7 @@ class TransactionControllerIT {
         whenever(transactionQueryService.listTransactions(TransactionFilter(portfolioId = 10L), 0, 25, 1L))
             .thenReturn(TransactionPageResult(listOf(sample), 1L))
 
-        mockMvc.perform(get("/transactions?portfolioId=10").with(user(owner)))
+        mockMvc.perform(get("/transactions?portfolioId=10").with(authentication(owner)))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.items.length()").value(1))
             .andExpect(jsonPath("$.items[0].portfolioId").value(10))
@@ -90,7 +92,7 @@ class TransactionControllerIT {
         whenever(transactionQueryService.listTransactions(TransactionFilter(portfolioId = 10L), 1, 10, 1L))
             .thenReturn(TransactionPageResult(emptyList(), 15L))
 
-        mockMvc.perform(get("/transactions?portfolioId=10&page=1&size=10").with(user(owner)))
+        mockMvc.perform(get("/transactions?portfolioId=10&page=1&size=10").with(authentication(owner)))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.page").value(1))
             .andExpect(jsonPath("$.size").value(10))
@@ -103,7 +105,7 @@ class TransactionControllerIT {
         whenever(transactionQueryService.listTransactions(TransactionFilter(type = TransactionType.BUY), 0, 25, 1L))
             .thenReturn(TransactionPageResult(listOf(sample), 1L))
 
-        mockMvc.perform(get("/transactions?type=BUY").with(user(owner)))
+        mockMvc.perform(get("/transactions?type=BUY").with(authentication(owner)))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.items.length()").value(1))
             .andExpect(jsonPath("$.items[0].type").value("BUY"))
@@ -114,7 +116,7 @@ class TransactionControllerIT {
         whenever(transactionQueryService.listTransactions(TransactionFilter(listingId = 5L), 0, 25, 1L))
             .thenReturn(TransactionPageResult(listOf(sample), 1L))
 
-        mockMvc.perform(get("/transactions?listingId=5").with(user(owner)))
+        mockMvc.perform(get("/transactions?listingId=5").with(authentication(owner)))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.items.length()").value(1))
             .andExpect(jsonPath("$.items[0].listingId").value(5))
@@ -126,32 +128,32 @@ class TransactionControllerIT {
         whenever(transactionQueryService.listTransactions(filter, 0, 25, 1L))
             .thenReturn(TransactionPageResult(listOf(sample), 1L))
 
-        mockMvc.perform(get("/transactions?dateFrom=2024-01-01&dateTo=2024-12-31").with(user(owner)))
+        mockMvc.perform(get("/transactions?dateFrom=2024-01-01&dateTo=2024-12-31").with(authentication(owner)))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.items.length()").value(1))
     }
 
     @Test
     fun `GET transactions returns 400 when dateFrom is after dateTo`() {
-        mockMvc.perform(get("/transactions?dateFrom=2024-12-31&dateTo=2024-01-01").with(user(owner)))
+        mockMvc.perform(get("/transactions?dateFrom=2024-12-31&dateTo=2024-01-01").with(authentication(owner)))
             .andExpect(status().isBadRequest)
     }
 
     @Test
     fun `GET transactions returns 400 when size is zero`() {
-        mockMvc.perform(get("/transactions?size=0").with(user(owner)))
+        mockMvc.perform(get("/transactions?size=0").with(authentication(owner)))
             .andExpect(status().isBadRequest)
     }
 
     @Test
     fun `GET transactions returns 400 when size exceeds maximum`() {
-        mockMvc.perform(get("/transactions?size=201").with(user(owner)))
+        mockMvc.perform(get("/transactions?size=201").with(authentication(owner)))
             .andExpect(status().isBadRequest)
     }
 
     @Test
     fun `GET transactions returns 400 when page is negative`() {
-        mockMvc.perform(get("/transactions?page=-1").with(user(owner)))
+        mockMvc.perform(get("/transactions?page=-1").with(authentication(owner)))
             .andExpect(status().isBadRequest)
     }
 
@@ -160,7 +162,7 @@ class TransactionControllerIT {
         whenever(transactionQueryService.listTransactions(TransactionFilter(portfolioId = 99L), 0, 25, 1L))
             .thenReturn(null)
 
-        mockMvc.perform(get("/transactions?portfolioId=99").with(user(owner)))
+        mockMvc.perform(get("/transactions?portfolioId=99").with(authentication(owner)))
             .andExpect(status().isNotFound)
     }
 
@@ -168,7 +170,7 @@ class TransactionControllerIT {
     fun `GET transaction by id returns 200 when found`() {
         whenever(transactionQueryService.getTransaction(1L, 1L)).thenReturn(sample)
 
-        mockMvc.perform(get("/transactions/1").with(user(owner)))
+        mockMvc.perform(get("/transactions/1").with(authentication(owner)))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.id").value(1))
             .andExpect(jsonPath("$.type").value("BUY"))
@@ -178,7 +180,7 @@ class TransactionControllerIT {
     fun `GET transaction by id returns 404 when not found`() {
         whenever(transactionQueryService.getTransaction(99L, 1L)).thenReturn(null)
 
-        mockMvc.perform(get("/transactions/99").with(user(owner)))
+        mockMvc.perform(get("/transactions/99").with(authentication(owner)))
             .andExpect(status().isNotFound)
     }
 
@@ -188,7 +190,7 @@ class TransactionControllerIT {
 
         mockMvc.perform(
             post("/portfolios/10/transactions")
-                .with(user(owner))
+                .with(authentication(owner))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""{"listingId":5,"type":"BUY","quantity":5.0,"price":100.0,"date":"2024-01-15","accountId":1}""")
         )
@@ -204,7 +206,7 @@ class TransactionControllerIT {
 
         mockMvc.perform(
             put("/portfolios/10/transactions/1")
-                .with(user(owner))
+                .with(authentication(owner))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""{"listingId":5,"type":"BUY","quantity":10.0,"price":100.0,"date":"2024-01-15","accountId":1}""")
         )
@@ -218,7 +220,7 @@ class TransactionControllerIT {
 
         mockMvc.perform(
             put("/portfolios/10/transactions/99")
-                .with(user(owner))
+                .with(authentication(owner))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""{"listingId":5,"type":"BUY","quantity":10.0,"price":100.0,"date":"2024-01-15","accountId":1}""")
         )
@@ -229,7 +231,7 @@ class TransactionControllerIT {
     fun `DELETE portfolio transaction returns 204`() {
         whenever(deleteTransactionUseCase.execute(10L, 1L)).thenReturn(true)
 
-        mockMvc.perform(delete("/portfolios/10/transactions/1").with(user(owner)))
+        mockMvc.perform(delete("/portfolios/10/transactions/1").with(authentication(owner)))
             .andExpect(status().isNoContent)
     }
 
@@ -237,7 +239,7 @@ class TransactionControllerIT {
     fun `DELETE portfolio transaction returns 404 when not found`() {
         whenever(deleteTransactionUseCase.execute(10L, 99L)).thenReturn(false)
 
-        mockMvc.perform(delete("/portfolios/10/transactions/99").with(user(owner)))
+        mockMvc.perform(delete("/portfolios/10/transactions/99").with(authentication(owner)))
             .andExpect(status().isNotFound)
     }
 
@@ -248,7 +250,7 @@ class TransactionControllerIT {
 
         mockMvc.perform(
             post("/portfolios/10/transactions")
-                .with(user(owner))
+                .with(authentication(owner))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""{"listingId":5,"type":"BUY","quantity":0.0,"price":100.0,"date":"2024-01-15","accountId":1}""")
         )
@@ -262,7 +264,7 @@ class TransactionControllerIT {
 
         mockMvc.perform(
             post("/portfolios/10/transactions")
-                .with(user(owner))
+                .with(authentication(owner))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""{"listingId":5,"type":"SPLIT","quantity":2.0,"price":0.0,"date":"2024-06-01","accountId":1}""")
         )
@@ -279,7 +281,7 @@ class TransactionControllerIT {
 
         mockMvc.perform(
             post("/portfolios/10/transactions/trade")
-                .with(user(owner))
+                .with(authentication(owner))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""{"sellListingId":5,"sellQuantity":0.1,"sellPrice":60000.0,"buyListingId":6,"buyQuantity":2.5,"buyPrice":2400.0,"date":"2024-06-01","accountId":1}""")
         )
@@ -298,7 +300,7 @@ class TransactionControllerIT {
 
         mockMvc.perform(
             post("/portfolios/10/transactions/trade")
-                .with(user(owner))
+                .with(authentication(owner))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""{"sellListingId":5,"sellQuantity":0.1,"sellPrice":60000.0,"buyListingId":6,"buyQuantity":2.5,"buyPrice":2400.0,"date":"2024-06-01","accountId":1}""")
         )

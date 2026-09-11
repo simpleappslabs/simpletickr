@@ -1,0 +1,95 @@
+# DEV-ONLY Authelia config for manually exercising simpletickr's OIDC client (issue #57)
+# against a real IdP. Every secret in this file is a fixed, throwaway dev value — never use
+# any of it for anything real. See dev/authelia/README.md for how to run it.
+
+server:
+  address: 'tcp://:9091'
+  tls:
+    certificate: '/config/tls.crt'
+    key: '/config/tls.key'
+
+log:
+  level: 'info'
+
+identity_validation:
+  reset_password:
+    jwt_secret: 'dev-reset-password-jwt-secret'
+
+authentication_backend:
+  file:
+    path: '/config/users_database.yml'
+
+session:
+  secret: 'dev-session-secret'
+  cookies:
+    - domain: '127.0.0.1'
+      authelia_url: 'https://127.0.0.1:9091'
+
+storage:
+  encryption_key: 'dev-storage-encryption-key-32-chars-min'
+  local:
+    path: '/config/db.sqlite3'
+
+notifier:
+  filesystem:
+    filename: '/config/notification.txt'
+
+access_control:
+  default_policy: 'one_factor'
+
+identity_providers:
+  oidc:
+    hmac_secret: 'dev-oidc-hmac-secret'
+    jwks:
+      - key_id: 'dev'
+        algorithm: 'RS256'
+        use: 'sig'
+        key: |
+          -----BEGIN PRIVATE KEY-----
+          MIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQCdRXva6Xgqb5E/
+          RbrtwnbBUabwjo+VysmnNXA61Q3b9B84DJe0JbCq/7vgEhukLs6WVRVgxbkVt4q3
+          h1tjoCVLJZIcM2gA+1K8UwIHeKvuItAEzPkYkV6JyjBzrTF0ctRTAiZiP3MzJSsF
+          rc0JQyzIbPwCehiq44raSybXM6eKjaB1JErKHZUVjpxXAlsyA5zOynNbku+0MR71
+          5UVupGIS6AufFcoeqy+oGi+8ksvhp8Xkjdh7BGpOp6Yb90W+AGL3PDpU+g4NHwrB
+          nh9Grs2QyQR1qGFYKFSat0iTIT9B0/0vf6D+un1Nv3kWmqZJKtch0m8TlyBYtIlC
+          MQXB6iLnAgMBAAECggEAGYQxgSYKChCJ51Mf7f10GQ9vX24x26LILunbqJ/ynLIx
+          8n0Qi/jlfgj56XPmqi+x8vAhBM9vpRdfWUGL0VElW9jfqNWqVSZxmP56wM2ST5O0
+          XmMHMzY6uW5liA8cjAEpc8JQifYzcaPhJA27y3nrpSURijFXGTrLx3kT9yx5TWBF
+          9jr7JEhXLd32E4ASfzhK7SCwN8tJJsEasPm6gNBJTCR9eUjQv45bDPMSBFVK1t5l
+          bUJxcYdeI84y9TAMWl6GMlwZurjTIO8J00owsyAEzvJ6QidafH2oYpMESX0OYPTX
+          SIWlxKXu3VrECc/Yfr8FAtV1Rb+c4HfrPPANlZNBoQKBgQDQBicssye/VWcFln6z
+          UfiQB1CWB4vzJpyy/xWwhxJxD8QYocMfSpOGdsl1aEugQ/KP80apeIMgWwFzVQEF
+          LqzacLi1NHE+xOnwQBTNTAjXuRKfPfrH5ZX6KRsVyPnhDK4y2h+ZR6GhiGebSRMb
+          AGqepF6CJ3THwjmN/43+H/ay8QKBgQDBit6/rm9PsMRG21TT+bBso8Gsx4ghpzbs
+          hykPgrJef+IcTzLKNvIo9OG22kDh5DiDmIl+/auZLoHAxKBcMGXLGS1yO1FRcVNA
+          omyAY9fSw8VLIMRiSw89Cpp34CamH04vIYRgvbmmULQ2Y3o/Km1CudL5lNZfCckE
+          0mlhG6KDVwKBgDuvyEW3EcyAQJMF30ysVFle/+xMNgeKKKPjNOH1n4D5ORaoM0gj
+          KbkHFD6vsiNF268Z6kht35HFCuGAnk5SWh5DAXxck7Gi5kyc1lshWdgrrgAq1G3O
+          nf2tFaxmgevkq4bDtxVPzDyA2tlfWjABKpZiKwvFLmiyfbkUfjVQDoTBAoGAV/1t
+          pZGFU6KWqWwf1btHxSxx6b5RGpOt+by9IysVMrdLMfmjqqFuWMZ0M7BoHQqn0tQv
+          doeXUy38mYoLKb5rGPnaWnuzTaaK5fCyCXDa9xw//xbnkZR0WhkO/v7uM0o6Pl0r
+          lNvMoltAgxWYx0zfnZ1j2EodZ9nIBSQv+pEYwkMCgYAT4j4RJ2QXtjSEeAdQHnIl
+          nG9uQGeIFlWY+kFSRthg+6SVEiTz0uM5P/S61LI8HAyE2guZr21sFXoo8Z2fqlK3
+          cNYGT7/1gYGdTurPNiI0hgIxxujwBnOt4xzec0Eo3kw9DhUD1glDY+Ee1ADgcIA3
+          1bQO+0bBFi/BZ+CfkTyStw==
+          -----END PRIVATE KEY-----
+    clients:
+      - client_id: 'simpletickr-dev'
+        client_name: 'simpletickr (dev)'
+        client_secret: '$pbkdf2-sha512$310000$Z.zNzBio/VHNjbezt/Wknw$a5EQPzAXNPddqQTPWr0GFDtqd0zlOe/uQ..7Gy/jOxEWu24e0GU3gzaRGtXWPjPzBHGkHezQuppKYWMeJbwutQ'
+        public: false
+        authorization_policy: 'one_factor'
+        # This is simpletickr's own client authenticating against your own IdP — there's no
+        # third party to ask consent for, so skip the explicit consent screen.
+        consent_mode: 'implicit'
+        redirect_uris:
+          - 'http://localhost:8080/api/login/oauth2/code/oidc'
+        scopes:
+          - 'openid'
+          - 'profile'
+          - 'email'
+        grant_types:
+          - 'authorization_code'
+        response_types:
+          - 'code'
+        userinfo_signed_response_alg: 'none'

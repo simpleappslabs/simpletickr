@@ -106,7 +106,7 @@
 						{authState.username}
 					</button>
 					<ul tabindex="0" class="dropdown-content menu bg-base-200 rounded-box shadow z-10 p-2 w-48">
-						<li><a href="/settings/change-password">Change password</a></li>
+						<li><a href="/settings/security">Security</a></li>
 						<li><button onclick={handleLogout}>Log out</button></li>
 					</ul>
 				</div>
@@ -170,7 +170,7 @@
 		{#if authState.username}
 			<div class="p-4 border-t border-base-300 space-y-2">
 				<p class="text-xs text-base-content/50 uppercase tracking-widest">{authState.username}</p>
-				<a href="/settings/change-password" class="btn btn-ghost btn-sm w-full justify-start" onclick={() => mobileMenuOpen = false}>Change password</a>
+				<a href="/settings/security" class="btn btn-ghost btn-sm w-full justify-start" onclick={() => mobileMenuOpen = false}>Security</a>
 				<button class="btn btn-ghost btn-sm w-full justify-start" onclick={() => { mobileMenuOpen = false; handleLogout(); }}>Log out</button>
 			</div>
 		{/if}

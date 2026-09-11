@@ -1,3 +1,5 @@
 .env
 .idea/
 charts/simpletickr/charts/
+dev/authelia/db.sqlite3
+dev/authelia/notification.txt

@@ -7,8 +7,10 @@ import com.simpletickr.brokerimport.bolero.BoleroAnalysisResult
 import com.simpletickr.brokerimport.bolero.BoleroInstrumentInfo
 import com.simpletickr.brokerimport.bolero.ImportBoleroTransactionsUseCase
 import com.simpletickr.account.AccountService
-import com.simpletickr.auth.CurrentUser
+import com.simpletickr.auth.Principal
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import com.simpletickr.portfolio.PortfolioQueryService
+import com.simpletickr.shared.OidcTestSupportConfig
 import com.simpletickr.shared.SecurityConfig
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
@@ -19,7 +21,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest
 import org.springframework.context.annotation.Import
 import org.springframework.http.MediaType
 import org.springframework.mock.web.MockMultipartFile
-import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user
+import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication
 import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete
@@ -30,10 +32,10 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPat
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 
 @WebMvcTest(ImportController::class)
-@Import(SecurityConfig::class)
+@Import(SecurityConfig::class, OidcTestSupportConfig::class)
 class ImportControllerIT {
 
-    private val owner = CurrentUser(1L, "test-user", "hash")
+    private val owner = UsernamePasswordAuthenticationToken(Principal.Local(1L, "test-user"), null, emptyList())
 
     @Autowired private lateinit var mockMvc: MockMvc
     @Autowired private lateinit var objectMapper: ObjectMapper
@@ -64,7 +66,7 @@ class ImportControllerIT {
         )
         whenever(analyzeBoleroImportUseCase.execute(any())).thenReturn(analysisResult)
 
-        mockMvc.perform(multipart("/import/bolero/analyze").file(emptyXlsx).with(user(owner)))
+        mockMvc.perform(multipart("/import/bolero/analyze").file(emptyXlsx).with(authentication(owner)))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.totalRows").value(8))
             .andExpect(jsonPath("$.skippedRows").value(92))
@@ -92,7 +94,7 @@ class ImportControllerIT {
             multipart("/portfolios/1/transactions/import/bolero")
                 .file(emptyXlsx)
                 .param("accountId", "1")
-                .with(user(owner))
+                .with(authentication(owner))
         )
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.imported").value(5))
@@ -107,7 +109,7 @@ class ImportControllerIT {
         whenever(assetImportMappingService.listMappings(null))
             .thenReturn(listOf(AssetImportMapping(1L, "bolero", "INSTRUMENT X", 10L)))
 
-        mockMvc.perform(get("/import/asset-mappings").with(user(owner)))
+        mockMvc.perform(get("/import/asset-mappings").with(authentication(owner)))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.length()").value(1))
             .andExpect(jsonPath("$[0].broker").value("bolero"))
@@ -122,7 +124,7 @@ class ImportControllerIT {
 
         mockMvc.perform(
             post("/import/asset-mappings")
-                .with(user(owner))
+                .with(authentication(owner))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(mapOf(
                     "broker" to "bolero",
@@ -137,7 +139,7 @@ class ImportControllerIT {
 
     @Test
     fun `DELETE asset-mappings returns 204`() {
-        mockMvc.perform(delete("/import/asset-mappings/1").with(user(owner)))
+        mockMvc.perform(delete("/import/asset-mappings/1").with(authentication(owner)))
             .andExpect(status().isNoContent)
     }
 }

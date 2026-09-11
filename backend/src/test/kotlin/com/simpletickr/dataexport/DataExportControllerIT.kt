@@ -1,12 +1,14 @@
 package com.simpletickr.dataexport
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.simpletickr.auth.CurrentUser
+import com.simpletickr.auth.Principal
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import com.simpletickr.dataexport.model.ImportAnalysis
 import com.simpletickr.dataexport.model.ImportResult
 import com.simpletickr.dataexport.model.SimpletickrExport
 import com.simpletickr.dataexport.model.SettingsExport
 import org.junit.jupiter.api.Test
+import com.simpletickr.shared.OidcTestSupportConfig
 import com.simpletickr.shared.SecurityConfig
 import org.mockito.kotlin.any
 import org.mockito.kotlin.whenever
@@ -15,7 +17,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest
 import org.springframework.context.annotation.Import
 import org.springframework.http.MediaType
 import org.springframework.mock.web.MockMultipartFile
-import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user
+import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication
 import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
@@ -27,10 +29,10 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import java.time.Instant
 
 @WebMvcTest(DataExportController::class)
-@Import(SecurityConfig::class)
+@Import(SecurityConfig::class, OidcTestSupportConfig::class)
 class DataExportControllerIT {
 
-    private val owner = CurrentUser(1L, "test-user", "hash")
+    private val owner = UsernamePasswordAuthenticationToken(Principal.Local(1L, "test-user"), null, emptyList())
 
     @Autowired private lateinit var mockMvc: MockMvc
     @Autowired private lateinit var objectMapper: ObjectMapper
@@ -54,7 +56,7 @@ class DataExportControllerIT {
     fun `GET data-export returns JSON attachment with correct headers`() {
         whenever(exportService.buildExport(1L, null)).thenReturn(emptyExport)
 
-        mockMvc.perform(get("/data-export").with(user(owner)))
+        mockMvc.perform(get("/data-export").with(authentication(owner)))
             .andExpect(status().isOk)
             .andExpect(content().contentType(MediaType.APPLICATION_JSON))
             .andExpect(header().string("Content-Disposition", org.hamcrest.Matchers.containsString("attachment")))
@@ -65,7 +67,7 @@ class DataExportControllerIT {
     fun `GET data-export includes schemaVersion in response body`() {
         whenever(exportService.buildExport(1L, null)).thenReturn(emptyExport)
 
-        mockMvc.perform(get("/data-export").with(user(owner)))
+        mockMvc.perform(get("/data-export").with(authentication(owner)))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.schemaVersion").value(1))
     }
@@ -81,7 +83,7 @@ class DataExportControllerIT {
         )
         whenever(importDataUseCase.analyze(any(), any())).thenReturn(analysis)
 
-        mockMvc.perform(multipart("/data-import").file(jsonFile).param("dryRun", "true").with(user(owner)))
+        mockMvc.perform(multipart("/data-import").file(jsonFile).param("dryRun", "true").with(authentication(owner)))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.assetsToCreate").value(2))
             .andExpect(jsonPath("$.portfoliosToCreate").value(1))
@@ -97,7 +99,7 @@ class DataExportControllerIT {
         )
         whenever(importDataUseCase.apply(any(), any())).thenReturn(result)
 
-        mockMvc.perform(multipart("/data-import").file(jsonFile).with(user(owner)))
+        mockMvc.perform(multipart("/data-import").file(jsonFile).with(authentication(owner)))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.assetsCreated").value(2))
             .andExpect(jsonPath("$.listingsCreated").value(3))

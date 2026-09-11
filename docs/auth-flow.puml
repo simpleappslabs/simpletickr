@@ -1,0 +1,57 @@
+@startuml
+title simpletickr auth — local vs OIDC
+
+actor Browser
+participant "SecurityConfig\n(filter chain)" as SC
+participant AuthController as AC
+participant AuthUserDetailsService as UDS
+participant OidcConnectController as OC
+participant "Spring OAuth2 filters\n(authorization redirect +\ncallback + token exchange)" as OF
+participant "IdP (external)" as IdP
+participant OidcAuthenticationSuccessHandler as SH
+participant "ResolveOrProvisionOidcUserUseCase /\nConnectOidcIdentityUseCase" as UC
+participant SessionPrincipalEstablisher as SPE
+participant OidcTokenRefreshFilter as TR
+database "Session\n(Postgres, Spring Session JDBC)" as DB
+
+== Local login ==
+Browser -> AC: POST /auth/login (username, password)
+AC -> UDS: authenticationManager.authenticate(...)
+UDS --> AC: LocalUserDetails (password OK)
+AC -> SPE: establish(Principal.Local)
+SPE -> DB: rotate session id, save SecurityContext
+AC --> Browser: 200 + Set-Cookie: SESSION
+
+== OIDC login (fresh) ==
+Browser -> OF: GET /oauth2/authorization/oidc
+OF -> IdP: 302 redirect (Authorization Code + PKCE)
+Browser -> IdP: user authenticates there
+IdP -> OF: 302 /login/oauth2/code/oidc?code=...
+OF -> OF: exchange code for tokens,\nvalidate ID token
+OF -> SH: onAuthenticationSuccess(OidcUser)
+SH -> UC: execute(claims)
+UC --> SH: User (existing, or auto-provisioned)
+SH -> SPE: establish(Principal.Oidc)
+SPE -> DB: rotate session id, save SecurityContext
+SH --> Browser: 302 to frontend "/"
+
+== OIDC connect (adds SSO to an already-logged-in local user) ==
+note over Browser: already authenticated as Principal.Local
+Browser -> OC: GET /auth/oidc/connect
+OC -> DB: session.setAttribute(connectUserId)
+OC --> Browser: 302 /oauth2/authorization/oidc
+Browser -> OF: (same IdP round trip as above)
+OF -> SH: onAuthenticationSuccess(OidcUser)
+SH -> DB: read + clear connectUserId
+SH -> UC: execute(connectUserId, claims)
+SH -> SPE: establish(Principal.Local) — same user,\nnow with an OIDC identity linked
+SH --> Browser: 302 /settings/security?oidcConnected=true
+
+== Every later request ==
+Browser -> SC: any request, Cookie: SESSION
+SC -> DB: load SecurityContext\n(principal is Local or Oidc)
+SC -> TR: (only acts if principal is Principal.Oidc)
+TR -> IdP: refresh access token, only if stale
+TR --> SC: ok, or invalidate session\nif the IdP rejects the refresh
+SC -> "target controller": currentUser()
+@enduml

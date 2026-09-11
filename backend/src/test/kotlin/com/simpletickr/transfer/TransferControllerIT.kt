@@ -3,8 +3,10 @@ package com.simpletickr.transfer
 import com.simpletickr.account.AccountService
 import com.simpletickr.account.model.Account
 import com.simpletickr.account.model.AccountType
-import com.simpletickr.auth.CurrentUser
+import com.simpletickr.auth.Principal
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import com.simpletickr.portfolio.PortfolioQueryService
+import com.simpletickr.shared.OidcTestSupportConfig
 import com.simpletickr.shared.SecurityConfig
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -15,7 +17,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest
 import org.springframework.context.annotation.Import
 import org.springframework.http.MediaType
-import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user
+import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication
 import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete
@@ -27,10 +29,10 @@ import java.math.BigDecimal
 import java.time.LocalDate
 
 @WebMvcTest(TransferController::class)
-@Import(SecurityConfig::class)
+@Import(SecurityConfig::class, OidcTestSupportConfig::class)
 class TransferControllerIT {
 
-    private val owner = CurrentUser(1L, "test-user", "hash")
+    private val owner = UsernamePasswordAuthenticationToken(Principal.Local(1L, "test-user"), null, emptyList())
 
     @Autowired
     private lateinit var mockMvc: MockMvc
@@ -62,7 +64,7 @@ class TransferControllerIT {
     fun `GET transfers for portfolio returns 200`() {
         whenever(transferQueryService.listTransfersForPortfolio(10L, 1L)).thenReturn(listOf(sample))
 
-        mockMvc.perform(get("/portfolios/10/transfers").with(user(owner)))
+        mockMvc.perform(get("/portfolios/10/transfers").with(authentication(owner)))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.length()").value(1))
             .andExpect(jsonPath("$[0].id").value(900))
@@ -74,7 +76,7 @@ class TransferControllerIT {
     fun `GET transfers for portfolio returns 404 when not owned`() {
         whenever(transferQueryService.listTransfersForPortfolio(10L, 1L)).thenReturn(null)
 
-        mockMvc.perform(get("/portfolios/10/transfers").with(user(owner)))
+        mockMvc.perform(get("/portfolios/10/transfers").with(authentication(owner)))
             .andExpect(status().isNotFound)
     }
 
@@ -84,7 +86,7 @@ class TransferControllerIT {
 
         mockMvc.perform(
             post("/portfolios/10/transfers")
-                .with(user(owner))
+                .with(authentication(owner))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""{"listingId":5,"quantity":1.0,"assetFeeQuantity":0.005,"date":"2024-06-01","sourceAccountId":1,"destinationAccountId":2}""")
         )
@@ -101,7 +103,7 @@ class TransferControllerIT {
 
         mockMvc.perform(
             post("/portfolios/10/transfers")
-                .with(user(owner))
+                .with(authentication(owner))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""{"listingId":5,"quantity":1.0,"date":"2024-06-01","sourceAccountId":1,"destinationAccountId":2}""")
         )
@@ -112,7 +114,7 @@ class TransferControllerIT {
     fun `DELETE transfer returns 204`() {
         whenever(deleteTransferUseCase.execute(10L, 900L)).thenReturn(true)
 
-        mockMvc.perform(delete("/portfolios/10/transfers/900").with(user(owner)))
+        mockMvc.perform(delete("/portfolios/10/transfers/900").with(authentication(owner)))
             .andExpect(status().isNoContent)
     }
 
@@ -120,7 +122,7 @@ class TransferControllerIT {
     fun `DELETE transfer returns 404 when not found`() {
         whenever(deleteTransferUseCase.execute(10L, 999L)).thenReturn(false)
 
-        mockMvc.perform(delete("/portfolios/10/transfers/999").with(user(owner)))
+        mockMvc.perform(delete("/portfolios/10/transfers/999").with(authentication(owner)))
             .andExpect(status().isNotFound)
     }
 }

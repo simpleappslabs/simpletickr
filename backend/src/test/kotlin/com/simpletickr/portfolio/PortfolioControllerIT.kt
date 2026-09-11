@@ -3,7 +3,8 @@ package com.simpletickr.portfolio
 import com.simpletickr.account.AccountService
 import com.simpletickr.account.model.Account
 import com.simpletickr.account.model.AccountType
-import com.simpletickr.auth.CurrentUser
+import com.simpletickr.auth.Principal
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import com.simpletickr.gains.RealizationMethod
 import com.simpletickr.gains.RealizedGainsReport
 import com.simpletickr.price.usecase.BackfillPortfolioPricesUseCase
@@ -20,6 +21,7 @@ import com.simpletickr.portfolio.model.PortfolioValuePoint
 import com.simpletickr.portfolio.usecase.CreatePortfolioUseCase
 import com.simpletickr.portfolio.usecase.DeletePortfolioUseCase
 import com.simpletickr.portfolio.usecase.UpdatePortfolioUseCase
+import com.simpletickr.shared.OidcTestSupportConfig
 import com.simpletickr.shared.SecurityConfig
 import java.util.UUID
 import org.junit.jupiter.api.Test
@@ -30,7 +32,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest
 import org.springframework.context.annotation.Import
 import org.springframework.http.MediaType
-import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user
+import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication
 import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete
@@ -43,11 +45,11 @@ import java.math.BigDecimal
 import java.time.LocalDate
 
 @WebMvcTest(PortfolioController::class)
-@Import(SecurityConfig::class)
+@Import(SecurityConfig::class, OidcTestSupportConfig::class)
 class PortfolioControllerIT {
 
-    private val owner = CurrentUser(1L, "test-user", "hash")
-    private val other = CurrentUser(2L, "other-user", "hash")
+    private val owner = UsernamePasswordAuthenticationToken(Principal.Local(1L, "test-user"), null, emptyList())
+    private val other = UsernamePasswordAuthenticationToken(Principal.Local(2L, "other-user"), null, emptyList())
 
     @Autowired
     private lateinit var mockMvc: MockMvc
@@ -86,7 +88,7 @@ class PortfolioControllerIT {
     fun `GET portfolios returns empty list`() {
         whenever(portfolioQueryService.listPortfolios(1L)).thenReturn(emptyList())
 
-        mockMvc.perform(get("/portfolios").with(user(owner)))
+        mockMvc.perform(get("/portfolios").with(authentication(owner)))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$").isArray)
             .andExpect(jsonPath("$").isEmpty)
@@ -98,7 +100,7 @@ class PortfolioControllerIT {
             listOf(Portfolio(1L, UUID(0, 1), "My Portfolio", 1L), Portfolio(2L, UUID(0, 2), "Savings", 1L))
         )
 
-        mockMvc.perform(get("/portfolios").with(user(owner)))
+        mockMvc.perform(get("/portfolios").with(authentication(owner)))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.length()").value(2))
             .andExpect(jsonPath("$[0].id").value(1))
@@ -110,7 +112,7 @@ class PortfolioControllerIT {
     fun `GET portfolio by id returns 200 when found`() {
         whenever(portfolioQueryService.getPortfolio(1L, 1L)).thenReturn(Portfolio(1L, UUID(0, 1), "My Portfolio", 1L))
 
-        mockMvc.perform(get("/portfolios/1").with(user(owner)))
+        mockMvc.perform(get("/portfolios/1").with(authentication(owner)))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.id").value(1))
             .andExpect(jsonPath("$.name").value("My Portfolio"))
@@ -118,13 +120,13 @@ class PortfolioControllerIT {
 
     @Test
     fun `GET portfolio by id returns 404 when not found`() {
-        mockMvc.perform(get("/portfolios/99").with(user(owner)))
+        mockMvc.perform(get("/portfolios/99").with(authentication(owner)))
             .andExpect(status().isNotFound)
     }
 
     @Test
     fun `GET portfolio by id returns 404 when owned by another user`() {
-        mockMvc.perform(get("/portfolios/1").with(user(other)))
+        mockMvc.perform(get("/portfolios/1").with(authentication(other)))
             .andExpect(status().isNotFound)
     }
 
@@ -134,7 +136,7 @@ class PortfolioControllerIT {
 
         mockMvc.perform(
             post("/portfolios")
-                .with(user(owner))
+                .with(authentication(owner))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""{"name":"New Portfolio"}""")
         )
@@ -149,7 +151,7 @@ class PortfolioControllerIT {
 
         mockMvc.perform(
             put("/portfolios/1")
-                .with(user(owner))
+                .with(authentication(owner))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""{"name":"Renamed"}""")
         )
@@ -162,7 +164,7 @@ class PortfolioControllerIT {
     fun `PUT portfolio returns 404 when not found`() {
         mockMvc.perform(
             put("/portfolios/99")
-                .with(user(owner))
+                .with(authentication(owner))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""{"name":"Renamed"}""")
         )
@@ -173,7 +175,7 @@ class PortfolioControllerIT {
     fun `PUT portfolio returns 404 when owned by another user`() {
         mockMvc.perform(
             put("/portfolios/1")
-                .with(user(other))
+                .with(authentication(other))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""{"name":"Renamed"}""")
         )
@@ -184,25 +186,25 @@ class PortfolioControllerIT {
     fun `DELETE portfolio returns 204 when found`() {
         whenever(deletePortfolioUseCase.execute(1L, 1L)).thenReturn(true)
 
-        mockMvc.perform(delete("/portfolios/1").with(user(owner)))
+        mockMvc.perform(delete("/portfolios/1").with(authentication(owner)))
             .andExpect(status().isNoContent)
     }
 
     @Test
     fun `DELETE portfolio returns 404 when not found`() {
-        mockMvc.perform(delete("/portfolios/99").with(user(owner)))
+        mockMvc.perform(delete("/portfolios/99").with(authentication(owner)))
             .andExpect(status().isNotFound)
     }
 
     @Test
     fun `DELETE portfolio returns 404 when owned by another user`() {
-        mockMvc.perform(delete("/portfolios/1").with(user(other)))
+        mockMvc.perform(delete("/portfolios/1").with(authentication(other)))
             .andExpect(status().isNotFound)
     }
 
     @Test
     fun `GET holdings returns 404 when portfolio not found`() {
-        mockMvc.perform(get("/portfolios/99/holdings").with(user(owner)))
+        mockMvc.perform(get("/portfolios/99/holdings").with(authentication(owner)))
             .andExpect(status().isNotFound)
     }
 
@@ -220,7 +222,7 @@ class PortfolioControllerIT {
             )
         ))
 
-        mockMvc.perform(get("/portfolios/1/holdings").with(user(owner)))
+        mockMvc.perform(get("/portfolios/1/holdings").with(authentication(owner)))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.length()").value(1))
             .andExpect(jsonPath("$[0].assetName").value("Request Network"))
@@ -231,13 +233,13 @@ class PortfolioControllerIT {
 
     @Test
     fun `GET holdings returns 404 when owned by another user`() {
-        mockMvc.perform(get("/portfolios/1/holdings").with(user(other)))
+        mockMvc.perform(get("/portfolios/1/holdings").with(authentication(other)))
             .andExpect(status().isNotFound)
     }
 
     @Test
     fun `GET account-allocation returns 404 when portfolio not found`() {
-        mockMvc.perform(get("/portfolios/99/account-allocation").with(user(owner)))
+        mockMvc.perform(get("/portfolios/99/account-allocation").with(authentication(owner)))
             .andExpect(status().isNotFound)
     }
 
@@ -252,7 +254,7 @@ class PortfolioControllerIT {
             AccountValuation(accountId = 10L, marketValueBase = BigDecimal("1234.56")),
         ))
 
-        mockMvc.perform(get("/portfolios/1/account-allocation").with(user(owner)))
+        mockMvc.perform(get("/portfolios/1/account-allocation").with(authentication(owner)))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.length()").value(1))
             .andExpect(jsonPath("$[0].accountId").value(10))
@@ -271,7 +273,7 @@ class PortfolioControllerIT {
             AccountValuation(accountId = 99L, marketValueBase = BigDecimal("100")),
         ))
 
-        mockMvc.perform(get("/portfolios/1/account-allocation").with(user(owner)))
+        mockMvc.perform(get("/portfolios/1/account-allocation").with(authentication(owner)))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$").isArray)
             .andExpect(jsonPath("$").isEmpty)
@@ -291,7 +293,7 @@ class PortfolioControllerIT {
             )
         )
 
-        mockMvc.perform(get("/portfolios/1/valuation-summary").with(user(owner)))
+        mockMvc.perform(get("/portfolios/1/valuation-summary").with(authentication(owner)))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.totalCostBase").value(1500.0))
             .andExpect(jsonPath("$.totalMarketValueBase").value(1200.0))
@@ -301,7 +303,7 @@ class PortfolioControllerIT {
 
     @Test
     fun `GET valuation-summary returns 404 when portfolio not found`() {
-        mockMvc.perform(get("/portfolios/99/valuation-summary").with(user(owner)))
+        mockMvc.perform(get("/portfolios/99/valuation-summary").with(authentication(owner)))
             .andExpect(status().isNotFound)
     }
 
@@ -310,7 +312,7 @@ class PortfolioControllerIT {
         whenever(portfolioQueryService.isOwnedBy(1L, 1L)).thenReturn(true)
         whenever(backfillPortfolioPricesUseCase.execute(1L)).thenReturn(SyncResult(3, 0))
 
-        mockMvc.perform(post("/portfolios/1/sync-prices").with(user(owner)))
+        mockMvc.perform(post("/portfolios/1/sync-prices").with(authentication(owner)))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.synced").value(3))
             .andExpect(jsonPath("$.failed").value(0))
@@ -318,7 +320,7 @@ class PortfolioControllerIT {
 
     @Test
     fun `POST sync-prices returns 404 when portfolio not found`() {
-        mockMvc.perform(post("/portfolios/99/sync-prices").with(user(owner)))
+        mockMvc.perform(post("/portfolios/99/sync-prices").with(authentication(owner)))
             .andExpect(status().isNotFound)
     }
 
@@ -335,7 +337,7 @@ class PortfolioControllerIT {
             )
         )
 
-        mockMvc.perform(get("/portfolios/1/value-history?from=2024-01-01&to=2024-01-03").with(user(owner)))
+        mockMvc.perform(get("/portfolios/1/value-history?from=2024-01-01&to=2024-01-03").with(authentication(owner)))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.baseCurrency").value("EUR"))
             .andExpect(jsonPath("$.points.length()").value(3))
@@ -348,7 +350,7 @@ class PortfolioControllerIT {
 
     @Test
     fun `GET value-history returns 404 when portfolio not found`() {
-        mockMvc.perform(get("/portfolios/99/value-history?from=2024-01-01&to=2024-01-03").with(user(owner)))
+        mockMvc.perform(get("/portfolios/99/value-history?from=2024-01-01&to=2024-01-03").with(authentication(owner)))
             .andExpect(status().isNotFound)
     }
 
@@ -364,7 +366,7 @@ class PortfolioControllerIT {
                 byCurrency = emptyMap(),
             ))
 
-        mockMvc.perform(get("/portfolios/1/realized-gains?method=FIFO&from=2024-01-01&to=2024-12-31").with(user(owner)))
+        mockMvc.perform(get("/portfolios/1/realized-gains?method=FIFO&from=2024-01-01&to=2024-12-31").with(authentication(owner)))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.method").value("FIFO"))
             .andExpect(jsonPath("$.entries").isArray)
@@ -372,7 +374,7 @@ class PortfolioControllerIT {
 
     @Test
     fun `GET realized-gains returns 404 when portfolio not owned`() {
-        mockMvc.perform(get("/portfolios/1/realized-gains?method=FIFO&from=2024-01-01&to=2024-12-31").with(user(other)))
+        mockMvc.perform(get("/portfolios/1/realized-gains?method=FIFO&from=2024-01-01&to=2024-12-31").with(authentication(other)))
             .andExpect(status().isNotFound)
     }
 }

@@ -1,6 +1,8 @@
 package com.simpletickr.user.dashboard
 
-import com.simpletickr.auth.CurrentUser
+import com.simpletickr.auth.Principal
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
+import com.simpletickr.shared.OidcTestSupportConfig
 import com.simpletickr.shared.SecurityConfig
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
@@ -10,7 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest
 import org.springframework.context.annotation.Import
 import org.springframework.http.MediaType
-import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user
+import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication
 import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete
@@ -21,11 +23,11 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPat
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 
 @WebMvcTest(DashboardController::class)
-@Import(SecurityConfig::class)
+@Import(SecurityConfig::class, OidcTestSupportConfig::class)
 class DashboardControllerIT {
 
-    private val owner = CurrentUser(1L, "test-user", "hash")
-    private val other = CurrentUser(2L, "other-user", "hash")
+    private val owner = UsernamePasswordAuthenticationToken(Principal.Local(1L, "test-user"), null, emptyList())
+    private val other = UsernamePasswordAuthenticationToken(Principal.Local(2L, "other-user"), null, emptyList())
 
     @Autowired
     private lateinit var mockMvc: MockMvc
@@ -43,7 +45,7 @@ class DashboardControllerIT {
     fun `GET widgets returns the current user's widgets`() {
         whenever(service.listWidgets(1L)).thenReturn(listOf(widget))
 
-        mockMvc.perform(get("/dashboard/widgets").with(user(owner)))
+        mockMvc.perform(get("/dashboard/widgets").with(authentication(owner)))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.length()").value(1))
             .andExpect(jsonPath("$[0].label").value("My Portfolio"))
@@ -55,7 +57,7 @@ class DashboardControllerIT {
 
         mockMvc.perform(
             post("/dashboard/widgets")
-                .with(user(owner))
+                .with(authentication(owner))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""{"type":"PORTFOLIO_VALUE","config":{"targetId":10,"range":"1M"}}""")
         )
@@ -70,7 +72,7 @@ class DashboardControllerIT {
 
         mockMvc.perform(
             post("/dashboard/widgets")
-                .with(user(other))
+                .with(authentication(other))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""{"type":"PORTFOLIO_VALUE","config":{"targetId":10,"range":"1M"}}""")
         )
@@ -83,7 +85,7 @@ class DashboardControllerIT {
 
         mockMvc.perform(
             patch("/dashboard/widgets/1")
-                .with(user(other))
+                .with(authentication(other))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""{"config":{"range":"3M"}}""")
         )
@@ -94,7 +96,7 @@ class DashboardControllerIT {
     fun `DELETE widget returns 404 when owned by another user`() {
         whenever(service.removeWidget(1L, 2L)).thenReturn(false)
 
-        mockMvc.perform(delete("/dashboard/widgets/1").with(user(other)))
+        mockMvc.perform(delete("/dashboard/widgets/1").with(authentication(other)))
             .andExpect(status().isNotFound)
     }
 
@@ -102,7 +104,7 @@ class DashboardControllerIT {
     fun `DELETE widget returns 204 when owned by the caller`() {
         whenever(service.removeWidget(1L, 1L)).thenReturn(true)
 
-        mockMvc.perform(delete("/dashboard/widgets/1").with(user(owner)))
+        mockMvc.perform(delete("/dashboard/widgets/1").with(authentication(owner)))
             .andExpect(status().isNoContent)
     }
 }

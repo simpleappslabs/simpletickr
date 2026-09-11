@@ -44,7 +44,7 @@ test.describe('Authentication', () => {
 		await page.getByRole('button', { name: 'Log in' }).click();
 		await expect(page).toHaveURL('/');
 
-		await page.goto('/settings/change-password');
+		await page.goto('/settings/security');
 		await page.getByLabel('Current password').fill('TestPassword123!');
 		await page.getByLabel('New password', { exact: true }).fill('NewTestPassword456!');
 		await page.getByLabel('Confirm new password').fill('NewTestPassword456!');

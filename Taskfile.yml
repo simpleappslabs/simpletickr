@@ -8,6 +8,29 @@ tasks:
     cmds:
       - docker compose up -d db
 
+  dev:oidc:up:
+    desc: Start a dev-only local Authelia IdP for manually exercising OIDC login/connect (see dev/authelia/README.md)
+    cmds:
+      - docker compose --profile dev-oidc up -d authelia
+
+  dev:oidc:down:
+    desc: Stop the dev-only Authelia IdP
+    cmds:
+      - docker compose --profile dev-oidc down authelia
+
+  dev:oidc:backend:
+    desc: Start the backend with OIDC pointed at the dev-only local Authelia IdP (see dev/authelia/README.md)
+    env:
+      OIDC_ISSUER_URI: "https://127.0.0.1:9091"
+      OIDC_CLIENT_ID: "simpletickr-dev"
+      OIDC_CLIENT_SECRET: "dev-client-secret"
+      FRONTEND_BASE_URL: "http://localhost:5173"
+      JAVA_TOOL_OPTIONS: "-Djavax.net.ssl.trustStore={{.ROOT_DIR}}/dev/authelia/dev-truststore.p12 -Djavax.net.ssl.trustStoreType=PKCS12 -Djavax.net.ssl.trustStorePassword=changeit"
+    cmds:
+      - docker compose up -d db
+      - docker compose --profile dev-oidc up -d authelia
+      - cd backend && ./gradlew --no-daemon bootRun
+
   db:reset:
     desc: Drop and recreate the dev database (Flyway migrates on next backend start)
     cmds:

@@ -19,6 +19,6 @@ class AuthUserDetailsService(
             ?: throw UsernameNotFoundException("No such user")
         val identity = identityRepository.findByUserIdAndProviderType(user.id, ProviderType.LOCAL)
             ?: throw UsernameNotFoundException("No local identity for this user")
-        return CurrentUser(id = user.id, username = user.username, passwordHash = identity.passwordHash!!)
+        return LocalUserDetails(id = user.id, username = user.username, passwordHash = identity.passwordHash!!)
     }
 }

@@ -5,7 +5,9 @@ import com.simpletickr.account.model.AccountType
 import com.simpletickr.account.usecase.CreateAccountUseCase
 import com.simpletickr.account.usecase.DeleteAccountUseCase
 import com.simpletickr.account.usecase.UpdateAccountUseCase
-import com.simpletickr.auth.CurrentUser
+import com.simpletickr.auth.Principal
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
+import com.simpletickr.shared.OidcTestSupportConfig
 import com.simpletickr.shared.SecurityConfig
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
@@ -15,7 +17,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest
 import org.springframework.context.annotation.Import
 import org.springframework.http.MediaType
-import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user
+import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication
 import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete
@@ -26,11 +28,11 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPat
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 
 @WebMvcTest(AccountController::class)
-@Import(SecurityConfig::class)
+@Import(SecurityConfig::class, OidcTestSupportConfig::class)
 class AccountControllerIT {
 
-    private val owner = CurrentUser(1L, "test-user", "hash")
-    private val other = CurrentUser(2L, "other-user", "hash")
+    private val owner = UsernamePasswordAuthenticationToken(Principal.Local(1L, "test-user"), null, emptyList())
+    private val other = UsernamePasswordAuthenticationToken(Principal.Local(2L, "other-user"), null, emptyList())
 
     @Autowired
     private lateinit var mockMvc: MockMvc
@@ -56,7 +58,7 @@ class AccountControllerIT {
     fun `GET accounts returns the current user's accounts`() {
         whenever(accountService.listAccounts(1L)).thenReturn(listOf(account))
 
-        mockMvc.perform(get("/accounts").with(user(owner)))
+        mockMvc.perform(get("/accounts").with(authentication(owner)))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.length()").value(1))
             .andExpect(jsonPath("$[0].name").value("Fidelity"))
@@ -66,7 +68,7 @@ class AccountControllerIT {
     fun `GET account by id returns 200 when owned by the caller`() {
         whenever(accountService.getAccount(1L, 1L)).thenReturn(account)
 
-        mockMvc.perform(get("/accounts/1").with(user(owner)))
+        mockMvc.perform(get("/accounts/1").with(authentication(owner)))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.accountNumber").value("12345"))
     }
@@ -75,7 +77,7 @@ class AccountControllerIT {
     fun `GET account by id returns 404 when owned by another user`() {
         whenever(accountService.getAccount(1L, 2L)).thenReturn(null)
 
-        mockMvc.perform(get("/accounts/1").with(user(other)))
+        mockMvc.perform(get("/accounts/1").with(authentication(other)))
             .andExpect(status().isNotFound)
     }
 
@@ -85,7 +87,7 @@ class AccountControllerIT {
 
         mockMvc.perform(
             post("/accounts")
-                .with(user(owner))
+                .with(authentication(owner))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""{"name":"Fidelity","accountType":"BROKERAGE"}""")
         )
@@ -99,7 +101,7 @@ class AccountControllerIT {
 
         mockMvc.perform(
             put("/accounts/1")
-                .with(user(other))
+                .with(authentication(other))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""{"name":"Renamed","accountType":"BROKERAGE"}""")
         )
@@ -110,7 +112,7 @@ class AccountControllerIT {
     fun `DELETE account returns 404 when owned by another user`() {
         whenever(deleteAccountUseCase.execute(1L, 2L)).thenReturn(false)
 
-        mockMvc.perform(delete("/accounts/1").with(user(other)))
+        mockMvc.perform(delete("/accounts/1").with(authentication(other)))
             .andExpect(status().isNotFound)
     }
 
@@ -118,7 +120,7 @@ class AccountControllerIT {
     fun `DELETE account returns 204 when owned by the caller`() {
         whenever(deleteAccountUseCase.execute(1L, 1L)).thenReturn(true)
 
-        mockMvc.perform(delete("/accounts/1").with(user(owner)))
+        mockMvc.perform(delete("/accounts/1").with(authentication(owner)))
             .andExpect(status().isNoContent)
     }
 }

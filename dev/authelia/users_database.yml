@@ -1,0 +1,11 @@
+# DEV-ONLY test user for exercising simpletickr's OIDC login/connect flow locally.
+# Username: dev-sso   Password: devpassword
+
+users:
+  dev-sso:
+    disabled: false
+    displayname: 'Dev SSO User'
+    password: '$argon2id$v=19$m=65536,t=3,p=4$TUZWej9u4lgoiKXC2YljpQ$lD65H8FH7JVStScNFu8EMZ3qflrtEOv1J38AQENi2Gc'
+    email: 'dev-sso@example.com'
+    groups:
+      - 'dev'

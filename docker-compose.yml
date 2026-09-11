@@ -26,6 +26,11 @@ services:
       DB_NAME: ${DB_NAME}
       DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
+      OIDC_ISSUER_URI: ${OIDC_ISSUER_URI:-}
+      OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:-}
+      OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:-}
+      OIDC_RP_INITIATED_LOGOUT_ENABLED: ${OIDC_RP_INITIATED_LOGOUT_ENABLED:-false}
+      FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:-}
     depends_on:
       db:
         condition: service_healthy
@@ -63,6 +68,20 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+
+  # DEV-ONLY real IdP for manually exercising the OIDC client (issue #57) against a real
+  # provider rather than the WireMock stub used by the backend's integration test. Never
+  # used outside local dev — see dev/authelia/README.md.
+  authelia:
+    profiles: [dev-oidc]
+    image: authelia/authelia:latest
+    # Runs as the host user so the sqlite db / notification file it writes into the
+    # bind-mounted config dir don't end up root-owned on the host.
+    user: "${UID:-1000}:${GID:-1000}"
+    ports:
+      - "9091:9091"
+    volumes:
+      - ./dev/authelia:/config
 
 volumes:
   db_data:

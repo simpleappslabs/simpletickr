@@ -8,7 +8,7 @@
 		{ label: 'Accounts', href: '/settings/accounts' },
 		{ label: 'Assets', href: '/settings/assets' },
 		{ label: 'Sync', href: '/settings/sync' },
-		{ label: 'Change Password', href: '/settings/change-password' },
+		{ label: 'Security', href: '/settings/security' },
 	];
 
 	function isActive(href: string) {

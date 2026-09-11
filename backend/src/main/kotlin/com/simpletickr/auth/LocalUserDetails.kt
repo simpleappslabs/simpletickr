@@ -1,18 +1,13 @@
 package com.simpletickr.auth
 
 import org.springframework.security.core.GrantedAuthority
-import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.security.core.userdetails.UserDetails
 
 /**
- * The generated controller interfaces (openapi-generator, interfaceOnly) have fixed method
- * signatures with no room for an injected `@AuthenticationPrincipal` parameter, so controllers
- * read the principal directly off the (thread-bound) SecurityContext instead.
+ * Only used during authenticate() (DaoAuthenticationProvider checking a password) — never
+ * placed into the SecurityContext for the life of the session. See Principal for that.
  */
-fun currentUser(): CurrentUser =
-    SecurityContextHolder.getContext().authentication.principal as CurrentUser
-
-class CurrentUser(
+class LocalUserDetails(
     val id: Long,
     private val username: String,
     private val passwordHash: String,
