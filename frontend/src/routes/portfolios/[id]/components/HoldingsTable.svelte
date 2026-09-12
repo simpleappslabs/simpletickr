@@ -1,5 +1,6 @@
 <script lang="ts">
     import type { Holding } from '$lib/api/types.gen';
+    import MaskedValue from '$lib/MaskedValue.svelte';
 
     let { holdings, portfolioId, onchartclick }: {
         holdings: Holding[];
@@ -14,15 +15,6 @@
         if (next.has(assetId)) next.delete(assetId);
         else next.add(assetId);
         expandedAssets = next;
-    }
-
-    function fmt(n: number) {
-        return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    }
-
-    function fmtCcy(n: number | undefined | null, ccy: string) {
-        if (n == null) return '—';
-        return `${fmt(n)} ${ccy}`;
     }
 
     type SortColumn = 'assetName' | 'marketValueBase' | 'unrealizedPnlBase';
@@ -108,29 +100,27 @@
                     <div class="font-semibold truncate" title={h.assetName}>{h.assetName}</div>
                     <div class="text-xs text-base-content/50 font-mono">{h.listings.map(l => l.ticker).join(' · ')}</div>
                 </td>
-                <td class="text-right tabular-nums whitespace-nowrap">{fmt(h.totalQuantity)}</td>
+                <td class="text-right tabular-nums whitespace-nowrap"><MaskedValue value={h.totalQuantity} /></td>
                 <td class="text-right tabular-nums whitespace-nowrap">
-                    {h.avgCostBasisBase != null ? fmtCcy(h.avgCostBasisBase, h.baseCurrency) : '—'}
+                    <MaskedValue value={h.avgCostBasisBase} currency={h.baseCurrency} />
                 </td>
                 <td class="text-right tabular-nums whitespace-nowrap">
-                    {h.marketValueBase != null ? fmtCcy(h.marketValueBase / h.totalQuantity, h.baseCurrency) : '—'}
+                    <MaskedValue value={h.marketValueBase != null ? h.marketValueBase / h.totalQuantity : null} currency={h.baseCurrency} />
                 </td>
                 <td class="text-right tabular-nums whitespace-nowrap">
-                    {fmtCcy(h.totalCostBase, h.baseCurrency)}
+                    <MaskedValue value={h.totalCostBase} currency={h.baseCurrency} />
                 </td>
                 <td class="text-right tabular-nums whitespace-nowrap">
-                    {fmtCcy(h.marketValueBase, h.baseCurrency)}
+                    <MaskedValue value={h.marketValueBase} currency={h.baseCurrency} />
                 </td>
                 <td class="text-right tabular-nums whitespace-nowrap">
                     {#if h.unrealizedPnlBase == null}
                         <span class="text-base-content/30">—</span>
                     {:else}
-                        <span class="{h.unrealizedPnlBase >= 0 ? 'text-success' : 'text-error'}">
-                            {h.unrealizedPnlBase >= 0 ? '+' : ''}{fmt(h.unrealizedPnlBase)} {h.baseCurrency}
-                            {#if h.unrealizedPnlPct != null}
-                                <span class="text-xs opacity-70">({h.unrealizedPnlPct >= 0 ? '+' : ''}{fmt(h.unrealizedPnlPct)}%)</span>
-                            {/if}
-                        </span>
+                        <MaskedValue value={h.unrealizedPnlBase} currency={h.baseCurrency} signed colorize />
+                        {#if h.unrealizedPnlPct != null}
+                            <span class="text-xs opacity-70">(<MaskedValue value={h.unrealizedPnlPct} suffix="%" signed colorize />)</span>
+                        {/if}
                     {/if}
                 </td>
                 <td>
@@ -157,13 +147,13 @@
                                 <span class="text-xs text-base-content/40 ml-1">{l.exchange}</span>
                             {/if}
                         </td>
-                        <td class="text-right tabular-nums">{fmt(l.quantity)}</td>
-                        <td class="text-right tabular-nums">{fmtCcy(l.avgCostLocal, l.currency)}</td>
+                        <td class="text-right tabular-nums"><MaskedValue value={l.quantity} /></td>
+                        <td class="text-right tabular-nums"><MaskedValue value={l.avgCostLocal} currency={l.currency} /></td>
                         <td class="text-right tabular-nums">
-                            {l.marketValueLocal != null ? fmtCcy(l.marketValueLocal / l.quantity, l.currency) : '—'}
+                            <MaskedValue value={l.marketValueLocal != null ? l.marketValueLocal / l.quantity : null} currency={l.currency} />
                         </td>
-                        <td class="text-right tabular-nums">{fmtCcy(l.totalCostLocal, l.currency)}</td>
-                        <td class="text-right tabular-nums">{fmtCcy(l.marketValueBase, h.baseCurrency)}</td>
+                        <td class="text-right tabular-nums"><MaskedValue value={l.totalCostLocal} currency={l.currency} /></td>
+                        <td class="text-right tabular-nums"><MaskedValue value={l.marketValueBase} currency={h.baseCurrency} /></td>
                         <td>
                             {#if onchartclick}
                                 <button

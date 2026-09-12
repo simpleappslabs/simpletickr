@@ -7,6 +7,7 @@
 	import { goto } from '$app/navigation';
 	import { getCurrentUser, getHealth, logout } from '$lib/api/sdk.gen';
 	import { authState } from '$lib/authState.svelte';
+	import { privacyState } from '$lib/privacyState.svelte';
 	import '$lib/client';
 
 	let { children } = $props();
@@ -29,6 +30,10 @@
 			theme = stored;
 		}
 		document.documentElement.setAttribute('data-theme', theme);
+	});
+
+	onMount(() => {
+		privacyState.masked = localStorage.getItem('privacyMode') === 'true';
 	});
 
 	onMount(async () => {
@@ -61,6 +66,10 @@
 		document.documentElement.setAttribute('data-theme', theme);
 		localStorage.setItem('theme', theme);
 	});
+
+	$effect(() => {
+		localStorage.setItem('privacyMode', String(privacyState.masked));
+	});
 </script>
 
 <svelte:head>
@@ -87,6 +96,28 @@
 						<li><a href="/dashboard" class={$page.url.pathname.startsWith('/dashboard') ? 'bg-primary text-primary-content font-medium' : ''}>Dashboard</a></li>
 						<li><a href="/settings" class={$page.url.pathname.startsWith('/settings') ? 'bg-primary text-primary-content font-medium' : ''}>Settings</a></li>
 					</ul>
+				{/if}
+				{#if authState.username}
+					<button
+						class="btn btn-ghost btn-sm btn-square"
+						aria-label={privacyState.masked ? 'Show amounts' : 'Hide amounts'}
+						aria-pressed={privacyState.masked}
+						onclick={() => privacyState.masked = !privacyState.masked}
+					>
+						{#if privacyState.masked}
+							<svg xmlns="http://www.w3.org/2000/svg" class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+								<path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/>
+								<path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/>
+								<path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/>
+								<line x1="2" y1="2" x2="22" y2="22"/>
+							</svg>
+						{:else}
+							<svg xmlns="http://www.w3.org/2000/svg" class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+								<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/>
+								<circle cx="12" cy="12" r="3"/>
+							</svg>
+						{/if}
+					</button>
 				{/if}
 				<div class="dropdown dropdown-end">
 					<button tabindex="0" class="btn btn-ghost btn-sm btn-square" aria-label="Theme">
@@ -179,6 +210,13 @@
 			</div>
 			{#if authState.username}
 				<div class="p-4 border-t border-base-300 space-y-2">
+					<button
+						class="btn btn-ghost btn-sm w-full justify-start"
+						aria-pressed={privacyState.masked}
+						onclick={() => { privacyState.masked = !privacyState.masked; mobileMenuOpen = false; }}
+					>
+						{privacyState.masked ? 'Show amounts' : 'Hide amounts'}
+					</button>
 					<p class="text-xs text-base-content/50 uppercase tracking-widest">{authState.username}</p>
 					<a href="/settings/security" class="btn btn-ghost btn-sm w-full justify-start" onclick={() => mobileMenuOpen = false}>Security</a>
 					<button class="btn btn-ghost btn-sm w-full justify-start" onclick={() => { mobileMenuOpen = false; handleLogout(); }}>Log out</button>

@@ -1,5 +1,6 @@
 <script lang="ts">
     import type { Asset, Transaction } from '$lib/api/types.gen';
+    import MaskedValue from '$lib/MaskedValue.svelte';
 
     let { transactions, assets, onedit, ondelete }: {
         transactions: Transaction[];
@@ -16,9 +17,6 @@
         return '—';
     }
 
-    function fmt(n: number) {
-        return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    }
 </script>
 
 <section class="space-y-3">
@@ -47,9 +45,21 @@
                             {t.type}
                         </span>
                     </td>
-                    <td class="text-right tabular-nums">{t.type === 'SPLIT' ? `${t.quantity}×` : fmt(t.quantity)}</td>
-                    <td class="text-right tabular-nums">{t.type === 'SPLIT' ? '—' : fmt(t.price)}</td>
-                    <td class="text-right tabular-nums">{t.fees != null ? fmt(t.fees) : '—'}</td>
+                    <td class="text-right tabular-nums">
+                        {#if t.type === 'SPLIT'}
+                            {t.quantity}×
+                        {:else}
+                            <MaskedValue value={t.quantity} />
+                        {/if}
+                    </td>
+                    <td class="text-right tabular-nums">
+                        {#if t.type === 'SPLIT'}
+                            —
+                        {:else}
+                            <MaskedValue value={t.price} />
+                        {/if}
+                    </td>
+                    <td class="text-right tabular-nums"><MaskedValue value={t.fees} /></td>
                     <td class="text-base-content/60 text-sm">
                         <span class="inline-flex items-center gap-1.5">
                             {t.account?.name ?? '—'}

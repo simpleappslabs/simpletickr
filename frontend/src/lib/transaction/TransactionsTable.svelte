@@ -1,6 +1,7 @@
 <script lang="ts">
     import type { Asset, Portfolio, Transaction, Transfer } from '$lib/api/types.gen';
     import { mergeLedger } from './LedgerEntry';
+    import MaskedValue from '$lib/MaskedValue.svelte';
 
     let { transactions, transfers = [], assets, portfolios, onedit, ondelete, ondeletetransfer }: {
         transactions: Transaction[];
@@ -68,9 +69,21 @@
                             <span class="badge badge-outline badge-xs ml-1 text-base-content/50" title="Part of a crypto trade">↔</span>
                         {/if}
                     </td>
-                    <td class="text-right tabular-nums">{t.type === 'SPLIT' ? `${t.quantity}×` : fmt(t.quantity)}</td>
-                    <td class="text-right tabular-nums">{t.type === 'SPLIT' ? '—' : fmt(t.price)}</td>
-                    <td class="text-right tabular-nums">{t.fees != null ? fmt(t.fees) : '—'}</td>
+                    <td class="text-right tabular-nums">
+                        {#if t.type === 'SPLIT'}
+                            {t.quantity}×
+                        {:else}
+                            <MaskedValue value={t.quantity} />
+                        {/if}
+                    </td>
+                    <td class="text-right tabular-nums">
+                        {#if t.type === 'SPLIT'}
+                            —
+                        {:else}
+                            <MaskedValue value={t.price} />
+                        {/if}
+                    </td>
+                    <td class="text-right tabular-nums"><MaskedValue value={t.fees} /></td>
                     <td class="text-base-content/60 text-sm">
                         <span class="inline-flex items-center gap-1.5">
                             {t.account?.name ?? '—'}
@@ -130,7 +143,7 @@
                         <span class="badge badge-ghost badge-sm text-info">TRANSFER</span>
                         <span class="badge badge-outline badge-xs ml-1 text-base-content/50" title="Moves custody between accounts — no price or gain">⇄</span>
                     </td>
-                    <td class="text-right tabular-nums">{fmt(tr.quantity)}</td>
+                    <td class="text-right tabular-nums"><MaskedValue value={tr.quantity} /></td>
                     <td class="text-right tabular-nums">—</td>
                     <td class="text-right tabular-nums">{tr.assetFeeQuantity != null ? fmt(tr.assetFeeQuantity) : '—'}</td>
                     <td class="text-base-content/60 text-sm">

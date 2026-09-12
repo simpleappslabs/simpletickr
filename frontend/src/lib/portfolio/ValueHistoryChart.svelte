@@ -1,5 +1,6 @@
 <script lang="ts">
     import type { PortfolioValuePoint } from '$lib/api/types.gen';
+    import { privacyState } from '$lib/privacyState.svelte';
     import {
         Chart, LineController, LineElement, PointElement,
         CategoryScale, LinearScale, Filler, Tooltip, Legend,
@@ -17,6 +18,8 @@
 
     $effect(() => {
         if (!chartCanvas || points.length === 0) return;
+
+        const masked = privacyState.masked;
 
         const chart = new Chart(chartCanvas, {
             type: 'line',
@@ -56,7 +59,10 @@
                         grid: { color: 'rgba(148,163,184,0.1)' },
                     },
                     y: {
-                        ticks: { color: '#94a3b8' },
+                        ticks: {
+                            color: '#94a3b8',
+                            callback: (value) => masked ? '••••••' : (value as number).toLocaleString(undefined, { maximumFractionDigits: 2 }),
+                        },
                         grid: { color: 'rgba(148,163,184,0.1)' },
                         title: { display: true, text: baseCurrency, color: '#94a3b8' },
                     },
@@ -68,6 +74,7 @@
                             label: (ctx) => {
                                 const v = ctx.parsed.y;
                                 if (v == null) return `${ctx.dataset.label}: —`;
+                                if (masked) return ` ${ctx.dataset.label}: •••••• ${baseCurrency}`;
                                 return ` ${ctx.dataset.label}: ${v.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${baseCurrency}`;
                             },
                         },

@@ -3,8 +3,9 @@
     import { getPortfolioValueHistory, updateDashboardWidget } from '$lib/api/sdk.gen';
     import type { DashboardWidget, PortfolioValuePoint } from '$lib/api/types.gen';
     import ValueHistoryChart from '$lib/portfolio/ValueHistoryChart.svelte';
-    import { computePeriodGain, formatGainNumber } from '$lib/portfolio/periodGain';
+    import { computePeriodGain } from '$lib/portfolio/periodGain';
     import DashboardWidgetCard from './DashboardWidgetCard.svelte';
+    import MaskedValue from '$lib/MaskedValue.svelte';
     import { untrack } from 'svelte';
 
     let { widget, onremove }: {
@@ -37,9 +38,6 @@
     let error = $state<string | null>(null);
 
     const latestValue = $derived(valuePoints.findLast(p => p.value != null));
-    const latestValueFormatted = $derived(
-        latestValue?.value != null ? latestValue.value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : null
-    );
     const periodGain = $derived(computePeriodGain(valuePoints));
 
     $effect(() => { load(activeRange); });
@@ -64,17 +62,17 @@
 </script>
 
 {#snippet summary()}
-    {#if latestValueFormatted}
+    {#if latestValue?.value != null}
         <div class="flex items-baseline gap-2 mb-1">
-            <span class="text-sm font-semibold">{latestValueFormatted} {baseCurrency}</span>
+            <span class="text-sm font-semibold"><MaskedValue value={latestValue.value} currency={baseCurrency} /></span>
             <span class="text-xs text-base-content/40">as of {latestValue?.date}</span>
         </div>
     {/if}
     {#if periodGain}
-        <p class="text-xs mb-2 {periodGain.amount >= 0 ? 'text-success' : 'text-error'}">
-            Unrealized gain ({activeRange}): {periodGain.amount >= 0 ? '+' : ''}{formatGainNumber(periodGain.amount)} {baseCurrency}
+        <p class="text-xs mb-2">
+            Unrealized gain ({activeRange}): <MaskedValue value={periodGain.amount} currency={baseCurrency} signed colorize />
             {#if periodGain.pct != null}
-                ({periodGain.amount >= 0 ? '+' : ''}{formatGainNumber(periodGain.pct)}%)
+                (<MaskedValue value={periodGain.pct} suffix="%" signed colorize />)
             {/if}
         </p>
     {/if}

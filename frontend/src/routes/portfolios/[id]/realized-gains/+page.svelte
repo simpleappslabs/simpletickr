@@ -3,6 +3,7 @@
     import { page } from '$app/state';
     import { getPortfolio, getRealizedGains } from '$lib/api/sdk.gen';
     import type { Portfolio, RealizedGainsReport, RealizationMethod } from '$lib/api/types.gen';
+    import MaskedValue from '$lib/MaskedValue.svelte';
     import '$lib/client';
 
     const portfolioId = Number(page.params.id);
@@ -49,9 +50,6 @@
         loading = false;
     }
 
-    function fmt(n: number) {
-        return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    }
 
     const currencyTotals = $derived(
         report ? Object.values(report.byCurrency) : []
@@ -123,21 +121,21 @@
                     <div class="stats stats-vertical sm:stats-horizontal bg-base-200 w-full">
                         <div class="stat">
                             <div class="stat-title">Proceeds <span class="badge badge-ghost badge-sm ml-1">{ct.currency}</span></div>
-                            <div class="stat-value text-xl">{fmt(ct.totalProceeds)} {ct.currency}</div>
+                            <div class="stat-value text-xl"><MaskedValue value={ct.totalProceeds} currency={ct.currency} /></div>
                             <div class="stat-desc">{ct.tradeCount} trade{ct.tradeCount === 1 ? '' : 's'}</div>
                         </div>
                         <div class="stat">
                             <div class="stat-title">Cost basis</div>
-                            <div class="stat-value text-xl">{fmt(ct.totalCostBasis)} {ct.currency}</div>
+                            <div class="stat-value text-xl"><MaskedValue value={ct.totalCostBasis} currency={ct.currency} /></div>
                         </div>
                         <div class="stat">
                             <div class="stat-title">Gain / loss</div>
-                            <div class="stat-value text-xl {ct.totalGain >= 0 ? 'text-success' : 'text-error'}">
-                                {ct.totalGain >= 0 ? '+' : ''}{fmt(ct.totalGain)} {ct.currency}
+                            <div class="stat-value text-xl">
+                                <MaskedValue value={ct.totalGain} currency={ct.currency} signed colorize />
                             </div>
                             {#if swaps}
                                 <div class="stat-desc">
-                                    incl. {swaps.count} crypto swap{swaps.count === 1 ? '' : 's'}: {swaps.gain >= 0 ? '+' : ''}{fmt(swaps.gain)} {ct.currency}
+                                    incl. {swaps.count} crypto swap{swaps.count === 1 ? '' : 's'}: <MaskedValue value={swaps.gain} currency={ct.currency} signed />
                                 </div>
                             {/if}
                         </div>
@@ -184,13 +182,13 @@
                                             {/if}
                                         </td>
                                         <td class="text-xs text-base-content/50">{e.currency}</td>
-                                        <td class="text-right tabular-nums">{fmt(e.quantity)}</td>
-                                        <td class="text-right tabular-nums">{fmt(e.proceeds)}</td>
-                                        <td class="text-right tabular-nums">{e.buyFees > 0 ? fmt(e.buyFees) : '—'}</td>
-                                        <td class="text-right tabular-nums">{e.sellFees > 0 ? fmt(e.sellFees) : '—'}</td>
-                                        <td class="text-right tabular-nums">{fmt(e.costBasis)}</td>
-                                        <td class="text-right tabular-nums font-semibold {e.gain >= 0 ? 'text-success' : 'text-error'}">
-                                            {e.gain >= 0 ? '+' : ''}{fmt(e.gain)} {e.currency}
+                                        <td class="text-right tabular-nums"><MaskedValue value={e.quantity} /></td>
+                                        <td class="text-right tabular-nums"><MaskedValue value={e.proceeds} /></td>
+                                        <td class="text-right tabular-nums"><MaskedValue value={e.buyFees > 0 ? e.buyFees : null} /></td>
+                                        <td class="text-right tabular-nums"><MaskedValue value={e.sellFees > 0 ? e.sellFees : null} /></td>
+                                        <td class="text-right tabular-nums"><MaskedValue value={e.costBasis} /></td>
+                                        <td class="text-right tabular-nums font-semibold">
+                                            <MaskedValue value={e.gain} currency={e.currency} signed colorize />
                                         </td>
                                     </tr>
                                     {#if expandedEntries.has(i) && e.lots.length > 0}
@@ -200,12 +198,12 @@
                                                 <td class="pl-6 text-base-content/70 tabular-nums" colspan="2">{lot.acquisitionDate}</td>
                                                 <td></td>
                                                 <td class="text-right tabular-nums">
-                                                    {fmt(lot.quantity)} <span class="text-base-content/50">@ {fmt(lot.pricePerUnit)}</span>
+                                                    <MaskedValue value={lot.quantity} /> <span class="text-base-content/50">@ <MaskedValue value={lot.pricePerUnit} /></span>
                                                 </td>
                                                 <td></td>
-                                                <td class="text-right tabular-nums">{lot.buyFees > 0 ? fmt(lot.buyFees) : '—'}</td>
+                                                <td class="text-right tabular-nums"><MaskedValue value={lot.buyFees > 0 ? lot.buyFees : null} /></td>
                                                 <td></td>
-                                                <td class="text-right tabular-nums">{fmt(lot.costBasis)}</td>
+                                                <td class="text-right tabular-nums"><MaskedValue value={lot.costBasis} /></td>
                                                 <td></td>
                                             </tr>
                                         {/each}

@@ -2,7 +2,8 @@
     import { getPortfolioValueHistory } from '$lib/api/sdk.gen';
     import type { PortfolioValuationSummary, PortfolioValuePoint } from '$lib/api/types.gen';
     import ValueHistoryChart from '$lib/portfolio/ValueHistoryChart.svelte';
-    import { computePeriodGain, formatGainNumber } from '$lib/portfolio/periodGain';
+    import { computePeriodGain } from '$lib/portfolio/periodGain';
+    import MaskedValue from '$lib/MaskedValue.svelte';
 
     let { portfolioId, refreshKey = 0, summary = null }: {
         portfolioId: number;
@@ -71,10 +72,10 @@
             </div>
         </div>
         {#if periodGain}
-            <p class="text-xs {periodGain.amount >= 0 ? 'text-success' : 'text-error'}">
-                Unrealized gain ({activeRange}): {periodGain.amount >= 0 ? '+' : ''}{formatGainNumber(periodGain.amount)} {baseCurrency}
+            <p class="text-xs">
+                Unrealized gain ({activeRange}): <MaskedValue value={periodGain.amount} currency={baseCurrency} signed colorize />
                 {#if periodGain.pct != null}
-                    ({periodGain.amount >= 0 ? '+' : ''}{formatGainNumber(periodGain.pct)}%)
+                    (<MaskedValue value={periodGain.pct} suffix="%" signed colorize />)
                 {/if}
             </p>
         {/if}

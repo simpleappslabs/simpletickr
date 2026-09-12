@@ -1,5 +1,6 @@
 <script lang="ts">
     import type { Holding, PortfolioValuationSummary } from '$lib/api/types.gen';
+    import MaskedValue from '$lib/MaskedValue.svelte';
 
     let { holdings, summary, lastSyncAt = null }: {
         holdings: Holding[];
@@ -8,10 +9,6 @@
     } = $props();
 
     const ccy = $derived(holdings[0]?.baseCurrency ?? '');
-
-    function fmt(n: number) {
-        return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    }
 
     function relativeTime(date: Date): string {
         const diffMin = Math.floor((Date.now() - date.getTime()) / 60000);
@@ -26,21 +23,21 @@
 <div class="stats stats-vertical sm:stats-horizontal bg-base-200 w-full">
     <div class="stat">
         <div class="stat-title">Total cost</div>
-        <div class="stat-value text-xl">{summary ? `${fmt(summary.totalCostBase)} ${ccy}` : '—'}</div>
+        <div class="stat-value text-xl"><MaskedValue value={summary?.totalCostBase} currency={ccy} /></div>
     </div>
     <div class="stat">
         <div class="stat-title">Market value</div>
         <div class="stat-value text-xl">
-            {summary?.totalMarketValueBase == null ? '—' : `${fmt(summary.totalMarketValueBase)} ${ccy}`}
+            <MaskedValue value={summary?.totalMarketValueBase} currency={ccy} />
         </div>
     </div>
     <div class="stat">
         <div class="stat-title">Unrealized gain</div>
-        <div class="stat-value text-xl {summary?.totalUnrealizedPnlBase == null ? '' : summary.totalUnrealizedPnlBase >= 0 ? 'text-success' : 'text-error'}">
-            {summary?.totalUnrealizedPnlBase == null ? '—' : `${summary.totalUnrealizedPnlBase >= 0 ? '+' : ''}${fmt(summary.totalUnrealizedPnlBase)} ${ccy}`}
+        <div class="stat-value text-xl">
+            <MaskedValue value={summary?.totalUnrealizedPnlBase} currency={ccy} signed colorize />
             {#if summary?.totalUnrealizedPnlPct != null}
-                <span class="stat-desc" class:text-success={summary.totalUnrealizedPnlPct >= 0} class:text-error={summary.totalUnrealizedPnlPct < 0}>
-                    ({summary.totalUnrealizedPnlPct >= 0 ? '+' : ''}{fmt(summary.totalUnrealizedPnlPct)}%)
+                <span class="stat-desc">
+                    (<MaskedValue value={summary.totalUnrealizedPnlPct} suffix="%" signed colorize />)
                 </span>
             {/if}
         </div>

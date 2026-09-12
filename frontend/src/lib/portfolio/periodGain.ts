@@ -24,9 +24,3 @@ export function computePeriodGain(points: PortfolioValuePoint[]): PeriodGain | n
 
 	return { amount, pct };
 }
-
-// Shared with PortfolioSummary's "Unrealized gain" stat so a portfolio's gain figures read the
-// same way everywhere they appear, regardless of the viewer's browser locale.
-export function formatGainNumber(n: number): string {
-	return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
