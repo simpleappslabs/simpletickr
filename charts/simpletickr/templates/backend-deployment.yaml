@@ -27,6 +27,8 @@ spec:
               containerPort: 8080
               protocol: TCP
           env:
+            - name: APP_VERSION
+              value: {{ .Chart.AppVersion | quote }}
             - name: DB_HOST
               value: {{ include "simpletickr.backend.dbHost" . | quote }}
             - name: DB_PORT

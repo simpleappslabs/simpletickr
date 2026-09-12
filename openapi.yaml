@@ -45,10 +45,14 @@ paths:
                 type: object
                 required:
                   - status
+                  - version
                 properties:
                   status:
                     type: string
                     example: UP
+                  version:
+                    type: string
+                    example: v0.15.0
         "4XX":
           description: Client error
           content:
