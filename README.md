@@ -17,6 +17,7 @@ simpletickr doesn't track you or phone home. It's self-hosted, and your portfoli
     * [Prerequisites](#prerequisites)
     * [Quick start](#quick-start)
     * [Environment variables](#environment-variables)
+    * [Authentication](#authentication)
     * [Accessing from another machine](#accessing-from-another-machine)
     * [Kubernetes (Helm)](#kubernetes-helm)
   * [Development](#development)
@@ -86,6 +87,31 @@ Data is stored in a named Docker volume (`db_data`) and persists across restarts
 | `DB_USER`             | yes      | —       | PostgreSQL username                                                                                                  |
 | `DB_PASSWORD`         | yes      | —       | PostgreSQL password                                                                                                  |
 | `PUBLIC_API_BASE_URL` | no       | `/api`  | URL the browser uses to reach the API. Relative by default (same-origin, via the reverse proxy) — only override this if pointing the frontend at a different backend. |
+
+### Authentication
+
+On first startup, simpletickr creates a single **bootstrap admin** account and prints its
+username and generated password to the backend logs (`docker compose logs backend`) — log in and
+change that password right away.
+
+Local login supports exactly one user. If more than one person needs access, enable **OIDC**
+instead of building out local accounts: point simpletickr at your own identity provider (Keycloak,
+Authentik, Authelia, etc.) and everyone logs in through it — each OIDC identity gets its own
+simpletickr user automatically on first login, no invite step required. Local login stays
+available alongside OIDC as a break-glass path.
+
+To enable it, set in your `.env`:
+
+```bash
+OIDC_ISSUER_URI=https://your-idp.example.com/realm   # simpletickr discovers the rest via /.well-known/openid-configuration
+OIDC_CLIENT_ID=simpletickr
+OIDC_CLIENT_SECRET=...
+FRONTEND_BASE_URL=https://simpletickr.example.com     # externally reachable frontend URL, needed for the post-login redirect
+```
+
+`OIDC_RP_INITIATED_LOGOUT_ENABLED` (default `false`) additionally signs you out at the IdP when
+you log out of simpletickr — leave it off if you share the IdP across multiple apps and don't want
+one logout to end all your sessions.
 
 ### Accessing from another machine
 
