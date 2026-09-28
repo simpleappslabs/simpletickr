@@ -1,14 +1,28 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-API="${API:-http://localhost:8080}"
+API="${API:-http://localhost:8080}/api"
+: "${SEED_USERNAME:?Set SEED_USERNAME to a valid simpletickr login}"
+: "${SEED_PASSWORD:?Set SEED_PASSWORD to the password for that account}"
+
+COOKIE_JAR=$(mktemp)
+trap 'rm -f "$COOKIE_JAR"' EXIT
 
 # d N  →  date N days before today
 d() { date -d "$1 days ago" +%Y-%m-%d; }
 
 post() {
-    curl -sf -X POST "$API$1" -H "Content-Type: application/json" -d "$2"
+    curl -sSf -b "$COOKIE_JAR" -X POST "$API$1" -H "Content-Type: application/json" -d "$2"
 }
+
+get() {
+    curl -sSf -b "$COOKIE_JAR" "$API$1"
+}
+
+echo "Logging in as $SEED_USERNAME..."
+curl -sSf -c "$COOKIE_JAR" -X POST "$API/auth/login" \
+    -H "Content-Type: application/json" \
+    -d "{\"username\":\"$SEED_USERNAME\",\"password\":\"$SEED_PASSWORD\"}" > /dev/null
 
 echo "Creating assets..."
 
@@ -18,7 +32,7 @@ make_asset() {
     local ticker
     ticker=$(echo "$1" | jq -r '.listings[0].ticker')
     local existing
-    existing=$(curl -sf "$API/assets" | jq -r --arg t "$ticker" '.[] | .listings[] | select(.ticker == $t) | .id' | head -1)
+    existing=$(get "/assets" | jq -r --arg t "$ticker" '.[] | .listings[] | select(.ticker == $t) | .id' | head -1)
     if [[ -n "$existing" ]]; then
         echo "$existing"
     else
@@ -31,7 +45,7 @@ make_asset() {
 make_portfolio() {
     local name="$1" body="$2"
     local existing
-    existing=$(curl -sf "$API/portfolios" | jq -r --arg n "$name" '.[] | select(.name == $n) | .id' | head -1)
+    existing=$(get "/portfolios" | jq -r --arg n "$name" '.[] | select(.name == $n) | .id' | head -1)
     if [[ -n "$existing" ]]; then
         echo "$existing"
     else
@@ -44,7 +58,7 @@ make_portfolio() {
 make_account() {
     local name="$1" body="$2"
     local existing
-    existing=$(curl -sf "$API/accounts" | jq -r --arg n "$name" '.[] | select(.name == $n) | .id' | head -1)
+    existing=$(get "/accounts" | jq -r --arg n "$name" '.[] | select(.name == $n) | .id' | head -1)
     if [[ -n "$existing" ]]; then
         echo "$existing"
     else
